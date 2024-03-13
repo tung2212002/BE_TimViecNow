@@ -55,10 +55,11 @@ class UserGetRequest(BaseModel):
 class UserCreateRequest(UserBase):
     picture: Optional[UploadFile] = None
     password: str
+    confirm_password: str
     role: Role = Role.USER
 
     @validator("password")
-    def validate_password(cls, v):
+    def validate_password(cls, v, values):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
         elif len(v) > 50:
@@ -67,6 +68,8 @@ class UserCreateRequest(UserBase):
             raise ValueError(
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
+        elif "confirm_password" in values and v != values["confirm_password"]:
+            raise ValueError("Password and confirm password must match")
         return v
 
     @validator("picture")

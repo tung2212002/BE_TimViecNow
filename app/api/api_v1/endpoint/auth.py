@@ -16,6 +16,7 @@ from app.db.base import get_db
 from app.core.auth import service_auth
 from app.core import constant
 from app.core.user import service_user
+from app.hepler.response_custom import custom_response_error, custom_response
 
 router = APIRouter()
 
@@ -25,6 +26,7 @@ def register_auth(
     full_name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    confirm_password: str = Form(...),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
 ):
@@ -37,11 +39,13 @@ def register_auth(
     - full_name (str): The full name of the user.
     - email (str): The email of the user.
     - password (str): The password of the user.
+    - confirm_password (str): The confirm password of the user.
     - picture (UploadFile): The profile avatar of the user.
 
     Returns:
     - status_code (201): The user has been registered successfully.
     - status_code (400): The request is invalid.
+    - status_code (409): The user is already registered.
 
     """
 
@@ -49,13 +53,15 @@ def register_auth(
         "full_name": full_name,
         "email": email,
         "password": password,
+        "confirm_password": confirm_password,
         "picture": picture,
     }
     status, status_code, response = service_user.create_user(db, data)
+
     if status == constant.ERROR:
-        raise HTTPException(status_code=status_code, detail=response)
+        return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
-        return JSONResponse(status_code=status_code, content=jsonable_encoder(response))
+        return custom_response(status_code, constant.SUCCESS, response)
 
 
 @router.post("/login")
@@ -82,10 +88,11 @@ def login_auth(
 
     """
     status, status_code, response = service_auth.authenticate(db, data)
+
     if status == constant.ERROR:
-        raise HTTPException(status_code=status_code, detail=response)
+        return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
-        return JSONResponse(status_code=status_code, content=jsonable_encoder(response))
+        return custom_response(status_code, constant.SUCCESS, response)
 
 
 @router.post("/refresh_token")
@@ -106,10 +113,11 @@ def refresh_auth(
 
     """
     status, status_code, response = service_auth.refresh_token(db, request)
+
     if status == constant.ERROR:
-        raise HTTPException(status_code=status_code, detail=response)
+        return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
-        return JSONResponse(status_code=status_code, content=jsonable_encoder(response))
+        return custom_response(status_code, constant.SUCCESS, response)
 
 
 @router.post("/logout")
@@ -131,11 +139,13 @@ def logout_auth(
     """
 
     status, status_code, response = service_auth.logout(db, request)
+
     if status == constant.ERROR:
-        raise HTTPException(status_code=status_code, detail=response)
+        return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
-        return JSONResponse(status_code=status_code, content=jsonable_encoder(response))
-    
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
 @router.post("/verify_token")
 def verify_token_auth(
     request: Request,
@@ -154,24 +164,8 @@ def verify_token_auth(
 
     """
     status, status_code, response = service_auth.verify_token(db, request)
+
     if status == constant.ERROR:
-        raise HTTPException(status_code=status_code, detail=response)
+        return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
-        return JSONResponse(status_code=status_code, content=jsonable_encoder(response))
-
-
-@router.post("/test_login")
-def test_login_auth():
-    response = {
-        "user": {"id": 1, "full_name": "test", "email": ""},
-        "access_token": "test",
-        "refresh_token": "test",
-    }
-
-    return JSONResponse(status_code=200, content=jsonable_encoder(response))
-
-@router.post("/test_logout")
-def test_logout_auth():
-    response = {"detail": "Successfully logged out."}
-
-    return JSONResponse(status_code=200, content=jsonable_encoder(response))
+        return custom_response(status_code, constant.SUCCESS, response)

@@ -14,6 +14,7 @@ def get_me(current_user):
     user = schema_user.UserItemResponse(**current_user.__dict__)
     return constant.SUCCESS, 200, user
 
+
 def get_user_by_email(db: Session, data: dict):
     try:
         user_data = schema_user.UserGetRequest(**data)
@@ -53,7 +54,7 @@ def create_user(db: Session, data: dict):
         return constant.ERROR, 400, get_message_validation_error(e)
     user = userCRUD.get_by_email(db, user_data.email)
     if user:
-        return constant.ERROR, 400, "Email already registered"
+        return constant.ERROR, 409, "Email already registered"
 
     user = userCRUD.create(db, obj_in=user_data)
     user = schema_user.UserItemResponse(**user.__dict__)
