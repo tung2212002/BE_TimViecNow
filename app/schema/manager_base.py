@@ -3,11 +3,10 @@ import re
 from fastapi import File, UploadFile
 from typing import Optional
 
-from app.hepler.enum import Role
 from app.core import constant
 
 
-class UserBase(BaseModel):
+class ManagerBaseBase(BaseModel):
     full_name: str = Field(
         ...,
     )
@@ -15,7 +14,7 @@ class UserBase(BaseModel):
         ...,
     )
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -34,15 +33,14 @@ class UserBase(BaseModel):
         return v
 
 
-class UserItemResponse(UserBase):
+class ManagerBaseItemResponse(ManagerBaseBase):
     id: int
     avatar: Optional[str] = None
     is_active: bool
-    role: Role
-    phone_number: Optional[str] = None
+    last_login: Optional[str] = None
 
 
-class UserGetRequest(BaseModel):
+class ManagerBaseGetRequest(BaseModel):
     email: str = Field(..., example="1@email.com")
 
     @validator("email")
@@ -52,11 +50,10 @@ class UserGetRequest(BaseModel):
         return v
 
 
-class UserCreateRequest(UserBase):
+class ManagerBaseCreateRequest(ManagerBaseBase):
     avatar: Optional[UploadFile] = None
     password: str
     confirm_password: str
-    role: Role = Role.USER
 
     @validator("password")
     def validate_password(cls, v, values):
@@ -82,10 +79,9 @@ class UserCreateRequest(UserBase):
         return v
 
 
-class UserUpdateRequest(BaseModel):
+class ManagerBaseUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
-    phone_number: Optional[str] = None
     avatar: Optional[UploadFile] = None
 
     @validator("full_name")
@@ -114,9 +110,3 @@ class UserUpdateRequest(BaseModel):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
         return v
-
-    @validator("phone_number")
-    def validate_phone_number(cls, v):
-        if v is not None:
-            if not re.match(constant.REGEX_PHONE_NUMBER, v):
-                raise ValueError("Invalid phone number")

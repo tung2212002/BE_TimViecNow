@@ -55,6 +55,5 @@ class AuthLogin(BaseModel):
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
         return v
-    
-    model_config = ConfigDict(from_attribute=True)
 
+    model_config = ConfigDict(from_attribute=True)

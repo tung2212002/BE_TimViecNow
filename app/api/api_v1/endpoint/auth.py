@@ -27,7 +27,7 @@ def register_auth(
     email: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
-    picture: UploadFile = File(None),
+    avatar: UploadFile = File(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -40,7 +40,7 @@ def register_auth(
     - email (str): The email of the user.
     - password (str): The password of the user.
     - confirm_password (str): The confirm password of the user.
-    - picture (UploadFile): The profile avatar of the user.
+    - avatar (UploadFile): The profile avatar of the user.
 
     Returns:
     - status_code (201): The user has been registered successfully.
@@ -54,7 +54,7 @@ def register_auth(
         "email": email,
         "password": password,
         "confirm_password": confirm_password,
-        "picture": picture,
+        "avatar": avatar,
     }
     status, status_code, response = service_user.create_user(db, data)
 

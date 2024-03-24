@@ -85,7 +85,7 @@ def create_user(
     email: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
-    picture: UploadFile = File(None),
+    avatar: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_superuser),
 ):
@@ -99,7 +99,7 @@ def create_user(
     - email (str): The email address of the user.
     - password (str): The password of the user.
     - confirm_password (str): The confirm password of the user.
-    - picture (UploadFile): The profile avatar of the user.
+    - avatar (UploadFile): The profile avatar of the user.
     - role (str): The role of the user.
 
     Returns:
@@ -114,7 +114,7 @@ def create_user(
         "email": email,
         "password": password,
         "confirm_password": confirm_password,
-        "picture": picture,
+        "avatar": avatar,
     }
     status, status_code, response = service_user.create_user(db, data)
 

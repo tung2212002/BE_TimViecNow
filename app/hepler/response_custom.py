@@ -1,5 +1,7 @@
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+
 from app.core import constant
 
 
@@ -21,7 +23,7 @@ def custom_response(
     """
     return JSONResponse(
         status_code=status_code,
-        content={"status": status, "data": response if response else []},
+        content=jsonable_encoder({"status": status, "message": "", "data": response}),
     )
 
 
@@ -43,4 +45,3 @@ def custom_response_error(status_code: int, status: str, response: any) -> JSONR
         status_code=status_code,
         content={"status": status, "message": response if response else "Error"},
     )
-

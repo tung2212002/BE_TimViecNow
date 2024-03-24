@@ -3,17 +3,19 @@ import re
 from fastapi import File, UploadFile
 from typing import Optional
 
-from app.hepler.enum import Role
+from app.hepler.enum import Role, Gender
 from app.core import constant
 
 
-class UserBase(BaseModel):
+class AdminBase(BaseModel):
     full_name: str = Field(
         ...,
     )
     email: str = Field(
         ...,
     )
+    gender: Gender
+    phone_number: str
 
     model_config = ConfigDict(from_attribute=True)
 
@@ -33,13 +35,24 @@ class UserBase(BaseModel):
             raise ValueError("Invalid email")
         return v
 
+    @validator("gender")
+    def validate_gender(cls, v):
+        if v not in Gender.__members__.values():
+            raise ValueError("Invalid gender")
+        return v
 
-class UserItemResponse(UserBase):
+    @validator("phone_number")
+    def validate_phone_number(cls, v):
+        if not re.match(constant.REGEX_PHONE_NUMBER, v):
+            raise ValueError("Invalid phone number")
+        return v
+
+
+class AdminItemResponse(AdminBase):
     id: int
     avatar: Optional[str] = None
     is_active: bool
     role: Role
-    phone_number: Optional[str] = None
 
 
 class UserGetRequest(BaseModel):
@@ -52,11 +65,11 @@ class UserGetRequest(BaseModel):
         return v
 
 
-class UserCreateRequest(UserBase):
+class AdminCreateRequest(AdminBase):
     avatar: Optional[UploadFile] = None
     password: str
     confirm_password: str
-    role: Role = Role.USER
+    role: Role = Role.ADMIN
 
     @validator("password")
     def validate_password(cls, v, values):
@@ -82,11 +95,12 @@ class UserCreateRequest(UserBase):
         return v
 
 
-class UserUpdateRequest(BaseModel):
+class AdminUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     phone_number: Optional[str] = None
     avatar: Optional[UploadFile] = None
+    gender: Optional[Gender] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -120,3 +134,10 @@ class UserUpdateRequest(BaseModel):
         if v is not None:
             if not re.match(constant.REGEX_PHONE_NUMBER, v):
                 raise ValueError("Invalid phone number")
+
+    @validator("gender")
+    def validate_gender(cls, v):
+        if v is not None:
+            if v not in Gender.__members__.values():
+                raise ValueError("Invalid gender")
+            return v

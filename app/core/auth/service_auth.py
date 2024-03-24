@@ -17,7 +17,6 @@ from app.hepler.exception_handler import get_message_validation_error
 
 def authenticate(db: Session, data: dict):
     try:
-        print(data)
         user_data = schema_auth.AuthLogin(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
