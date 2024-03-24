@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: str = os.getenv("FIRST_SUPERUSER")
     FIRST_SUPERUSER_EMAIL: str = os.getenv("FIRST_SUPERUSER_EMAIL")
     FIRST_SUPERUSER_PASSWORD: str = os.getenv("FIRST_SUPERUSER_PASSWORD")
+    FIRST_SUPERUSER_PHONE_NUMBER: str = os.getenv("FIRST_SUPERUSER_PHONE_NUMBER")
 
 
 settings = Settings()
