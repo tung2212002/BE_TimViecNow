@@ -8,16 +8,12 @@ from app.core import constant
 
 
 class AdminBase(BaseModel):
-    full_name: str = Field(
-        ...,
-    )
-    email: str = Field(
-        ...,
-    )
+    full_name: str
+    email: str
     gender: Gender
     phone_number: str
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -69,7 +65,6 @@ class AdminCreateRequest(AdminBase):
     avatar: Optional[UploadFile] = None
     password: str
     confirm_password: str
-    role: Role = Role.ADMIN
 
     @validator("password")
     def validate_password(cls, v, values):
@@ -93,6 +88,10 @@ class AdminCreateRequest(AdminBase):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
         return v
+
+
+class SuperUserCreateRequest(AdminCreateRequest):
+    role: Role = Role.SUPER_USER
 
 
 class AdminUpdateRequest(BaseModel):

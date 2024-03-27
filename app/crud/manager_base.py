@@ -8,14 +8,6 @@ from app.schema import manager_base as schema_manager_base
 from app.hepler.enum import Role
 
 
-###
-from pydantic import BaseModel
-
-
-class Test(BaseModel):
-    name: str
-
-
 class CRUDManagerBase(
     CRUDBase[
         ManagerBase,
@@ -34,7 +26,6 @@ class CRUDManagerBase(
             **obj_in.dict(exclude_unset=True, exclude={"password", "confirm_password"}),
             hashed_password=get_password_hash(obj_in.password),
         )
-
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

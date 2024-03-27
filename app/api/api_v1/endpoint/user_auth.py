@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from app.db.base import get_db
-from app.core.auth import service_auth
+from app.core.auth import service_user_auth
 from app.core import constant
 from app.core.user import service_user
 from app.hepler.response_custom import custom_response_error, custom_response
@@ -23,11 +23,11 @@ router = APIRouter()
 
 @router.post("/register")
 def register_auth(
-    full_name: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    confirm_password: str = Form(...),
-    avatar: UploadFile = File(None),
+    full_name: str = Form(..., description="The full name of the user."),
+    email: str = Form(..., description="The email of the user."),
+    password: str = Form(..., description="The password of the user."),
+    confirm_password: str = Form(..., description="The confirm password of the user."),
+    avatar: UploadFile = File(None, description="The profile avatar of the user."),
     db: Session = Depends(get_db),
 ):
     """
@@ -49,13 +49,8 @@ def register_auth(
 
     """
 
-    data = {
-        "full_name": full_name,
-        "email": email,
-        "password": password,
-        "confirm_password": confirm_password,
-        "avatar": avatar,
-    }
+    data = {k: v for k, v in locals().items() if k not in ["db"]}
+
     status, status_code, response = service_user.create_user(db, data)
 
     if status == constant.ERROR:
@@ -87,7 +82,7 @@ def login_auth(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_auth.authenticate(db, data)
+    status, status_code, response = service_user_auth.authenticate(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -99,7 +94,7 @@ def login_auth(
 def refresh_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_auth.get_current_user),
+    current_user=Depends(service_user_auth.get_current_user),
 ):
     """
     Refresh token.
@@ -112,7 +107,7 @@ def refresh_auth(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_auth.refresh_token(db, request)
+    status, status_code, response = service_user_auth.refresh_token(db, request)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -124,7 +119,7 @@ def refresh_auth(
 def logout_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_auth.get_current_user),
+    current_user=Depends(service_user_auth.get_current_user),
 ):
     """
     Logout user.
@@ -138,7 +133,7 @@ def logout_auth(
 
     """
 
-    status, status_code, response = service_auth.logout(db, request)
+    status, status_code, response = service_user_auth.logout(db, request)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -150,7 +145,7 @@ def logout_auth(
 def verify_token_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_auth.get_current_user),
+    current_user=Depends(service_user_auth.get_current_user),
 ):
     """
     Verify token.
@@ -163,7 +158,8 @@ def verify_token_auth(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_auth.verify_token(db, request)
+    token = request.headers.get("Authorization").split(" ")[1]
+    status, status_code, response = service_user_auth.check_verify_token(db, token)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

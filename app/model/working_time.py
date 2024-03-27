@@ -6,5 +6,5 @@ from app.db.base_class import Base
 
 
 class WorkingTime(Base):
-    job_id = Column(Integer, ForeignKey("job.id"))
-    ưorking_times = Column(String(255), nullable=False)
+    job_id = Column(Integer, ForeignKey("job.id", ondelete="CASCADE"), index=True)
+    working_times = Column(String(255), nullable=False)

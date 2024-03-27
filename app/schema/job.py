@@ -66,7 +66,7 @@ class JobBase(BaseModel):
             raise ValueError("Full name must be alphabet")
         return v
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
 class JobItemResponse(JobBase):

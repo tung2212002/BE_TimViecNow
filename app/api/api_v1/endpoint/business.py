@@ -16,9 +16,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from app.db.base import get_db
-from app.core.auth.service_user_auth import get_current_user, get_current_admin
+from app.core.auth.service_business_auth import get_current_user, get_current_superuser
 from app.core import constant
-from app.core.user import service_user
+from app.core.representative import service_representative
 from app.schema import user as schema_user, page as schema_page
 from app.hepler.response_custom import custom_response_error, custom_response
 
@@ -28,16 +28,16 @@ router = APIRouter()
 @router.get("/me")
 def get_me(current_user=Depends(get_current_user)):
     """
-    Get the current user.
+    Get the current representative.
 
-    This endpoint allows getting the current user.
+    This endpoint allows getting the current representative.
 
     Returns:
     - status_code (200): The current user has been found successfully.
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_user.get_me(current_user)
+    status, status_code, response = service_representative.get_me(current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -58,7 +58,7 @@ def get_user(
     """
     Get list of users.
 
-    This endpoint allows getting a list of users.
+    This endpoint allows getting a list of representative.
 
     Parameters:
     - skip (int): The number of users to skip.
@@ -75,7 +75,7 @@ def get_user(
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
 
-    status, status_code, response = service_user.get_list_user(db, args)
+    status, status_code, response = service_representative.get_list_user(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -90,9 +90,9 @@ def get_user_by_id(
     current_user=Depends(get_current_user),
 ):
     """
-    Get a user by id.
+    Get a representative by id.
 
-    This endpoint allows getting a user by id.
+    This endpoint allows getting a representative by id.
 
     Parameters:
     - id (int): The id of the user.
@@ -103,7 +103,7 @@ def get_user_by_id(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_user.get_user_by_id(db, id)
+    status, status_code, response = service_representative.get_user_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -113,18 +113,20 @@ def get_user_by_id(
 
 @router.post("")
 def create_user(
-    full_name: str = Form(..., description="The full name of the user."),
-    email: str = Form(..., description="The email of the user."),
-    password: str = Form(..., description="The password of the user."),
-    confirm_password: str = Form(..., description="The confirm password of the user."),
-    avatar: UploadFile = File(None, description="The profile avatar of the user."),
+    full_name: str = Form(
+        ..., description="The full name of the user.", example="John Doe"
+    ),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    avatar: UploadFile = File(None),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(get_current_superuser),
 ):
     """
-    Create a new user by admin.
+    Create a new user by superuser.
 
-    This endpoint allows creating a new user by admin with the provided information.
+    This endpoint allows creating a new user by superuser with the provided information.
 
     Parameters:
     - full_name (str): The full name of the user.
@@ -143,7 +145,7 @@ def create_user(
     """
     data = {k: v for k, v in locals().items() if k not in ["db"]}
 
-    status, status_code, response = service_user.create_user(db, data)
+    status, status_code, response = service_representative.create_user(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -157,9 +159,9 @@ def update_user(
     full_name: str = Form(
         None, description="The full name of the user.", example="John Doe"
     ),
+    email: str = Form(None, description="The email address of the user."),
     phone_number: str = Form(None, description="The phone number of the user."),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    password: str = Form(None, description="The password of the user."),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -185,7 +187,9 @@ def update_user(
 
     data = {k: v for k, v in locals().items() if k not in ["db"]}
 
-    status, status_code, response = service_user.update_user(db, id, data, current_user)
+    status, status_code, response = service_representative.update_user(
+        db, data, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -214,7 +218,9 @@ def delete_user(
 
     """
 
-    status, status_code, response = service_user.delete_user(db, id, current_user)
+    status, status_code, response = service_representative.delete_user(
+        db, id, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

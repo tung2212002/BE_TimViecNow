@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
 
 from app.core import constant
@@ -14,7 +14,8 @@ ALGORITHM = settings.SECURITY_ALGORITHM
 
 
 def signJWT(payload: dict):
-    iat = datetime.utcnow()
+    print(payload)
+    iat = datetime.now(timezone.utc)
     exp = iat + timedelta(seconds=ACCESS_TOKEN_EXPIRE)
     payload.update({"iat": iat, "exp": exp})
     access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)

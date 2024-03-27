@@ -4,7 +4,7 @@ from app.core.security import pwd_context
 from app.crud import user as userCRUD
 from app.core import constant
 from app.schema import user as schema_user, page as schema_page
-from app.core.auth.service_auth import signJWT
+from app.core.auth.service_user_auth import signJWT
 from app.hepler.exception_handler import get_message_validation_error
 
 
@@ -31,7 +31,7 @@ def get_user_by_id(db: Session, id: int):
     user = userCRUD.get(db, id)
     if not user:
         return constant.ERROR, 404, "User not found"
-    user = schema_user.UserGet(**user.__dict__)
+    user = schema_user.UserItemResponse(**user.__dict__)
     return constant.SUCCESS, 200, user
 
 
@@ -85,32 +85,30 @@ def create_user(db: Session, data: dict):
     return response
 
 
-def update_user(db: Session, data: dict, current_user):
-    if current_user is None:
+def update_user(db: Session, id: int, data: dict, current_user):
+    if current_user is None or current_user.id != id:
         return constant.ERROR, 401, "Unauthorized"
-    if data["username"] != current_user.username:
-        return constant.ERROR, 401, "Unauthorized"
-
     try:
-        user = schema_user.UserUpdate(**data)
+        user = schema_user.UserUpdateRequest(**data)
     except Exception as e:
         error = [f'{error["loc"][0]}: {error["msg"]}' for error in e.errors()]
         return constant.ERROR, 400, error
 
-    user_update = userCRUD.update(data["username"], data, db)
-    user_update = schema_user.UserGet(**user_update.__dict__)
+    user_update = userCRUD.update(db=db, db_obj=current_user, obj_in=user)
+    user_update = schema_user.UserItemResponse(**user_update.__dict__)
     response = (constant.SUCCESS, 200, user_update)
     return response
 
 
-def delete_user(db: Session, username: str, current_user):
+def delete_user(db: Session, id: int, current_user):
     if current_user is None:
+        return constant.ERROR, 404, "User not found"
+    if current_user.id != id:
         return constant.ERROR, 401, "Unauthorized"
-    if username != current_user.username:
-        return constant.ERROR, 401, "Unauthorized"
-    if username is None:
-        return constant.ERROR, 400, "Username is required"
-    response = constant.SUCCESS, 200, userCRUD.delete(username, db)
+    if id is None:
+        return constant.ERROR, 400, "Id is required"
+    userCRUD.remove(db=db, id=id)
+    response = constant.SUCCESS, 200, "User has been deleted successfully"
     return response
 
 

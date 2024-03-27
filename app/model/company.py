@@ -25,3 +25,10 @@ class Company(Base):
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
+
+    representative = relationship("Representative", back_populates="companies")
+    label_company = relationship(
+        "LabelCompany", back_populates="company", uselist=False
+    )
+    job = relationship("Job", back_populates="company")
+    job_position = relationship("JobPosition", secondary="company_job_position")

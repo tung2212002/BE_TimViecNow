@@ -23,7 +23,7 @@ class CompanyBase(BaseModel):
     tax_code: str
     field: str
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
     def validate_full_name(cls, v):
