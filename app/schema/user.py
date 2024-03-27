@@ -8,14 +8,10 @@ from app.core import constant
 
 
 class UserBase(BaseModel):
-    full_name: str = Field(
-        ...,
-    )
-    email: str = Field(
-        ...,
-    )
+    full_name: str
+    email: str
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -84,9 +80,9 @@ class UserCreateRequest(UserBase):
 
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[str] = None
     phone_number: Optional[str] = None
     avatar: Optional[UploadFile] = None
+    pass_word: Optional[str] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -97,13 +93,6 @@ class UserUpdateRequest(BaseModel):
                 raise ValueError("Full name must be at most 50 characters")
             elif not v.replace(" ", "").isalpha():
                 raise ValueError("Full name must be alphabet")
-            return v
-
-    @validator("email")
-    def validate_email(cls, v):
-        if v is not None:
-            if not re.match(constant.REGEX_EMAIL, v):
-                raise ValueError("Invalid email")
             return v
 
     @validator("avatar")
@@ -120,3 +109,19 @@ class UserUpdateRequest(BaseModel):
         if v is not None:
             if not re.match(constant.REGEX_PHONE_NUMBER, v):
                 raise ValueError("Invalid phone number")
+            return v
+        return v
+
+    @validator("pass_word")
+    def validate_password(cls, v):
+        if v is not None:
+            if len(v) < 8:
+                raise ValueError("Password must be at least 8 characters")
+            elif len(v) > 50:
+                raise ValueError("Password must be at most 50 characters")
+            elif not re.match(constant.REGEX_PASSWORD, v):
+                raise ValueError(
+                    "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
+                )
+            return v
+        return v

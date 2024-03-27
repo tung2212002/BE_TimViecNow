@@ -1,11 +1,14 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 
 
 class CVApplication(Base):
-    job_id = Column(Integer, ForeignKey("job.id"), nullable=False, index=True)
+    job_id = Column(
+        Integer, ForeignKey("job.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     user_id = Column(
         Integer,
         ForeignKey("user.id", ondelete="CASCADE"),
@@ -18,3 +21,6 @@ class CVApplication(Base):
     phone_number = Column(String(10), nullable=False)
     letter_cover = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    job = relationship("Job", back_populates="cv_application", uselist=False)
+    user = relationship("User", back_populates="cv_application", uselist=False)

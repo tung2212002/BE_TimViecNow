@@ -29,7 +29,7 @@ class CRUDUser(
     def update(
         self, db: Session, *, db_obj: User, obj_in: schema_user.UserUpdateRequest
     ) -> User:
-        if obj_in.password:
+        if hasattr(obj_in, "password") and obj_in.password:
             obj_in.hashed_password = get_password_hash(obj_in.password)
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 

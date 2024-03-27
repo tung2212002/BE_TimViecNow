@@ -30,7 +30,6 @@ class CRUDAdmin(
             manager_base_id=manager_base_obj.id,
             phone_number=obj_in.phone_number,
             gender=obj_in.gender,
-            role=obj_in.role,
         )
         db.add(db_obj)
         db.commit()

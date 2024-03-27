@@ -7,9 +7,9 @@ from app.hepler.enum import Role, Gender
 
 
 def init_db(db: Session) -> None:
-    user = crud.admin.get_by_email(db, email=settings.FIRST_SUPERUSER_EMAIL)
+    user = crud.manager_base.get_by_email(db, email=settings.FIRST_SUPERUSER_EMAIL)
     if not user:
-        user_in = schema_admin.AdminCreateRequest(
+        user_in = schema_admin.SuperUserCreateRequest(
             full_name=settings.FIRST_SUPERUSER,
             email=settings.FIRST_SUPERUSER_EMAIL,
             password=settings.FIRST_SUPERUSER_PASSWORD,

@@ -5,3 +5,4 @@ from app.db.base_class import Base
 
 class Skill(Base):
     name = Column(String(50), nullable=False)
+    slug = Column(String(50), nullable=False)

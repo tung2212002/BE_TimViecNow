@@ -2,18 +2,15 @@ from pydantic import BaseModel, Field, validator, ConfigDict
 import re
 from fastapi import File, UploadFile
 from typing import Optional
+from datetime import datetime
 
 from app.core import constant
+from app.hepler.enum import Role
 
 
 class ManagerBaseBase(BaseModel):
-    full_name: str = Field(
-        ...,
-    )
-    email: str = Field(
-        ...,
-    )
-
+    full_name: str
+    email: str
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
@@ -37,7 +34,7 @@ class ManagerBaseItemResponse(ManagerBaseBase):
     id: int
     avatar: Optional[str] = None
     is_active: bool
-    last_login: Optional[str] = None
+    last_login: Optional[datetime]
 
 
 class ManagerBaseGetRequest(BaseModel):
@@ -54,6 +51,7 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
     avatar: Optional[UploadFile] = None
     password: str
     confirm_password: str
+    role: Optional[Role] = Role.REPRESENTATIVE
 
     @validator("password")
     def validate_password(cls, v, values):

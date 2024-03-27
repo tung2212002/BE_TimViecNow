@@ -5,7 +5,9 @@ from app.db.base_class import Base
 
 
 class UserJobRequirementCategory(Base):
-    category_id = Column(Integer, ForeignKey("category.id"), index=True)
+    category_id = Column(
+        Integer, ForeignKey("category.id", ondelete="CASCADE"), index=True
+    )
     user_job_requirement_id = Column(
-        Integer, ForeignKey("user_job_requirement.id"), index=True
+        Integer, ForeignKey("user_job_requirement.id", ondelete="CASCADE"), index=True
     )

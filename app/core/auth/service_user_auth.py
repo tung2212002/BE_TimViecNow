@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
 
 from app.core import constant
@@ -13,6 +13,7 @@ from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT
 from app.hepler.enum import Role
 from app.hepler.exception_handler import get_message_validation_error
+from app.hepler.response_custom import custom_response_error
 
 
 def authenticate(db: Session, data: dict):
@@ -64,11 +65,11 @@ def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(ge
     token_decode = data["payload"]
     token = data["token"]
     if check_blacklist(db, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
+        custom_response_error(401, constant.ERROR, "Token revoked")
     email = token_decode["email"]
     user = crud.user.get_by_email(db, email)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        custom_response_error(404, constant.ERROR, "User not found")
     return user
 
 
@@ -76,13 +77,13 @@ def get_current_admin(data: dict = Depends(JWTBearer()), db: Session = Depends(g
     token_decode = data["payload"]
     token = data["token"]
     if check_blacklist(db, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
+        custom_response_error(401, constant.ERROR, "Token revoked")
     email = token_decode["email"]
     user = crud.user.get_by_email(db, email)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        custom_response_error(404, constant.ERROR, "User not found")
     if user.role != Role.ADMIN:
-        raise HTTPException(status_code=403, detail="User is not admin")
+        custom_response_error(403, constant.ERROR, "Not permission")
     return user
 
 
@@ -92,13 +93,16 @@ def get_current_superuser(
     token_decode = data["payload"]
     token = data["token"]
     if check_blacklist(db, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
+        # raise HTTPException(status_code=401, detail="Token revoked")
+        custom_response_error(401, constant.ERROR, "Token revoked")
     email = token_decode["email"]
     user = crud.user.get_by_email(db, email)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        # return constant.ERROR, 404, "User not found"
+        custom_response_error(404, constant.ERROR, "User not found")
     if user.role != Role.SUPER_USER:
-        raise HTTPException(status_code=403, detail="User is not superuser")
+        # return constant.ERROR, 403, "Not permission"
+        custom_response_error(403, constant.ERROR, "Not permission")
     return user
 
 
@@ -106,27 +110,27 @@ def get_token_user(data: dict = Depends(JWTBearer())):
     return data["token"]
 
 
-def check_veryfy_token(token: str):
-    token = decodeJWT(token)
-    exp = token["exp"]
-    now = datetime.utcnow()
-    if now > datetime.fromtimestamp(exp):
-        raise HTTPException(status_code=401, detail="Token expired")
-    check_blacklist = crud.blacklist.get_by_token(token)
+def check_verify_token(db: Session, token: str):
+    token_decode = decodeJWT(token)
+    exp = token_decode["exp"]
+    now = datetime.now(timezone.utc)
+    if now > datetime.fromtimestamp(exp, timezone.utc):
+        return constant.ERROR, 401, "Token expired"
+    check_blacklist = crud.blacklist.get_by_token(db, token)
     if check_blacklist:
         raise HTTPException(status_code=401, detail="Token revoked")
-    return token
+    return constant.SUCCESS, 200, token_decode
 
 
 def refresh_token(db: Session, request):
     refresh_token = request.headers.get("Authorization").split(" ")[1]
     token_decode = decodeJWT(refresh_token)
     if token_decode["type"] != "refresh_token":
-        raise HTTPException(status_code=401, detail="Invalid token")
+        return constant.ERROR, 401, "Invalid token"
     email = token_decode["email"]
     user = crud.user.get_by_email(db, email)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        return constant.ERROR, 404, "User not found"
     access_token = signJWT(
         {
             "email": user.email,
