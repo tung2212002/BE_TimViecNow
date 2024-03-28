@@ -11,9 +11,10 @@ from app.schema import user as schema_user, auth as schema_auth
 from app.db.base import get_db
 from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
+from app.hepler.enum import Role, TypeAccount
 
 
 def authenticate(db: Session, data: dict):
@@ -33,6 +34,7 @@ def authenticate(db: Session, data: dict):
             "is_active": user.is_active,
             "role": user.role,
             "type": "access_token",
+            "type_account": TypeAccount.NORMAL,
         }
     )
     refresh_token = signJWT(
@@ -42,6 +44,7 @@ def authenticate(db: Session, data: dict):
             "is_active": user.is_active,
             "role": user.role,
             "type": "refresh_token",
+            "type_account": TypeAccount.NORMAL,
         }
     )
     user = schema_user.UserItemResponse(**user.__dict__)
@@ -62,47 +65,17 @@ def get_current_active_user(username: str):
 
 
 def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
+
     token_decode = data["payload"]
+    if token_decode["type_account"] != TypeAccount.NORMAL:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     token = data["token"]
     if check_blacklist(db, token):
-        custom_response_error(401, constant.ERROR, "Token revoked")
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
+        raise HTTPException(status_code=401, detail="Token revoked")
+    id = token_decode["id"]
+    user = crud.user.get(db, id)
     if user is None:
-        custom_response_error(404, constant.ERROR, "User not found")
-    return user
-
-
-def get_current_admin(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
-    token_decode = data["payload"]
-    token = data["token"]
-    if check_blacklist(db, token):
-        custom_response_error(401, constant.ERROR, "Token revoked")
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
-    if user is None:
-        custom_response_error(404, constant.ERROR, "User not found")
-    if user.role != Role.ADMIN:
-        custom_response_error(403, constant.ERROR, "Not permission")
-    return user
-
-
-def get_current_superuser(
-    data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)
-):
-    token_decode = data["payload"]
-    token = data["token"]
-    if check_blacklist(db, token):
-        # raise HTTPException(status_code=401, detail="Token revoked")
-        custom_response_error(401, constant.ERROR, "Token revoked")
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
-    if user is None:
-        # return constant.ERROR, 404, "User not found"
-        custom_response_error(404, constant.ERROR, "User not found")
-    if user.role != Role.SUPER_USER:
-        # return constant.ERROR, 403, "Not permission"
-        custom_response_error(403, constant.ERROR, "Not permission")
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
@@ -138,6 +111,7 @@ def refresh_token(db: Session, request):
             "is_active": user.is_active,
             "role": user.role,
             "type": "access_token",
+            "type_account": TypeAccount.NORMAL,
         }
     )
     user = schema_user.UserItemResponse(**user.__dict__)

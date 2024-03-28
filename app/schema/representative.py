@@ -43,59 +43,38 @@ class RepresentativeItemResponse(RepresentativeBase):
     created_at: str
     province: Optional[dict] = None
     district: Optional[dict] = None
-    last_login: Optional[str] = None
+    last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
 
 
 class RepresentativeGetRequest(BaseModel):
     id: int
 
 
+class RepresentativeGetByEmailRequest(BaseModel):
+    email: str
+
+    @validator("email")
+    def validate_email(cls, v):
+        if not re.match(constant.REGEX_EMAIL, v):
+            raise ValueError("Invalid email")
+        return v
+
+
 class RepresentativeCreateRequest(RepresentativeBase):
-    province_id: Optional[int] = None
+    province_id: int
     district_id: Optional[int] = None
 
 
 class RepresentativeUpdateRequest(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[str] = None
     phone_number: Optional[str] = None
-    avatar: Optional[UploadFile] = None
     gender: Optional[Gender] = None
     company: Optional[str] = None
     work_position: Optional[str] = None
     work_location: Optional[str] = None
     province_id: Optional[int] = None
     district_id: Optional[int] = None
-
-    @validator("full_name")
-    def validate_full_name(cls, v):
-        if v is not None:
-            if len(v) < 3:
-                raise ValueError("Full name must be at least 3 characters")
-            elif len(v) > 50:
-                raise ValueError("Full name must be at most 50 characters")
-            elif not v.replace(" ", "").isalpha():
-                raise ValueError("Full name must be alphabet")
-            return v
-
-    @validator("email")
-    def validate_email(cls, v):
-        if v is not None:
-            if not re.match(constant.REGEX_EMAIL, v):
-                raise ValueError("Invalid email")
-            return v
-
-    @validator("avatar")
-    def validate_avatar(cls, v):
-        if v is not None:
-            if v.content_type not in constant.ALLOWED_IMAGE_TYPES:
-                raise ValueError("Invalid image type")
-            elif v.size > constant.MAX_IMAGE_SIZE:
-                raise ValueError("Image size must be at most 2MB")
-        return v
 
     @validator("phone_number")
     def validate_phone_number(cls, v):

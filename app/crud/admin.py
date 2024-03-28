@@ -20,28 +20,17 @@ class CRUDAdmin(
         )
 
     def create(self, db: Session, *, obj_in: schema_admin.AdminCreateRequest) -> Admin:
-        manager_base_obj = manager_base.create(
-            db,
-            obj_in=schema_manager_base.ManagerBaseCreateRequest(
-                **obj_in.dict(exclude_unset=True),
-            ),
-        )
-        db_obj = Admin(
-            manager_base_id=manager_base_obj.id,
-            phone_number=obj_in.phone_number,
-            gender=obj_in.gender,
-        )
+        db_obj = Admin(**obj_in)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
+        return db_obj
 
-    def update(
-        self, db: Session, *, db_obj: Admin, obj_in: schema_admin.AdminUpdateRequest
-    ) -> Admin:
-        if obj_in.password:
-            obj_in.hashed_password = get_password_hash(obj_in.password)
-        manager_base.update(db, db_obj=db_obj.manager_base, obj_in=obj_in)
-        return super().update(db, db_obj=db_obj, obj_in=obj_in)
+    # def update(
+    #     self, db: Session, *, db_obj: Admin, obj_in: schema_admin.AdminUpdateRequest
+    # ) -> Admin:
+    #     manager_base.update(db, db_obj=db_obj.manager_base, obj_in=obj_in)
+    #     return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> Admin:
         user = self.get_by_email(db, email)

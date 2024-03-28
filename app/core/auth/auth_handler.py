@@ -14,7 +14,6 @@ ALGORITHM = settings.SECURITY_ALGORITHM
 
 
 def signJWT(payload: dict):
-    print(payload)
     iat = datetime.now(timezone.utc)
     exp = iat + timedelta(seconds=ACCESS_TOKEN_EXPIRE)
     payload.update({"iat": iat, "exp": exp})

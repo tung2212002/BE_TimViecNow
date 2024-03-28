@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime
 
 from app.core import constant
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount
 
 
 class ManagerBaseBase(BaseModel):
@@ -35,6 +35,8 @@ class ManagerBaseItemResponse(ManagerBaseBase):
     avatar: Optional[str] = None
     is_active: bool
     last_login: Optional[datetime]
+    role: Role
+    type_account: Optional[TypeAccount]
 
 
 class ManagerBaseGetRequest(BaseModel):
@@ -81,6 +83,7 @@ class ManagerBaseUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     avatar: Optional[UploadFile] = None
+    password: Optional[str] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -108,3 +111,16 @@ class ManagerBaseUpdateRequest(BaseModel):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
         return v
+
+    @validator("password")
+    def validate_password(cls, v):
+        if v is not None:
+            if len(v) < 8:
+                raise ValueError("Password must be at least 8 characters")
+            elif len(v) > 50:
+                raise ValueError("Password must be at most 50 characters")
+            elif not re.match(constant.REGEX_PASSWORD, v):
+                raise ValueError(
+                    "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
+                )
+            return v

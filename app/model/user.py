@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.base_class import Base
-from app.hepler.enum import Role, Gender
+from app.hepler.enum import Role, Gender, TypeAccount
 
 
 class User(Base):
@@ -16,6 +16,7 @@ class User(Base):
     role = Column(Enum(Role), default=Role.USER)
     is_verified = Column(Boolean, default=False)
     avatar = Column(String(255), nullable=True)
+    type_account = Column(Enum(TypeAccount), default=TypeAccount.NORMAL)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()

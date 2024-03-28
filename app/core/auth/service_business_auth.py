@@ -13,11 +13,12 @@ from app.schema import (
     province as schema_province,
     user as schema_user,
     district as schema_district,
+    manager_base as schema_manager_base,
 )
 from app.db.base import get_db
 from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
 
 
@@ -38,6 +39,7 @@ def authenticate(db: Session, data: dict):
             "is_active": user.is_active,
             "role": user.role,
             "type": "access_token",
+            "type_account": TypeAccount.BUSINESS,
         }
     )
     refresh_token = signJWT(
@@ -47,9 +49,20 @@ def authenticate(db: Session, data: dict):
             "is_active": user.is_active,
             "role": user.role,
             "type": "refresh_token",
+            "type_account": TypeAccount.BUSINESS,
         }
     )
     representative = user.representative
+    if representative is None:
+        return (
+            constant.SUCCESS,
+            200,
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user": schema_manager_base.ManagerBaseItemResponse(**user.__dict__),
+            },
+        )
     user_input = {**user.__dict__, **representative.__dict__}
     user = schem_representative.RepresentativeItemResponse(**user_input)
     province = representative.province
@@ -77,33 +90,47 @@ def verify_password(password: str, hashed_password: str):
     return pwd_context.verify(password, hashed_password)
 
 
-def get_current_active_user(username: str):
+def get_current_active_user(email: str):
     pass
 
 
 def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
     token_decode = data["payload"]
+    if token_decode["type_account"] != TypeAccount.BUSINESS:
+        raise HTTPException(status_code=403, detail="Not permission")
     token = data["token"]
     if check_blacklist(db, token):
-        return constant.ERROR, 401, "Token revoked"
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
-    if user is None:
-        return constant.ERROR, 404, "User not found"
-    return user
+        raise HTTPException(status_code=401, detail="Token revoked")
+    id = token_decode["id"]
+    role = token_decode["role"]
+    if role == Role.REPRESENTATIVE:
+        user = crud.manager_base.get(db, id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return user
+    elif role == Role.ADMIN or role == Role.SUPER_USER:
+        user = crud.manager_base.get_by_admin(db, id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
 
 
 def get_current_admin(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
     token_decode = data["payload"]
+    if token_decode["type_account"] != TypeAccount.BUSINESS:
+        raise HTTPException(status_code=403, detail="Not permission")
     token = data["token"]
     if check_blacklist(db, token):
-        return constant.ERROR, 401, "Token revoked"
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
+        raise HTTPException(status_code=401, detail="Token revoked")
+    id = token_decode["id"]
+    role = token_decode["role"]
+    if role != Role.ADMIN and role != Role.SUPER_USER:
+        raise HTTPException(status_code=403, detail="Not permission")
+    user = crud.manager_base.get_by_admin(db, id)
+
     if user is None:
-        return constant.ERROR, 404, "User not found"
-    if user.role != Role.ADMIN:
-        return constant.ERROR, 403, "Not permission"
+        raise HTTPException(status_code=403, detail="Not permission")
     return user
 
 
@@ -111,14 +138,17 @@ def get_current_superuser(
     data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)
 ):
     token_decode = data["payload"]
+    if token_decode["type_account"] != TypeAccount.BUSINESS:
+        raise HTTPException(status_code=403, detail="Not permission")
     token = data["token"]
     if check_blacklist(db, token):
-        return constant.ERROR, 401, "Token revoked"
-    email = token_decode["email"]
-    user = crud.user.get_by_email(db, email)
+        raise HTTPException(status_code=401, detail="Token revoked")
+    id = token_decode["id"]
+    role = token_decode["role"]
+    if role != Role.SUPER_USER:
+        raise HTTPException(status_code=403, detail="Not permission")
+    user = crud.manager_base.get_by_admin(db, id)
     if user is None:
-        return constant.ERROR, 404, "User not found"
-    if user.role != Role.SUPER_USER:
         return constant.ERROR, 403, "Not permission"
     return user
 
@@ -144,8 +174,8 @@ def refresh_token(db: Session, request):
     token_decode = decodeJWT(refresh_token)
     if token_decode["type"] != "refresh_token":
         return constant.ERROR, 401, "Invalid token"
-    email = token_decode["email"]
-    user = crud.manager_base.get_by_email(db, email)
+    id = token_decode["id"]
+    user = crud.manager_base.get(db, id)
     representative = user.representative
     if user is None:
         return constant.ERROR, 404, "User not found"
@@ -156,6 +186,7 @@ def refresh_token(db: Session, request):
             "is_active": user.is_active,
             "role": user.role,
             "type": "access_token",
+            "type_account": TypeAccount.BUSINESS,
         }
     )
     user_input = {**user.__dict__, **representative.__dict__}

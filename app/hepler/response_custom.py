@@ -21,13 +21,14 @@ def custom_response(
     Returns:
     - response (JSONResponse): The response.
     """
+
     return JSONResponse(
         status_code=status_code,
         content=jsonable_encoder(
             {
                 "status": status,
                 "message": response if isinstance(response, str) else "",
-                "data": response if isinstance(response, dict) else {},
+                "data": {} if isinstance(response, str) else response,
             }
         ),
     )

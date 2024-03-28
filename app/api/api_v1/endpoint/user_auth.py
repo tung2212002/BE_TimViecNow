@@ -21,7 +21,7 @@ from app.hepler.response_custom import custom_response_error, custom_response
 router = APIRouter()
 
 
-@router.post("/register")
+@router.post("/register", summary="Register a new user.")
 def register_auth(
     full_name: str = Form(..., description="The full name of the user."),
     email: str = Form(..., description="The email of the user."),
@@ -59,7 +59,7 @@ def register_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/login")
+@router.post("/login", summary="Login user.")
 def login_auth(
     data: dict = Body(
         ..., example={"email": "1@email.com", "password": "@Password1234"}
@@ -90,7 +90,7 @@ def login_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/refresh_token")
+@router.post("/refresh_token", summary="Refresh token.")
 def refresh_auth(
     request: Request,
     db: Session = Depends(get_db),
@@ -115,7 +115,7 @@ def refresh_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/logout")
+@router.post("/logout", summary="Logout user.")
 def logout_auth(
     request: Request,
     db: Session = Depends(get_db),
@@ -141,7 +141,7 @@ def logout_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/verify_token")
+@router.post("/verify_token", summary="Verify token.")
 def verify_token_auth(
     request: Request,
     db: Session = Depends(get_db),
