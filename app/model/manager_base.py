@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Enum, Integer, ForeignKey, DateTime, Bool
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
-from app.hepler.enum import Role, Gender
+from app.hepler.enum import Role, Gender, TypeAccount
 from app.db.base_class import Base
 
 
@@ -13,6 +13,7 @@ class ManagerBase(Base):
     is_active = Column(Boolean, default=True)
     avatar = Column(String(255), nullable=True)
     role = Column(Enum(Role), default=Role.REPRESENTATIVE)
+    type_account = Column(Enum(TypeAccount), default=TypeAccount.BUSINESS)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()

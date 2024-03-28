@@ -3,7 +3,7 @@ import re
 from fastapi import File, UploadFile
 from typing import Optional
 
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount
 from app.core import constant
 
 
@@ -36,6 +36,7 @@ class UserItemResponse(UserBase):
     is_active: bool
     role: Role
     phone_number: Optional[str] = None
+    type_account: Optional[TypeAccount]
 
 
 class UserGetRequest(BaseModel):

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.core.security import get_password_hash, verify_password
 from .base import CRUDBase
@@ -15,6 +16,68 @@ class CRUDManagerBase(
         schema_manager_base.ManagerBaseUpdateRequest,
     ]
 ):
+
+    def get(self, db: Session, id: int) -> ManagerBase:
+        return (
+            db.query(self.model)
+            .filter(self.model.id == id, self.model.role == Role.REPRESENTATIVE)
+            .first()
+        )
+
+    def get_multi(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 10,
+        sort_by: str = "id",
+        order_by: str = "desc",
+    ) -> List[ManagerBase]:
+        if order_by == "desc":
+            return (
+                db.query(self.model)
+                .filter(self.model.role == Role.REPRESENTATIVE)
+                .order_by(getattr(self.model, sort_by).desc())
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+        return (
+            db.query(self.model)
+            .filter(self.model.role == Role.REPRESENTATIVE)
+            .order_by(getattr(self.model, sort_by))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_admin(self, db: Session, id: int) -> ManagerBase:
+        return db.query(self.model).filter(self.model.id == id).first()
+
+    def get_multi_by_admin(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 10,
+        sort_by: str = "id",
+        order_by: str = "desc",
+    ) -> List[ManagerBase]:
+        if order_by == "desc":
+            return (
+                db.query(self.model)
+                .order_by(getattr(self.model, sort_by).desc())
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+        return (
+            db.query(self.model)
+            .order_by(getattr(self.model, sort_by))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def get_by_email(self, db: Session, email: str) -> ManagerBase:
         return db.query(ManagerBase).filter(ManagerBase.email == email).first()
@@ -36,7 +99,7 @@ class CRUDManagerBase(
         db: Session,
         *,
         db_obj: ManagerBase,
-        obj_in: schema_manager_base.ManagerBaseUpdateRequest
+        obj_in: schema_manager_base.ManagerBaseUpdateRequest,
     ) -> ManagerBase:
         if obj_in.password:
             obj_in.hashed_password = get_password_hash(obj_in.password)

@@ -28,6 +28,15 @@ class CRUDRepresentative(
             else None
         )
 
+    def get_by_manager_base_id(
+        self, db: Session, manager_base_id: int
+    ) -> Representative:
+        return (
+            db.query(Representative)
+            .filter(Representative.manager_base_id == manager_base_id)
+            .first()
+        )
+
     def create(
         self, db: Session, *, obj_in: schema_representative.RepresentativeCreateRequest
     ) -> Representative:
@@ -37,17 +46,15 @@ class CRUDRepresentative(
         db.refresh(db_obj)
         return db_obj
 
-    def update(
-        self,
-        db: Session,
-        *,
-        db_obj: Representative,
-        obj_in: schema_representative.RepresentativeUpdateRequest
-    ) -> Representative:
-        if obj_in.password:
-            obj_in.hashed_password = get_password_hash(obj_in.password)
-        manager_base.update(db, db_obj=db_obj.manager_base, obj_in=obj_in)
-        return super().update(db, db_obj=db_obj, obj_in=obj_in)
+    # def update(
+    #     self,
+    #     db: Session,
+    #     *,
+    #     db_obj: Representative,
+    #     obj_in: schema_representative.RepresentativeUpdateRequest
+    # ) -> Representative:
+    #     manager_base.update(db, db_obj=db_obj.manager_base, obj_in=obj_in)
+    #     return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> Representative:
         user = self.get_by_email(db, email)

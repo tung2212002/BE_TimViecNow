@@ -73,3 +73,8 @@ class HistoryType(str, Enum):
     UPDATE_CAMPAIGN = "update_campaign"
     APPROVE_JOB = "approve_job"
     REJECT_JOB = "reject_job"
+
+
+class TypeAccount(str, Enum):
+    NORMAL = "normal"
+    BUSINESS = "business"

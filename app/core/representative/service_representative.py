@@ -11,70 +11,80 @@ from app.schema import (
     page as schema_page,
     manager_base as schema_manager_base,
     province as schema_province,
+    admin as schema_admin,
+    district as schema_district,
 )
 from app.core.auth.service_business_auth import signJWT
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount
 
 
 def get_me(current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
-    user = schema_representative.RepresentativeItemResponse(**current_user.__dict__)
-    return constant.SUCCESS, 200, user
+
+    representative_reseponse = get_info_user(current_user)
+
+    return constant.SUCCESS, 200, representative_reseponse
 
 
-def get_user_by_email(db: Session, data: dict):
+def get_representative_by_email(db: Session, data: dict):
     try:
-        user_data = schema_representative.RepresentativeGetRequest(**data)
+        representative_data = schema_representative.RepresentativeGetByEmailRequest(
+            **data
+        )
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    user = representativeCRUD.get_by_email(db, user_data.email)
-    if not user:
-        return constant.ERROR, 404, "User not found"
-    user = schema_representative.RepresentativeItemResponse(**user.__dict__)
-    return constant.SUCCESS, 200, user
+    representative = manager_baseCRUD.get_by_email(db, representative_data.email)
+    if not representative:
+        return constant.ERROR, 404, "Representatives not found"
+
+    representative_response = get_info_user(representative)
+
+    return constant.SUCCESS, 200, representative_response
 
 
-def get_user_by_id(db: Session, id: int):
-    user = representativeCRUD.get(db, id)
-    if not user:
-        return constant.ERROR, 404, "User not found"
-    user = schema_representative.RepresentativeItemResponse(**user.__dict__)
-    return constant.SUCCESS, 200, user
+def get_representative_by_id(db: Session, id: int):
+    representative = manager_baseCRUD.get(db, id)
+    if not representative:
+        return constant.ERROR, 404, "Representative not found"
+
+    representative_response = get_info_user(representative)
+
+    return constant.SUCCESS, 200, representative_response
 
 
-def get_list_user(db: Session, data: dict):
+def get_list_representative(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    users = representativeCRUD.get_multi(db, **page.dict())
-    if not users:
-        return constant.ERROR, 404, "Users not found"
-    users = [
-        schema_representative.RepresentativeItemResponse(**user.__dict__)
-        for user in users
+    representatives = manager_baseCRUD.get_multi(db, **page.dict())
+    if not representatives:
+        return constant.ERROR, 404, "Representatives not found"
+    representatives = [
+        get_info_user(representative) for representative in representatives
     ]
-    return constant.SUCCESS, 200, users
+    return constant.SUCCESS, 200, representatives
 
 
-def create_user(db: Session, data: dict):
+def create_representative(db: Session, data: dict):
     try:
         data["role"] = Role.REPRESENTATIVE
         manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
-        user_data = schema_representative.RepresentativeCreateRequest(**data)
+        representative_data = schema_representative.RepresentativeCreateRequest(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
     manager_base = manager_baseCRUD.get_by_email(db, manager_base_data.email)
     if manager_base:
         return constant.ERROR, 409, "Email already registered"
-    province = provinceCRUD.get(db, user_data.province_id)
+    province = provinceCRUD.get(db, representative_data.province_id)
     if not province:
         return constant.ERROR, 404, "Province not found"
-    if user_data.district_id:
-        district = districtCRUD.get(db, user_data.district_id)
-        if not district:
+    if representative_data.district_id:
+        district = districtCRUD.get(db, representative_data.district_id)
+        districts = province.district
+        if district not in districts:
             return constant.ERROR, 404, "District not found"
 
     manager_base = manager_baseCRUD.create(
@@ -82,32 +92,35 @@ def create_user(db: Session, data: dict):
         obj_in=manager_base_data,
     )
 
-    user_input = dict(user_data)
-    user_input["manager_base_id"] = manager_base.id
-    user = representativeCRUD.create(
+    representative_input = dict(representative_data)
+    representative_input["manager_base_id"] = manager_base.id
+    representative = representativeCRUD.create(
         db,
-        obj_in=user_input,
+        obj_in=representative_input,
     )
 
     manager_base.id
     data_response = {
+        **representative.__dict__,
         **manager_base.__dict__,
-        **user.__dict__,
     }
-    user_response = schema_representative.RepresentativeItemResponse(**data_response)
-    province = schema_province.ProvinceItemResponse(**user.province.__dict__)
+    representative_response = schema_representative.RepresentativeItemResponse(
+        **data_response
+    )
+    province = schema_province.ProvinceItemResponse(**representative.province.__dict__)
     district = (
-        schema_province.DistrictItemResponse(**user.district.__dict__)
-        if user.district
+        schema_district.DistrictItemResponse(**representative.district.__dict__)
+        if representative.district
         else None
     )
 
     token = {
-        "email": user_response.email,
-        "id": user_response.id,
-        "is_active": user_response.is_active,
-        "role": user_response.role,
+        "email": representative_response.email,
+        "id": representative_response.id,
+        "is_active": representative_response.is_active,
+        "role": representative_response.role,
         "type": "access_token",
+        "type_account": TypeAccount.BUSINESS,
     }
     access_token = signJWT(token)
     token["type"] = "refresh_token"
@@ -120,7 +133,7 @@ def create_user(db: Session, data: dict):
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": {
-                **user_response.__dict__,
+                **representative_response.__dict__,
                 "province": province,
                 "district": district,
             },
@@ -129,39 +142,88 @@ def create_user(db: Session, data: dict):
     return response
 
 
-def update_user(db: Session, data: dict, current_user):
+def update_representative(db: Session, data: dict, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
-    if data["email"] != current_user.email:
+    if current_user.role != Role.REPRESENTATIVE:
         return constant.ERROR, 401, "Unauthorized"
-
+    if data["id"] != current_user.id:
+        return constant.ERROR, 401, "Unauthorized"
     try:
-        user = schema_representative.UserUpdate(**data)
+        representative = schema_representative.RepresentativeUpdateRequest(**data)
+        manager_base = schema_manager_base.ManagerBaseUpdateRequest(**data)
     except Exception as e:
         error = [f'{error["loc"][0]}: {error["msg"]}' for error in e.errors()]
         return constant.ERROR, 400, error
 
-    user_update = representativeCRUD.update(data["email"], data, db)
-    user_update = schema_representative.RepresentativeItemResponse(
-        **user_update.__dict__
+    if representative.province_id:
+        province = provinceCRUD.get(db, representative.province_id)
+        if not province:
+            return constant.ERROR, 404, "Province not found"
+
+    if representative.district_id:
+        district = districtCRUD.get(db, representative.district_id)
+        districts = province.district
+        if district not in districts:
+            return constant.ERROR, 404, "District not found"
+
+    manager_base = manager_baseCRUD.update(
+        db=db, db_obj=current_user, obj_in=manager_base
     )
-    response = (constant.SUCCESS, 200, user_update)
-    return response
+    representative = representativeCRUD.update(
+        db=db, db_obj=current_user.representative, obj_in=representative
+    )
+    representative_response = get_info_user(manager_base)
+
+    return constant.SUCCESS, 200, representative_response
 
 
-def delete_user(db: Session, email: str, current_user):
+def delete_representative(db: Session, id: int, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
-    if email != current_user.email:
+    if id != current_user.id:
         return constant.ERROR, 401, "Unauthorized"
-    if email is None:
-        return constant.ERROR, 400, "Email is required"
-    response = constant.SUCCESS, 200, representativeCRUD.delete(email, db)
+    if id is None:
+        return constant.ERROR, 400, "Id is required"
+    response = constant.SUCCESS, 200, manager_baseCRUD.remove(db, id)
     return response
 
 
 def set_user_active(db: Session, id: int, active: bool):
     if id is None:
         return constant.ERROR, 400, "Id is required"
-    response = constant.SUCCESS, 200, representativeCRUD.set_active(db, id, active)
+    manager_base = manager_baseCRUD.get(db, id)
+    response = (
+        constant.SUCCESS,
+        200,
+        manager_baseCRUD.set_active(db, manager_base, active),
+    )
     return response
+
+
+def get_info_user(manager_base):
+    role = manager_base.role
+    if role == Role.ADMIN or role == Role.SUPER_USER:
+        admin = manager_base.admin
+        if not admin:
+            return schema_manager_base.ManagerBaseItemResponse(**manager_base.__dict__)
+        data_response = {**admin.__dict__, **manager_base.__dict__}
+        user = schema_admin.AdminItemResponse(**data_response)
+        return user
+
+    representative = manager_base.representative
+    data_response = {**representative.__dict__, **manager_base.__dict__}
+    user = schema_representative.RepresentativeItemResponse(**data_response)
+
+    province = schema_province.ProvinceItemResponse(**representative.province.__dict__)
+    district = (
+        schema_district.DistrictItemResponse(**representative.district.__dict__)
+        if representative.district
+        else None
+    )
+
+    return {
+        **user.__dict__,
+        "province": province,
+        "district": district,
+    }

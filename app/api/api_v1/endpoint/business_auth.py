@@ -23,26 +23,44 @@ from app.hepler.response_custom import custom_response_error, custom_response
 router = APIRouter()
 
 
-@router.post("/register")
-def register_auth(
-    full_name: Annotated[str, Form()],
-    email: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    confirm_password: Annotated[str, Form()],
-    province_id: Annotated[int, Form()],
-    phone_number: Annotated[str, Form()],
-    gender: Annotated[str, Form()],
-    company: Annotated[str, Form()],
-    work_position: Annotated[str, Form()],
-    work_location: Annotated[str, Form()],
-    avatar: UploadFile = File(None),
-    district_id: int = Form(None),
+@router.post("/register", summary="Register a new representative.")
+def register_representative(
+    full_name: Annotated[
+        str, Form(..., description="The full name of the representative.")
+    ],
+    email: Annotated[str, Form(..., description="The email of the representative.")],
+    password: Annotated[
+        str, Form(..., description="The password of the representative.")
+    ],
+    confirm_password: Annotated[
+        str, Form(..., description="The confirm password of the representative.")
+    ],
+    province_id: Annotated[
+        int, Form(..., description="The province id of the representative.")
+    ],
+    phone_number: Annotated[
+        str, Form(..., description="The phone number of the representative.")
+    ],
+    gender: Annotated[str, Form(..., description="Gender of the representative.")],
+    company: Annotated[
+        str, Form(..., description="The company of the representative.")
+    ],
+    work_position: Annotated[
+        str, Form(..., description="The work position of the representative.")
+    ],
+    work_location: Annotated[
+        str, Form(..., description="The work location of the representative.")
+    ],
+    avatar: UploadFile = File(
+        None, description="The profile avatar of the representative."
+    ),
+    district_id: int = Form(None, description="The district id of the representative."),
     db: Session = Depends(get_db),
 ):
     """
     Register a new representative.
 
-    This endpoint allows registering a new representative.
+    This endpoint allows create a new representative.
 
     Parameters:
     - full_name (str): The full name of the representative.
@@ -66,14 +84,16 @@ def register_auth(
     """
 
     data = {k: v for k, v in locals().items() if k not in ["db"]}
-    status, status_code, response = service_representative.create_user(db, data)
+    status, status_code, response = service_representative.create_representative(
+        db, data
+    )
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/login")
+@router.post("/login", summary="Login representative.")
 def login_auth(
     data: dict = Body(
         ..., example={"email": "1@email.com", "password": "@Password1234"}
@@ -104,7 +124,7 @@ def login_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/refresh_token")
+@router.post("/refresh_token", summary="Refresh token.")
 def refresh_auth(
     request: Request,
     db: Session = Depends(get_db),
@@ -129,7 +149,7 @@ def refresh_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/logout")
+@router.post("/logout", summary="Logout representative.")
 def logout_auth(
     request: Request,
     db: Session = Depends(get_db),
@@ -155,7 +175,7 @@ def logout_auth(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("/verify_token")
+@router.post("/verify_token", summary="Verify token.")
 def verify_token_auth(
     request: Request,
     db: Session = Depends(get_db),
