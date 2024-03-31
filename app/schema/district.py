@@ -35,6 +35,12 @@ class DistrictListResponse(DistrictBase):
 class DistrictGetRequest(BaseModel):
     id: int
 
+    @validator("id")
+    def validate_id(cls, v):
+        if not v:
+            raise ValueError("Invalid id")
+        return v
+
 
 class DistrictDeleteRequest(BaseModel):
     id: int

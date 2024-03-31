@@ -4,7 +4,7 @@ from app.core.security import pwd_context
 from app.crud import user as userCRUD
 from app.core import constant
 from app.schema import user as schema_user, page as schema_page
-from app.core.auth.service_user_auth import signJWT
+from app.core.auth.service_user_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 
 
@@ -68,7 +68,7 @@ def create_user(db: Session, data: dict):
             "type": "access_token",
         }
     )
-    refresh_token = signJWT(
+    refresh_token = signJWTRefreshToken(
         {
             "email": user.email,
             "id": user.id,

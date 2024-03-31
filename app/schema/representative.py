@@ -15,7 +15,7 @@ class RepresentativeBase(BaseModel):
     gender: str
     company: str
     work_position: str
-    work_location: str
+    work_location: Optional[str] = None
 
     @validator("phone_number")
     def validate_phone_number(cls, v):
@@ -33,11 +33,12 @@ class RepresentativeBase(BaseModel):
 class RepresentativeItemResponse(RepresentativeBase):
 
     id: int
+    full_name: str
     email: str
     avatar: Optional[str] = None
     is_active: bool
     role: Role
-    work_location: str
+    work_location: Optional[str] = None
     work_position: str
     updated_at: str
     created_at: str

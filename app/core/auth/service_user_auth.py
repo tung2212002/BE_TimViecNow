@@ -10,7 +10,7 @@ from app import crud
 from app.schema import user as schema_user, auth as schema_auth
 from app.db.base import get_db
 from app.core.auth.auth_bearer import JWTBearer
-from app.core.auth.auth_handler import signJWT, decodeJWT
+from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
@@ -37,7 +37,7 @@ def authenticate(db: Session, data: dict):
             "type_account": TypeAccount.NORMAL,
         }
     )
-    refresh_token = signJWT(
+    refresh_token = signJWTRefreshToken(
         {
             "email": user.email,
             "id": user.id,

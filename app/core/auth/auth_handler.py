@@ -9,6 +9,7 @@ from app.core.security import pwd_context
 from app.core.config import settings
 
 ACCESS_TOKEN_EXPIRE = settings.ACCESS_TOKEN_EXPIRE_SECONDS
+REFRESH_TOKEN_EXPIRE = settings.REFRESH_TOKEN_EXPIRE_SECONDS
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.SECURITY_ALGORITHM
 
@@ -19,6 +20,14 @@ def signJWT(payload: dict):
     payload.update({"iat": iat, "exp": exp})
     access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return access_token
+
+
+def signJWTRefreshToken(payload: dict):
+    iat = datetime.now(timezone.utc)
+    exp = iat + timedelta(seconds=REFRESH_TOKEN_EXPIRE)
+    payload.update({"iat": iat, "exp": exp})
+    refresh_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return refresh_token
 
 
 def decodeJWT(token: str):

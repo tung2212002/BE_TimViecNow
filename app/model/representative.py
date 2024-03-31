@@ -14,7 +14,7 @@ class Representative(Base):
     gender = Column(Enum(Gender), nullable=False)
     company = Column(String(255), nullable=False)
     work_position = Column(String(100), nullable=False)
-    work_location = Column(String(100), nullable=False)
+    work_location = Column(String(100), nullable=True)
 
     manager_base = relationship("ManagerBase", back_populates="representative")
     province = relationship("Province", back_populates="representative", uselist=False)

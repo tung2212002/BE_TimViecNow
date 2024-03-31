@@ -27,6 +27,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         sort_by: str = "id",
         order_by: str = "desc",
     ) -> List[ModelType]:
+
         if order_by == "desc":
             return (
                 db.query(self.model)

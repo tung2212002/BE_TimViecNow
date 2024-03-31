@@ -48,9 +48,9 @@ def register_representative(
     work_position: Annotated[
         str, Form(..., description="The work position of the representative.")
     ],
-    work_location: Annotated[
-        str, Form(..., description="The work location of the representative.")
-    ],
+    work_location: str = Form(
+        None, description="The work location of the representative."
+    ),
     avatar: UploadFile = File(
         None, description="The profile avatar of the representative."
     ),
