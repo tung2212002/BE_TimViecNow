@@ -14,7 +14,7 @@ from app.schema import (
     admin as schema_admin,
     district as schema_district,
 )
-from app.core.auth.service_business_auth import signJWT
+from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role, TypeAccount
 
@@ -124,7 +124,7 @@ def create_representative(db: Session, data: dict):
     }
     access_token = signJWT(token)
     token["type"] = "refresh_token"
-    refresh_token = signJWT(token)
+    refresh_token = signJWTRefreshToken(token)
 
     response = (
         constant.SUCCESS,

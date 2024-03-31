@@ -14,7 +14,7 @@ from app.schema import (
     province as schema_province,
     admin as schema_admin,
 )
-from app.core.auth.service_business_auth import signJWT
+from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role, TypeAccount
 from app.core.representative.service_representative import get_info_user
@@ -96,7 +96,7 @@ def create_admin(db: Session, data: dict):
     }
     access_token = signJWT(token)
     token["type"] = "refresh_token"
-    refresh_token = signJWT(token)
+    refresh_token = signJWTRefreshToken(token)
 
     response = (
         constant.SUCCESS,

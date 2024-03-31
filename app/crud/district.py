@@ -9,7 +9,32 @@ from app.schema.district import (
 
 
 class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
-    pass
+    def get_multi_by_province(
+        self,
+        db: Session,
+        province_id: int,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "id",
+        order_by: str = "desc",
+    ):
+        if order_by == "asc":
+            return (
+                db.query(self.model)
+                .filter(self.model.province_id == province_id)
+                .order_by(getattr(self.model, sort_by))
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+        return (
+            db.query(self.model)
+            .filter(self.model.province_id == province_id)
+            .order_by(getattr(self.model, sort_by).desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
 
 district = CRUDDistrict(District)

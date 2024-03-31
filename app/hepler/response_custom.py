@@ -21,7 +21,6 @@ def custom_response(
     Returns:
     - response (JSONResponse): The response.
     """
-
     return JSONResponse(
         status_code=status_code,
         content=jsonable_encoder(
