@@ -8,10 +8,11 @@ from fastapi import (
     Body,
     Request,
 )
+import requests
+
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-
 from app.db.base import get_db
 from app.core.auth import service_user_auth
 from app.core import constant
@@ -83,6 +84,35 @@ def login_auth(
 
     """
     status, status_code, response = service_user_auth.authenticate(db, data)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.post("/login_google", summary="Login user by google.")
+async def login_google(
+    data: dict = Body(..., example={"access_token": "access_token"}),
+    db: Session = Depends(get_db),
+):
+    """
+    Login user by google.
+
+    This endpoint allows logging in a user by google.
+
+    Parameters:
+    - access_token (str): The access token from google.
+
+    Returns:
+    - status_code (200): The user has been logged in successfully.
+    - status_code (400): The request is invalid.
+    - status_code (401): The password is incorrect.
+    - status_code (404): The user is not found.
+
+    """
+
+    status, status_code, response = service_user_auth.authenticate_google(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

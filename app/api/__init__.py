@@ -7,6 +7,9 @@ from app.api.api_v1.endpoint import (
     business,
     admin,
     location,
+    position,
+    category,
+    verify,
 )
 
 api_router = APIRouter(prefix="/v1/api")
@@ -20,3 +23,6 @@ api_router.include_router(
 api_router.include_router(business.router, prefix="/business", tags=["business"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(location.router, prefix="/location", tags=["location"])
+api_router.include_router(position.router, prefix="/position", tags=["position"])
+api_router.include_router(category.router, prefix="/category", tags=["category"])
+api_router.include_router(verify.router, prefix="/verify", tags=["verify"])

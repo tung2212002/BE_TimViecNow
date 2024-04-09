@@ -20,7 +20,7 @@ class CRUDManagerBase(
     def get(self, db: Session, id: int) -> ManagerBase:
         return (
             db.query(self.model)
-            .filter(self.model.id == id, self.model.role == Role.REPRESENTATIVE)
+            .filter(self.model.id == id, self.model.role == Role.BUSINESS)
             .first()
         )
 
@@ -36,7 +36,7 @@ class CRUDManagerBase(
         if order_by == "desc":
             return (
                 db.query(self.model)
-                .filter(self.model.role == Role.REPRESENTATIVE)
+                .filter(self.model.role == Role.BUSINESS)
                 .order_by(getattr(self.model, sort_by).desc())
                 .offset(skip)
                 .limit(limit)
@@ -44,7 +44,7 @@ class CRUDManagerBase(
             )
         return (
             db.query(self.model)
-            .filter(self.model.role == Role.REPRESENTATIVE)
+            .filter(self.model.role == Role.BUSINESS)
             .order_by(getattr(self.model, sort_by))
             .offset(skip)
             .limit(limit)
@@ -59,7 +59,7 @@ class CRUDManagerBase(
         db: Session,
         *,
         skip: int = 0,
-        limit: int = 10,
+        limit: int = 100,
         sort_by: str = "id",
         order_by: str = "desc",
     ) -> List[ManagerBase]:
@@ -101,7 +101,7 @@ class CRUDManagerBase(
         db_obj: ManagerBase,
         obj_in: schema_manager_base.ManagerBaseUpdateRequest,
     ) -> ManagerBase:
-        if obj_in.password:
+        if hasattr(obj_in, "password") and obj_in.password:
             obj_in.hashed_password = get_password_hash(obj_in.password)
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 

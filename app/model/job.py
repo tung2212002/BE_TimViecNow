@@ -19,11 +19,10 @@ class Job(Base):
     company_id = Column(
         Integer, ForeignKey("company.id", ondelete="CASCADE"), nullable=False
     )
-    representative_id = Column(Integer, ForeignKey("representative.id"), nullable=False)
+    business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
     job_experience_id = Column(Integer, ForeignKey("job_experience.id"), nullable=False)
     working_time_id = Column(Integer, ForeignKey("working_time.id"), nullable=False)
-    job_main_category_id = Column(Integer, ForeignKey("category.id"), nullable=False)
-    job_position_id = Column(Integer, ForeignKey("job_position.id"), nullable=False)
+    job_position = Column(String(255), nullable=False)
     title = Column(String(255), index=True, nullable=False)
     job_description = Column(String(500), nullable=False)
     job_requirement = Column(String(500), nullable=False)
@@ -50,17 +49,23 @@ class Job(Base):
     is_vip_employer = Column(Boolean, default=False)
     is_diamond_employer = Column(Boolean, default=False)
     is_job_flash = Column(Boolean, default=False)
+    campaign_id = Column(Integer, ForeignKey("campaign.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     company = relationship("Company", back_populates="job", uselist=False)
-    representative = relationship("Representative", back_populates="job", uselist=False)
+    business = relationship("Business", back_populates="job", uselist=False)
     job_experience = relationship("JobExperience", back_populates="job", uselist=False)
-    cv_application = relationship("CVApplication", back_populates="job")
+    cv_applications = relationship("CVApplication", back_populates="job")
     job_approval_request = relationship("JobApprovalRequest", back_populates="job")
-    skill = relationship("Skill", secondary="job_skill")
-    job_sub_category = relationship("Category", secondary="job_sub_category")
-    job_position = relationship("JobPosition", back_populates="job")
-    job_report = relationship("JobReport", back_populates="job")
+    must_have_skills = relationship(
+        "Skill", secondary="job_skill", overlaps="should_have_skills"
+    )
+    should_have_skills = relationship(
+        "Skill", secondary="job_skill", overlaps="must_have_skills"
+    )
+    job_categories = relationship("Category", secondary="job_category")
+    job_reports = relationship("JobReport", back_populates="job")
     user_job_save = relationship("UserJobSave", back_populates="job")
-    working_time = relationship("WorkingTime", secondary="job_working_time")
+    working_times = relationship("WorkingTime", secondary="job_working_time")
+    campaign = relationship("Campaign", back_populates="job")

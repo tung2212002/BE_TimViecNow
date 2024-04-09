@@ -2,19 +2,24 @@ from sqlalchemy.orm import Session
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
+import requests
 
 from app.core import constant
 from app.core.security import pwd_context
 from app.core.config import settings
 from app import crud
-from app.schema import user as schema_user, auth as schema_auth
+from app.schema import (
+    user as schema_user,
+    auth as schema_auth,
+    social_network as schema_social_network,
+)
 from app.db.base import get_db
 from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
-from app.hepler.enum import Role, TypeAccount
+from app.hepler.enum import Role, TypeAccount, Provider
 
 
 def authenticate(db: Session, data: dict):
@@ -27,31 +32,60 @@ def authenticate(db: Session, data: dict):
         return constant.ERROR, 404, "User not found"
     if not verify_password(user_data.password, user.hashed_password):
         return constant.ERROR, 401, "Incorrect password"
-    access_token = signJWT(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "access_token",
-            "type_account": TypeAccount.NORMAL,
-        }
-    )
-    refresh_token = signJWTRefreshToken(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "refresh_token",
-            "type_account": TypeAccount.NORMAL,
-        }
-    )
+
+    access_token = signJWT(user)
+    refresh_token = signJWTRefreshToken(user)
     user = schema_user.UserItemResponse(**user.__dict__)
+
     response = (
         constant.SUCCESS,
         200,
         {"access_token": access_token, "refresh_token": refresh_token, "user": user},
+    )
+    return response
+
+
+def authenticate_google(db: Session, data: dict):
+    token = data.get("access_token")
+    if token is None:
+        return constant.ERROR, 400, "Token is required"
+    url = f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={token}"
+    response = requests.get(url)
+    if response.status_code != 200:
+        return constant.ERROR, 400, "Invalid token"
+    data = response.json()
+    email = data.get("email")
+    if email is None:
+        return constant.ERROR, 400, "Invalid token"
+    social_network = crud.social_network.get_by_email(db, email)
+    if not social_network:
+        data = schema_social_network.SocialNetworkCreateRequest(
+            **data,
+            type=Provider.GOOGLE,
+            social_id=data.get("id"),
+            full_name=data.get("name"),
+            avatar=data.get("picture"),
+            access_token=token,
+        )
+        social_network = crud.social_network.create(db=db, obj_in=data)
+    if not social_network.is_verified:
+        social_network = schema_social_network.SocialNetworkItemResponse(
+            **social_network.__dict__
+        )
+    else:
+        social_network = schema_user.UserItemResponse(**social_network.user.__dict__)
+        access_token = signJWT(social_network)
+        response = (
+            constant.SUCCESS,
+            200,
+            {"access_token": access_token, "user": social_network},
+        )
+        return response
+    access_token = signJWT(social_network)
+    response = (
+        constant.SUCCESS,
+        200,
+        {"access_token": access_token, "user": social_network},
     )
     return response
 
@@ -65,7 +99,6 @@ def get_current_active_user(username: str):
 
 
 def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
-
     token_decode = data["payload"]
     if token_decode["type_account"] != TypeAccount.NORMAL:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -73,10 +106,18 @@ def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(ge
     if check_blacklist(db, token):
         raise HTTPException(status_code=401, detail="Token revoked")
     id = token_decode["id"]
-    user = crud.user.get(db, id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    if token_decode["role"] == Role.USER:
+        user = crud.user.get(db, id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    elif token_decode["role"] == Role.SOCIAL_NETWORK:
+        social_network = crud.social_network.get(db, id)
+        if social_network is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        if not social_network.is_verified:
+            return social_network
+        return social_network.user
 
 
 def get_token_user(data: dict = Depends(JWTBearer())):
@@ -104,17 +145,10 @@ def refresh_token(db: Session, request):
     user = crud.user.get_by_email(db, email)
     if user is None:
         return constant.ERROR, 404, "User not found"
-    access_token = signJWT(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "access_token",
-            "type_account": TypeAccount.NORMAL,
-        }
-    )
+
+    access_token = signJWT(user)
     user = schema_user.UserItemResponse(**user.__dict__)
+
     response = (constant.SUCCESS, 200, {"access_token": access_token, "user": user})
     return response
 
