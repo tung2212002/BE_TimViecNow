@@ -33,10 +33,10 @@ class UserBase(BaseModel):
 class UserItemResponse(UserBase):
     id: int
     avatar: Optional[str] = None
-    is_active: bool
-    role: Role
+    is_active: bool = True
+    role: Role = Role.USER
     phone_number: Optional[str] = None
-    type_account: Optional[TypeAccount]
+    type_account: Optional[TypeAccount] = TypeAccount.NORMAL
 
 
 class UserGetRequest(BaseModel):

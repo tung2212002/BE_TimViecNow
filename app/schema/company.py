@@ -11,8 +11,8 @@ class CompanyBase(BaseModel):
     name: str
     email: str
     phone_number: str
-    total_active_jobs = int
-    is_premium = bool = False
+    total_active_jobs: int
+    is_premium: bool = False
     label: Optional[str] = None
     logo: Optional[UploadFile] = None
     url: Optional[str] = None
@@ -25,8 +25,8 @@ class CompanyBase(BaseModel):
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
-    @validator("full_name")
-    def validate_full_name(cls, v):
+    @validator("name")
+    def validate_name(cls, v):
         if len(v) < 3:
             raise ValueError("Name must be at least 3 characters")
         elif len(v) > 255:
@@ -66,13 +66,13 @@ class CompanyItemResponse(BaseModel):
 
 
 class CompanyJobResponse(CompanyBase):
-    id = int
+    id: int
     name: str
     logo_url: Optional[str] = None
 
 
 class CompanyGetRequest(BaseModel):
-    id = int
+    id: int
 
 
 class CompanyCreateRequest(CompanyBase):
@@ -81,10 +81,9 @@ class CompanyCreateRequest(CompanyBase):
 
 class CompanyUpdateRequest(BaseModel):
     id: int
-    name: Optional[str] = None
     email: Optional[str] = None
     phone_number: Optional[str] = None
-    total_active_jobs = Optional[int] = None
+    total_active_jobs: Optional[int] = None
     is_premium: Optional[bool] = None
     label: Optional[str] = None
     logo: Optional[UploadFile] = None
@@ -95,15 +94,6 @@ class CompanyUpdateRequest(BaseModel):
     scale: Optional[str] = None
     tax_code: Optional[str] = None
     field: Optional[str] = None
-
-    @validator("name")
-    def validate_name(cls, v):
-        if v is not None:
-            if len(v) < 3:
-                raise ValueError("Name must be at least 3 characters")
-            elif len(v) > 255:
-                raise ValueError("Name must be at most 255 characters")
-            return v
 
     @validator("email")
     def validate_email(cls, v):

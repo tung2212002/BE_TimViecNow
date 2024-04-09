@@ -15,7 +15,6 @@ def get_list_province(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
-        print(e)
         return constant.ERROR, 400, get_message_validation_error(e)
 
     provinces = provinceCRUD.get_multi(db, **page.dict())

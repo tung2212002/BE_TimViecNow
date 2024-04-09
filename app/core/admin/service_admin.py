@@ -2,13 +2,13 @@ from sqlalchemy.orm import Session
 
 from app.core.security import pwd_context
 from app.crud.manager_base import manager_base as manager_baseCRUD
-from app.crud.representative import representative as representativeCRUD
+from app.crud.business import business as businessCRUD
 from app.crud.province import province as provinceCRUD
 from app.crud.district import district as districtCRUD
 from app.crud.admin import admin as adminCRUD
 from app.core import constant
 from app.schema import (
-    representative as schema_representative,
+    business as schema_business,
     page as schema_page,
     manager_base as schema_manager_base,
     province as schema_province,
@@ -17,7 +17,7 @@ from app.schema import (
 from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role, TypeAccount
-from app.core.representative.service_representative import get_info_user
+from app.core.business.service_business import get_info_user
 
 
 def get_admin_by_email(db: Session, data: dict):
@@ -49,7 +49,7 @@ def get_list_admin(db: Session, data: dict):
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    admins = manager_baseCRUD.get_multi_by_admin(db, **page.dict())
+    admins = manager_baseCRUD.get_multi(db, **page.dict())
     if not admins:
         return constant.ERROR, 404, "Admin not found"
     admin = [get_info_user(admin) for admin in admins]
@@ -79,24 +79,10 @@ def create_admin(db: Session, data: dict):
         obj_in=admin_input,
     )
 
-    manager_base.id
-    data_response = {
-        **admin.__dict__,
-        **manager_base.__dict__,
-    }
-    admin_response = schema_admin.AdminItemResponse(**data_response)
+    admin_response = get_info_user(manager_base)
 
-    token = {
-        "email": admin_response.email,
-        "id": admin_response.id,
-        "is_active": admin_response.is_active,
-        "role": admin_response.role,
-        "type": "access_token",
-        "type_account": TypeAccount.BUSINESS,
-    }
-    access_token = signJWT(token)
-    token["type"] = "refresh_token"
-    refresh_token = signJWTRefreshToken(token)
+    access_token = signJWT(admin_response)
+    refresh_token = signJWTRefreshToken(admin_response)
 
     response = (
         constant.SUCCESS,

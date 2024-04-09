@@ -3,14 +3,28 @@ from sqlalchemy.orm import Session
 from app.core.security import pwd_context
 from app.crud import user as userCRUD
 from app.core import constant
-from app.schema import user as schema_user, page as schema_page
+from app.schema import (
+    user as schema_user,
+    page as schema_page,
+    social_network as schema_social_network,
+)
 from app.core.auth.service_user_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
+from app.hepler.enum import Role, TypeAccount
 
 
 def get_me(current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
+    if current_user.role == Role.SOCIAL_NETWORK:
+        if not current_user.is_verified:
+            return (
+                constant.SUCCESS,
+                200,
+                schema_social_network.SocialNetworkItemResponse(
+                    **current_user.__dict__
+                ),
+            )
     user = schema_user.UserItemResponse(**current_user.__dict__)
     return constant.SUCCESS, 200, user
 
@@ -57,30 +71,19 @@ def create_user(db: Session, data: dict):
         return constant.ERROR, 409, "Email already registered"
 
     user = userCRUD.create(db, obj_in=user_data)
-    user = schema_user.UserItemResponse(**user.__dict__)
+    user_reponse = schema_user.UserItemResponse(**user.__dict__)
 
-    access_token = signJWT(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "access_token",
-        }
-    )
-    refresh_token = signJWTRefreshToken(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "refresh_token",
-        }
-    )
+    access_token = signJWT(user)
+    refresh_token = signJWTRefreshToken(user)
+
     response = (
         constant.SUCCESS,
         201,
-        {"access_token": access_token, "refresh_token": refresh_token, "user": user},
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user_reponse,
+        },
     )
     return response
 

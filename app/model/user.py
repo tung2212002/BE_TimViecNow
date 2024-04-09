@@ -24,8 +24,9 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), default=func.now())
 
     user_job_save = relationship("UserJobSave", back_populates="user")
-    cv_application = relationship("CVApplication", back_populates="user")
+    cv_applications = relationship("CVApplication", back_populates="user")
     user_job_requirement = relationship(
         "UserJobRequirement", back_populates="user", uselist=False
     )
-    job_report = relationship("JobReport", back_populates="user")
+    job_reports = relationship("JobReport", back_populates="user")
+    social_network = relationship("SocialNetwork", back_populates="user")

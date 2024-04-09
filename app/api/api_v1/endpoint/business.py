@@ -22,25 +22,25 @@ from app.core.auth.service_business_auth import (
     get_current_admin,
 )
 from app.core import constant
-from app.core.representative import service_representative
+from app.core.business import service_business
 from app.hepler.response_custom import custom_response_error, custom_response
 
 router = APIRouter()
 
 
-@router.get("/me", summary="Get the current representative.")
-def gerepresentative(current_user=Depends(get_current_user)):
+@router.get("/me", summary="Get the current business.")
+def get_business(current_user=Depends(get_current_user)):
     """
-    Get the current representative.
+    Get the current business.
 
-    This endpoint allows getting the current representative.
+    This endpoint allows getting the current business.
 
     Returns:
     - status_code (200): The current user has been found successfully.
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_representative.get_me(current_user)
+    status, status_code, response = service_business.get_me(current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -48,8 +48,8 @@ def gerepresentative(current_user=Depends(get_current_user)):
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.get("", summary="Get list of representative.")
-def get_representative(
+@router.get("", summary="Get list of business.")
+def get_business(
     request: Request,
     skip: int = Query(description="The number of users to skip.", example=0),
     limit: int = Query(description="The number of users to return.", example=10),
@@ -59,9 +59,9 @@ def get_representative(
     current_user=Depends(get_current_admin),
 ):
     """
-    Get list of representative by admin.
+    Get list of business by admin.
 
-    This endpoint allows getting a list of representative by admin.
+    This endpoint allows getting a list of business by admin.
 
     Parameters:
     - skip (int): The number of users to skip.
@@ -78,9 +78,7 @@ def get_representative(
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
 
-    status, status_code, response = service_representative.get_list_representative(
-        db, args
-    )
+    status, status_code, response = service_business.get_list_business(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -88,16 +86,16 @@ def get_representative(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.get("/{id}", summary="Get a representative by id.")
-def get_user_brepresentative(
+@router.get("/{id}", summary="Get a business by id.")
+def get_user_bbusiness(
     id: int = Path(..., description="The id of the user.", example=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
     """
-    Get a representative by id.
+    Get a business by id.
 
-    This endpoint allows getting a representative by id.
+    This endpoint allows getting a business by id.
 
     Parameters:
     - id (int): The id of the user.
@@ -108,9 +106,7 @@ def get_user_brepresentative(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_representative.get_representative_by_id(
-        db, id
-    )
+    status, status_code, response = service_business.get_business_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -118,71 +114,59 @@ def get_user_brepresentative(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.post("", summary="Register a new representative by admin.")
-def create_representative(
-    full_name: Annotated[
-        str, Form(..., description="The full name of the representative.")
-    ],
-    email: Annotated[str, Form(..., description="The email of the representative.")],
-    password: Annotated[
-        str, Form(..., description="The password of the representative.")
-    ],
+@router.post("", summary="Register a new business by admin.")
+def create_business(
+    full_name: Annotated[str, Form(..., description="The full name of the business.")],
+    email: Annotated[str, Form(..., description="The email of the business.")],
+    password: Annotated[str, Form(..., description="The password of the business.")],
     confirm_password: Annotated[
-        str, Form(..., description="The confirm password of the representative.")
+        str, Form(..., description="The confirm password of the business.")
     ],
     province_id: Annotated[
-        int, Form(..., description="The province id of the representative.")
+        int, Form(..., description="The province id of the business.")
     ],
     phone_number: Annotated[
-        str, Form(..., description="The phone number of the representative.")
+        str, Form(..., description="The phone number of the business.")
     ],
-    gender: Annotated[str, Form(..., description="Gender of the representative.")],
-    company: Annotated[
-        str, Form(..., description="The company of the representative.")
-    ],
+    gender: Annotated[str, Form(..., description="Gender of the business.")],
+    company: Annotated[str, Form(..., description="The company of the business.")],
     work_position: Annotated[
-        str, Form(..., description="The work position of the representative.")
+        str, Form(..., description="The work position of the business.")
     ],
-    work_location: str = Form(
-        None, description="The work location of the representative."
-    ),
-    avatar: UploadFile = File(
-        None, description="The profile avatar of the representative."
-    ),
-    district_id: int = Form(None, description="The district id of the representative."),
+    work_location: str = Form(None, description="The work location of the business."),
+    avatar: UploadFile = File(None, description="The profile avatar of the business."),
+    district_id: int = Form(None, description="The district id of the business."),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
     """
-    Register a new representative by admin.
+    Register a new business by admin.
 
-    This endpoint allows create a new representative by admin.
+    This endpoint allows create a new business by admin.
 
     Parameters:
-    - full_name (str): The full name of the representative.
-    - email (str): The email of the representative.
-    - password (str): The password of the representative.
-    - confirm_password (str): The confirm password of the representative.
-    - avatar (UploadFile): The profile avatar of the representative.
-    - province_id (int): The province id of the representative.
-    - district_id (int): The district id of the representative.
-    - phone_number (str): The phone number of the representative.
-    - gender (str): The gender of the representative.
-    - company (str): The company of the representative.
-    - work_position (str): The work position of the representative.
-    - work_location (str): The work location of the representative.
+    - full_name (str): The full name of the business.
+    - email (str): The email of the business.
+    - password (str): The password of the business.
+    - confirm_password (str): The confirm password of the business.
+    - avatar (UploadFile): The profile avatar of the business.
+    - province_id (int): The province id of the business.
+    - district_id (int): The district id of the business.
+    - phone_number (str): The phone number of the business.
+    - gender (str): The gender of the business.
+    - company (str): The company of the business.
+    - work_position (str): The work position of the business.
+    - work_location (str): The work location of the business.
 
     Returns:
-    - status_code (201): The representative has been registered successfully.
+    - status_code (201): The business has been registered successfully.
     - status_code (400): The request is invalid.
-    - status_code (409): The representative is already registered.
+    - status_code (409): The business is already registered.
 
     """
 
     data = {k: v for k, v in locals().items() if k not in ["db"]}
-    status, status_code, response = service_representative.create_representative(
-        db, data
-    )
+    status, status_code, response = service_business.create_business(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -190,8 +174,8 @@ def create_representative(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.put("/{id}", summary="Update a representative.")
-def update_representative(
+@router.put("/{id}", summary="Update a business.")
+def update_business(
     id: int = Path(..., description="The id of the user.", example=1),
     full_name: str = Form(None, description="The full name of the user."),
     phone_number: str = Form(None, description="The phone number of the user."),
@@ -207,9 +191,9 @@ def update_representative(
     current_user=Depends(get_current_user),
 ):
     """
-    Update a representative.
+    Update a business.
 
-    This endpoint allows updating a representative with the provided information,
+    This endpoint allows updating a business with the provided information,
 
     Parameters:
     - id (int): The id of the user.
@@ -228,7 +212,7 @@ def update_representative(
 
     data = {k: v for k, v in locals().items() if k not in ["db"]}
 
-    status, status_code, response = service_representative.update_representative(
+    status, status_code, response = service_business.update_business(
         db, data, current_user
     )
 
@@ -238,16 +222,16 @@ def update_representative(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.delete("/{id}", summary="Delete a representative.")
-def delete_representative(
+@router.delete("/{id}", summary="Delete a business.")
+def delete_business(
     id: int = Path(..., description="The id of the user.", example=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """
-    Delete a representative.
+    Delete a business.
 
-    This endpoint allows deleting a representative by id.
+    This endpoint allows deleting a business by id.
 
     Parameters:
     - id (int): The id of the user.
@@ -259,7 +243,7 @@ def delete_representative(
 
     """
 
-    status, status_code, response = service_representative.delete_representative(
+    status, status_code, response = service_business.delete_business(
         db, id, current_user
     )
 

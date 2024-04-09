@@ -21,5 +21,5 @@ class JobReport(Base):
         onupdate=func.now(),
     )
 
-    job = relationship("Job", back_populates="job_report", uselist=False)
-    user = relationship("User", back_populates="job_report", uselist=False)
+    job = relationship("Job", back_populates="job_reports", uselist=False)
+    user = relationship("User", back_populates="job_reports", uselist=False)

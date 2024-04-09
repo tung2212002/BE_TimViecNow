@@ -53,7 +53,7 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
     avatar: Optional[UploadFile] = None
     password: str
     confirm_password: str
-    role: Optional[Role] = Role.REPRESENTATIVE
+    role: Optional[Role] = Role.BUSINESS
 
     @validator("password")
     def validate_password(cls, v, values):

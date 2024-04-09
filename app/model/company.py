@@ -18,7 +18,7 @@ class Company(Base):
     scale = Column(String(20), nullable=False)
     location = Column(String(255), index=True, nullable=False)
     tax_code = Column(String(15), unique=True, index=True, nullable=False)
-    representative_id = Column(Integer, ForeignKey("representative.id"), nullable=False)
+    business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
     company_short_description = Column(String(255), nullable=True)
     follower = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -26,7 +26,7 @@ class Company(Base):
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
 
-    representative = relationship("Representative", back_populates="companies")
+    business = relationship("Business", back_populates="companies")
     label_company = relationship(
         "LabelCompany", back_populates="company", uselist=False
     )

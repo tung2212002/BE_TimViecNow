@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, verify_password
@@ -19,18 +20,25 @@ class CRUDAdmin(
             db.query(Admin).filter(Admin.id == manager.id).first() if manager else None
         )
 
+    def get_multi(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 10,
+        sort_by: str = "id",
+        order_by: str = "desc"
+    ) -> List[Admin]:
+        return super().get_multi(
+            db, skip=skip, limit=limit, sort_by=sort_by, order_by=order_by
+        )
+
     def create(self, db: Session, *, obj_in: schema_admin.AdminCreateRequest) -> Admin:
         db_obj = Admin(**obj_in)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
         return db_obj
-
-    # def update(
-    #     self, db: Session, *, db_obj: Admin, obj_in: schema_admin.AdminUpdateRequest
-    # ) -> Admin:
-    #     manager_base.update(db, db_obj=db_obj.manager_base, obj_in=obj_in)
-    #     return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> Admin:
         user = self.get_by_email(db, email)

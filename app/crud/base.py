@@ -65,7 +65,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             update_data = obj_in
         else:
             update_data = obj_in.dict(exclude_unset=True)
-
         for field in obj_data:
             if field in update_data and update_data[field] is not None:
                 setattr(db_obj, field, update_data[field])

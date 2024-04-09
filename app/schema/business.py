@@ -8,7 +8,7 @@ from app.hepler.enum import Role, Gender
 from app.core import constant
 
 
-class RepresentativeBase(BaseModel):
+class BusinessBase(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attribute=True)
 
     phone_number: str
@@ -30,7 +30,7 @@ class RepresentativeBase(BaseModel):
         return v
 
 
-class RepresentativeItemResponse(RepresentativeBase):
+class BusinessItemResponse(BusinessBase):
 
     id: int
     full_name: str
@@ -47,13 +47,17 @@ class RepresentativeItemResponse(RepresentativeBase):
     last_login: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    is_verified_email: bool
+    is_verified_phone: bool
+    is_verified_company: bool
+    is_verified_identity: bool
 
 
-class RepresentativeGetRequest(BaseModel):
+class BusinessGetRequest(BaseModel):
     id: int
 
 
-class RepresentativeGetByEmailRequest(BaseModel):
+class BusinessGetByEmailRequest(BaseModel):
     email: str
 
     @validator("email")
@@ -63,12 +67,12 @@ class RepresentativeGetByEmailRequest(BaseModel):
         return v
 
 
-class RepresentativeCreateRequest(RepresentativeBase):
+class BusinessCreateRequest(BusinessBase):
     province_id: int
     district_id: Optional[int] = None
 
 
-class RepresentativeUpdateRequest(BaseModel):
+class BusinessUpdateRequest(BaseModel):
     phone_number: Optional[str] = None
     gender: Optional[Gender] = None
     company: Optional[str] = None

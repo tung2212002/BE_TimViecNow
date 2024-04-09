@@ -12,7 +12,7 @@ class ManagerBase(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     avatar = Column(String(255), nullable=True)
-    role = Column(Enum(Role), default=Role.REPRESENTATIVE)
+    role = Column(Enum(Role), default=Role.BUSINESS)
     type_account = Column(Enum(TypeAccount), default=TypeAccount.BUSINESS)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -23,6 +23,6 @@ class ManagerBase(Base):
     admin = relationship(
         "Admin", back_populates="manager_base", lazy=True, uselist=False
     )
-    representative = relationship(
-        "Representative", back_populates="manager_base", lazy=True, uselist=False
+    business = relationship(
+        "Business", back_populates="manager_base", lazy=True, uselist=False
     )

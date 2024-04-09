@@ -2,17 +2,14 @@ from sqlalchemy.orm import Session
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
+import requests
 
 from app.core import constant
 from app.core.security import pwd_context
 from app.core.config import settings
 from app import crud
 from app.schema import (
-    representative as schem_representative,
     auth as schema_auth,
-    province as schema_province,
-    user as schema_user,
-    district as schema_district,
     manager_base as schema_manager_base,
 )
 from app.db.base import get_db
@@ -20,6 +17,7 @@ from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
+from app.core.business.service_business import get_info_user
 
 
 def authenticate(db: Session, data: dict):
@@ -32,28 +30,12 @@ def authenticate(db: Session, data: dict):
         return constant.ERROR, 404, "User not found"
     if not verify_password(user_data.password, user.hashed_password):
         return constant.ERROR, 401, "Incorrect password"
-    access_token = signJWT(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "access_token",
-            "type_account": TypeAccount.BUSINESS,
-        }
-    )
-    refresh_token = signJWTRefreshToken(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "refresh_token",
-            "type_account": TypeAccount.BUSINESS,
-        }
-    )
-    representative = user.representative
-    if representative is None:
+
+    access_token = signJWT(user)
+    refresh_token = signJWTRefreshToken(user)
+
+    business = user.business
+    if business is None:
         return (
             constant.SUCCESS,
             200,
@@ -63,27 +45,64 @@ def authenticate(db: Session, data: dict):
                 "user": schema_manager_base.ManagerBaseItemResponse(**user.__dict__),
             },
         )
-    user_input = {**user.__dict__, **representative.__dict__}
-    user = schem_representative.RepresentativeItemResponse(**user_input)
-    province = representative.province
-    district = representative.district if representative.district else None
-    province = schema_province.ProvinceItemResponse(**province.__dict__)
-    if district:
-        district = schema_district.DistrictItemResponse(**district.__dict__)
+
+    user_response = get_info_user(user)
     response = (
         constant.SUCCESS,
         200,
         {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": {
-                **user.__dict__,
-                "province": province,
-                "district": district,
-            },
+            "user": {**user_response},
         },
     )
     return response
+
+
+def authenticate_google(db: Session, token: str):
+    try:
+        url = f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            return constant.ERROR, 401, "Token invalid"
+        data = response.json()
+        email = data.get("email")
+        if email is None:
+            return constant.ERROR, 401, "Email not found"
+        user = crud.manager_base.get_by_email(db, email)
+        if user is None:
+            return constant.ERROR, 404, "User not found"
+
+        access_token = signJWT(user)
+        refresh_token = signJWTRefreshToken(user)
+
+        business = user.business
+        if business is None:
+            return (
+                constant.SUCCESS,
+                200,
+                {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "user": schema_manager_base.ManagerBaseItemResponse(
+                        **user.__dict__
+                    ),
+                },
+            )
+
+        user_response = get_info_user(user)
+        response = (
+            constant.SUCCESS,
+            200,
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user": {**user_response},
+            },
+        )
+        return response
+    except Exception as e:
+        return constant.ERROR, 400, str(e)
 
 
 def verify_password(password: str, hashed_password: str):
@@ -103,7 +122,7 @@ def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(ge
         raise HTTPException(status_code=401, detail="Token revoked")
     id = token_decode["id"]
     role = token_decode["role"]
-    if role == Role.REPRESENTATIVE:
+    if role == Role.BUSINESS:
         user = crud.manager_base.get(db, id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
@@ -176,37 +195,19 @@ def refresh_token(db: Session, request):
         return constant.ERROR, 401, "Invalid token"
     id = token_decode["id"]
     user = crud.manager_base.get(db, id)
-    representative = user.representative
+    business = user.business
     if user is None:
         return constant.ERROR, 404, "User not found"
-    access_token = signJWT(
-        {
-            "email": user.email,
-            "id": user.id,
-            "is_active": user.is_active,
-            "role": user.role,
-            "type": "access_token",
-            "type_account": TypeAccount.BUSINESS,
-        }
-    )
-    user_input = {**user.__dict__, **representative.__dict__}
-    province = schema_province.ProvinceItemResponse(**representative.province.__dict__)
-    district = (
-        schema_district.DistrictItemResponse(**representative.district.__dict__)
-        if representative.district
-        else None
-    )
-    user = schem_representative.RepresentativeItemResponse(**user_input)
+
+    access_token = signJWT(user)
+    user_response = get_info_user(user)
+
     response = (
         constant.SUCCESS,
         200,
         {
             "access_token": access_token,
-            "user": {
-                **user.__dict__,
-                "province": province,
-                "district": district,
-            },
+            "user": user_response,
         },
     )
     return response

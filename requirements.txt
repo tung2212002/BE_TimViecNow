@@ -9,4 +9,6 @@ passlib==1.7.4
 python-multipart==0.0.5
 bcrypt==4.0.1
 cryptography
-
+pathlib==1.0.1
+fastapi-mail==1.4.1
+requests
