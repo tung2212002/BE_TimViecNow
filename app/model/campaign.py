@@ -12,7 +12,9 @@ class Campaign(Base):
     is_flash = Column(Boolean, default=False)
     optimal_score = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), default=func.now(), onupdate=func.now()
+    )
     business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
 
     business = relationship("Business", back_populates="campaign")

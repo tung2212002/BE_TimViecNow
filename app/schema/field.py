@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import Optional
 
 
-class JobPositionBase(BaseModel):
+class FieldBase(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
@@ -10,37 +10,35 @@ class JobPositionBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
-class JobPositionCreateRequest(JobPositionBase):
-    group_postion_id: int
-
-
-class JobPositionCreate(JobPositionBase):
+class FieldCreateRequest(FieldBase):
     pass
 
 
-class JobPositionUpdateRequest(JobPositionBase):
+class FieldCreate(FieldBase):
+    pass
+
+
+class FieldUpdateRequest(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
-    group_postion_id: Optional[int] = None
 
 
-class JobPositionUpdate(JobPositionBase):
+class FieldUpdate(FieldBase):
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
-    group_postion_id: Optional[int] = None
 
 
-class JobPositionItemResponse(JobPositionBase):
+class FieldItemResponse(FieldBase):
     id: int
 
 
-class JobPositionListResponse(JobPositionBase):
+class FieldListResponse(FieldBase):
     pass
 
 
-class JobPositionGetRequest(BaseModel):
+class FieldGetRequest(BaseModel):
     id: int
 
     @validator("id")
@@ -50,7 +48,7 @@ class JobPositionGetRequest(BaseModel):
         return v
 
 
-class JobPositionDeleteRequest(BaseModel):
+class FieldDeleteRequest(BaseModel):
     id: int
 
     @validator("id")

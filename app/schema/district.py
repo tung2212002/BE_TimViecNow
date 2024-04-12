@@ -16,7 +16,19 @@ class DistrictCreate(DistrictBase):
     pass
 
 
+class DistrictCreateRequest(DistrictBase):
+    pass
+
+
 class DistrictUpdate(DistrictBase):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    name_with_type: Optional[str] = None
+    slug: Optional[str] = None
+    type: Optional[str] = None
+
+
+class DistrictUpdateRequest(DistrictBase):
     name: Optional[str] = None
     code: Optional[str] = None
     name_with_type: Optional[str] = None

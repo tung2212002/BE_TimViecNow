@@ -10,8 +10,18 @@ class CategoryBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+class CategoryCreateRequest(CategoryBase):
+    pass
+
+
 class CategoryCreate(CategoryBase):
     pass
+
+
+class CategoryUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
 
 
 class CategoryUpdate(CategoryBase):

@@ -57,6 +57,7 @@ class JobApprovalStatus(str, Enum):
 class SalaryType(str, Enum):
     VND = "vnd"
     USD = "usd"
+    DEAL = "deal"
 
 
 class HistoryType(str, Enum):
@@ -106,3 +107,8 @@ class VerifyCodeStatus(str, Enum):
 class VerifyCodeType(str, Enum):
     EMAIL = "email"
     PHONE = "phone"
+
+
+class CompanyType(str, Enum):
+    COMPANY = "company"
+    BUSINESS = "personal_business"

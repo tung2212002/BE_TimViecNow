@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query, Request, Path
+from fastapi import APIRouter, Depends, Query, Request, Path, Body
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
 from app.hepler.response_custom import custom_response, custom_response_error
 from app.core import constant
 from app.core.position import service_position
+from app.core.auth.service_business_auth import get_current_user, get_current_admin
 
 
 router = APIRouter()
@@ -78,14 +79,18 @@ def get_group_position_by_id(
 
 @router.post("/group_position", summary="Create a new group position.")
 def create_group_position(
-    name: str = Query(..., description="The name of the group position."),
-    slug: str = Query(..., description="The slug of the group position."),
+    data: dict = Body(
+        ...,
+        description="The group position data.",
+        example={"name": "Group Position 1", "slug": "group-position-1"},
+    ),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
 ):
     """
-    Create a new group position.
+    Create a new group position by admin.
 
-    This endpoint allows create a new group position.
+    This endpoint allows create a new group position by admin.
 
     Parameters:
     - name (str): The name of the group position.
@@ -98,7 +103,6 @@ def create_group_position(
 
     """
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
     status, status_code, response = service_position.create_group_position(db, data)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -172,12 +176,17 @@ def get_job_position_by_id(
 
 @router.post("/job_position", summary="Create a new job position.")
 def create_job_position(
-    name: str = Query(..., description="The name of the job position."),
-    slug: str = Query(..., description="The slug of the job position."),
-    group_position_id: int = Query(
-        ..., description="The group position id of the job position."
+    data: dict = Body(
+        ...,
+        description="The job position data.",
+        example={
+            "name": "Job Position 1",
+            "slug": "job-position-1",
+            "group_position_id": 1,
+        },
     ),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
 ):
     """
     Create a new job position.
@@ -196,7 +205,6 @@ def create_job_position(
 
     """
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
     status, status_code, response = service_position.create_job_position(db, data)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

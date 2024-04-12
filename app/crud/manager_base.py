@@ -33,19 +33,14 @@ class CRUDManagerBase(
         sort_by: str = "id",
         order_by: str = "desc",
     ) -> List[ManagerBase]:
-        if order_by == "desc":
-            return (
-                db.query(self.model)
-                .filter(self.model.role == Role.BUSINESS)
-                .order_by(getattr(self.model, sort_by).desc())
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
         return (
             db.query(self.model)
             .filter(self.model.role == Role.BUSINESS)
-            .order_by(getattr(self.model, sort_by))
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
             .offset(skip)
             .limit(limit)
             .all()
@@ -63,17 +58,58 @@ class CRUDManagerBase(
         sort_by: str = "id",
         order_by: str = "desc",
     ) -> List[ManagerBase]:
-        if order_by == "desc":
-            return (
-                db.query(self.model)
-                .order_by(getattr(self.model, sort_by).desc())
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
         return (
             db.query(self.model)
-            .order_by(getattr(self.model, sort_by))
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_list_admin(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "id",
+        order_by: str = "desc",
+    ) -> List[ManagerBase]:
+        return (
+            db.query(self.model)
+            .filter(self.model.role == Role.ADMIN)
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_list_business(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "id",
+        order_by: str = "desc",
+    ) -> List[ManagerBase]:
+
+        return (
+            db.query(self.model)
+            .filter(self.model.role == Role.BUSINESS)
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
             .offset(skip)
             .limit(limit)
             .all()

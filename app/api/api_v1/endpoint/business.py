@@ -12,13 +12,10 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 from typing import Annotated, Any
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 
 from app.db.base import get_db
 from app.core.auth.service_business_auth import (
     get_current_user,
-    get_current_superuser,
     get_current_admin,
 )
 from app.core import constant
@@ -29,7 +26,7 @@ router = APIRouter()
 
 
 @router.get("/me", summary="Get the current business.")
-def get_business(current_user=Depends(get_current_user)):
+def get_business(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     Get the current business.
 
@@ -40,7 +37,7 @@ def get_business(current_user=Depends(get_current_user)):
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_business.get_me(current_user)
+    status, status_code, response = service_business.get_me(db, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -129,7 +126,9 @@ def create_business(
         str, Form(..., description="The phone number of the business.")
     ],
     gender: Annotated[str, Form(..., description="Gender of the business.")],
-    company: Annotated[str, Form(..., description="The company of the business.")],
+    company_name: Annotated[
+        str, Form(..., description="The name company of the business.")
+    ],
     work_position: Annotated[
         str, Form(..., description="The work position of the business.")
     ],
@@ -166,6 +165,7 @@ def create_business(
     """
 
     data = {k: v for k, v in locals().items() if k not in ["db"]}
+
     status, status_code, response = service_business.create_business(db, data)
 
     if status == constant.ERROR:
@@ -201,6 +201,13 @@ def update_business(
     - email (str): The email address of the user.
     - phone_number (str): The phone number of the user.
     - avatar (UploadFile): The profile avatar of the user.
+    - province_id (int): The province id of the user.
+    - district_id (int): The district id of the user.
+    - work_position (str): The work position of the user.
+    - work_location (str): The work location of the user.
+    - company (str): The company of
+    - gender (str): The gender of the user.
+    - password (str): The password of the user.
 
     Returns:
     - status_code (200): The user has been updated successfully.

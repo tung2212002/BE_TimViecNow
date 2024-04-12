@@ -13,7 +13,7 @@ class BusinessBase(BaseModel):
 
     phone_number: str
     gender: str
-    company: str
+    company_name: str
     work_position: str
     work_location: Optional[str] = None
 
@@ -72,10 +72,14 @@ class BusinessCreateRequest(BusinessBase):
     district_id: Optional[int] = None
 
 
+class BusinessCreate(BusinessCreateRequest):
+    pass
+
+
 class BusinessUpdateRequest(BaseModel):
     phone_number: Optional[str] = None
     gender: Optional[Gender] = None
-    company: Optional[str] = None
+    company_name: Optional[str] = None
     work_position: Optional[str] = None
     work_location: Optional[str] = None
     province_id: Optional[int] = None
@@ -94,3 +98,7 @@ class BusinessUpdateRequest(BaseModel):
             if v not in Gender.__members__.values():
                 raise ValueError("Invalid gender")
             return v
+
+
+class BusinessUpdate(BusinessUpdateRequest):
+    pass

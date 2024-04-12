@@ -13,7 +13,16 @@ class GroupPositionCreateRequest(GroupPositionBase):
     pass
 
 
+class GroupPositionCreate(GroupPositionBase):
+    pass
+
+
 class GroupPositionUpdateRequest(GroupPositionBase):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+
+
+class GroupPositionUpdate(GroupPositionBase):
     name: Optional[str] = None
     slug: Optional[str] = None
 

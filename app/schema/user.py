@@ -79,6 +79,10 @@ class UserCreateRequest(UserBase):
         return v
 
 
+class UserCreate(UserCreateRequest):
+    pass
+
+
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -126,3 +130,7 @@ class UserUpdateRequest(BaseModel):
                 )
             return v
         return v
+
+
+class UserUpdate(UserUpdateRequest):
+    pass

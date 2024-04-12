@@ -29,7 +29,7 @@ def get_admin_by_email(db: Session, data: dict):
     if not admin:
         return constant.ERROR, 404, "Admin not found"
 
-    admin_response = get_info_user(admin)
+    admin_response = get_info_user(db, admin)
 
     return constant.SUCCESS, 200, admin_response
 
@@ -39,7 +39,7 @@ def get_admin_by_id(db: Session, id: int):
     if not admin:
         return constant.ERROR, 404, "Admin not found"
 
-    admin_response = get_info_user(admin)
+    admin_response = get_info_user(db, admin)
 
     return constant.SUCCESS, 200, admin_response
 
@@ -49,10 +49,10 @@ def get_list_admin(db: Session, data: dict):
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    admins = manager_baseCRUD.get_multi(db, **page.dict())
+    admins = manager_baseCRUD.get_list_admin(db, **page.dict())
     if not admins:
         return constant.ERROR, 404, "Admin not found"
-    admin = [get_info_user(admin) for admin in admins]
+    admin = [get_info_user(db, admin) for admin in admins]
     return constant.SUCCESS, 200, admin
 
 
@@ -79,7 +79,7 @@ def create_admin(db: Session, data: dict):
         obj_in=admin_input,
     )
 
-    admin_response = get_info_user(manager_base)
+    admin_response = get_info_user(db, manager_base)
 
     access_token = signJWT(admin_response)
     refresh_token = signJWTRefreshToken(admin_response)
@@ -116,7 +116,7 @@ def update_admin(db: Session, data: dict, current_user):
         db_obj=current_user,
         obj_in=admin,
     )
-    admin_response = get_info_user(manager_base)
+    admin_response = get_info_user(db, manager_base)
 
     return constant.SUCCESS, 200, admin_response
 

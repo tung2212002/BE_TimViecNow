@@ -18,19 +18,15 @@ class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
         sort_by: str = "id",
         order_by: str = "desc",
     ):
-        if order_by == "asc":
-            return (
-                db.query(self.model)
-                .filter(self.model.province_id == province_id)
-                .order_by(getattr(self.model, sort_by))
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
+
         return (
             db.query(self.model)
             .filter(self.model.province_id == province_id)
-            .order_by(getattr(self.model, sort_by).desc())
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
             .offset(skip)
             .limit(limit)
             .all()

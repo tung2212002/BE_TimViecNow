@@ -66,6 +66,10 @@ class SocialNetworkCreateRequest(SocialNetworkBase):
     user_id: Optional[int] = None
 
 
+class SocialNetworkCreate(SocialNetworkBase):
+    pass
+
+
 class SocialNetworkUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -101,3 +105,7 @@ class SocialNetworkUpdateRequest(BaseModel):
                 raise ValueError("Invalid phone number")
             return v
         return v
+
+
+class SocialNetworkUpdate(SocialNetworkUpdateRequest):
+    pass

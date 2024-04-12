@@ -8,8 +8,6 @@ class CRUDBlacklist:
         return db.query(Blacklist).filter(Blacklist.token == token).first()
 
     def create(self, db: Session, *, token: str) -> Blacklist:
-        print("token", token)
-        print("size of token", len(token))
         db_obj = Blacklist(token=token)
         db.add(db_obj)
         db.commit()

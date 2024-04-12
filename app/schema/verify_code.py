@@ -15,10 +15,27 @@ class VerifyCodeBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+class VerifyCodeRequest(BaseModel):
+    code: str
+    session_id: str
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+    @validator("code")
+    def validate_code(cls, code):
+        if code.isdigit() and len(code) == 6:
+            return code
+        raise ValueError("Code must be 6 digits")
+
+
 class VerifyCodeCreate(VerifyCodeBase):
     manager_base_id: int
     failed_attempts: Optional[int] = 0
     session_id: Optional[str] = None
+
+
+class VerifyCodeCreateRequest(VerifyCodeCreate):
+    pass
 
 
 class VerifyCodeItemResponse(VerifyCodeBase):
@@ -32,3 +49,7 @@ class VerifyCodeItemResponse(VerifyCodeBase):
 class VerifyCodeUpdate(BaseModel):
     status: Optional[VerifyCodeStatus] = None
     failed_attempts: Optional[int] = None
+
+
+class VerifyCodeUpdateRequest(VerifyCodeUpdate):
+    pass
