@@ -39,7 +39,7 @@ def register_business(
         str, Form(..., description="The phone number of the business.")
     ],
     gender: Annotated[str, Form(..., description="Gender of the business.")],
-    company: Annotated[str, Form(..., description="The company of the business.")],
+    company_name: Annotated[str, Form(..., description="The company of the business.")],
     work_position: Annotated[
         str, Form(..., description="The work position of the business.")
     ],

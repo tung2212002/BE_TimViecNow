@@ -14,3 +14,4 @@ class Province(Base):
 
     district = relationship("District", back_populates="province")
     business = relationship("Business", back_populates="province")
+    work_location = relationship("WorkLocation", back_populates="province")

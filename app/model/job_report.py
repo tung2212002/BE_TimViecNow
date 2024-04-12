@@ -17,7 +17,7 @@ class JobReport(Base):
     report_updated_at = Column(
         DateTime(timezone=True),
         index=True,
-        server_default=func.now(),
+        default=func.now(),
         onupdate=func.now(),
     )
 

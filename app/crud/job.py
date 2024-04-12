@@ -1,16 +1,16 @@
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from app.model.campaign import Campaign
-from app.schema.campaign import CampaignCreateRequest, CampaignUpdateRequest
+from app.model.job import Job
+from app.schema.job import JobCreate, JobUpdate
 
 
-class CRUDCampaign(CRUDBase[Campaign, CampaignCreateRequest, CampaignUpdateRequest]):
+class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
     def get_multi(
         self,
         db: Session,
         business_id: int = None,
-        status: int = None,
+        company_id=None,
         *,
         skip=0,
         limit=10,
@@ -20,8 +20,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreateRequest, CampaignUpdateReque
         query = db.query(self.model)
         if business_id:
             query = query.filter(self.model.business_id == business_id)
-        if status:
-            query = query.filter(self.model.status == status)
+        if company_id:
+            query = query.filter(self.model.company_id == company_id)
         return (
             query.order_by(
                 getattr(self.model, sort_by).desc()
@@ -34,4 +34,4 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreateRequest, CampaignUpdateReque
         )
 
 
-campaign = CRUDCampaign(Campaign)
+job = CRUDJob(Job)

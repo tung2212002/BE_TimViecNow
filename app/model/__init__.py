@@ -26,7 +26,8 @@ from .job import Job
 from .user_job_save import UserJobSave
 from .job_skill import JobSkill
 from .job_report import JobReport
-from .company_job_position import CompanyJobPosition
+from .field import Field
+from .company_field import CompanyField
 from .cv_application import CVApplication
 from .job_approval_request import JobApprovalRequest
 from .job_approval_log import ApprovalLog
@@ -37,3 +38,4 @@ from .job_working_time import JobWorkingTime
 from .verify_code import VerifyCode
 from .verify_code_block import VerifyCodeBlock
 from .social_network import SocialNetwork
+from .work_location import WorkLocation

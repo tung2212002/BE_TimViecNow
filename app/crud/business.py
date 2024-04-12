@@ -79,5 +79,31 @@ class CRUDBusiness(
         db.refresh(db_obj)
         return db_obj
 
+    def get_businesses_by_company_id(
+        self,
+        db: Session,
+        company_id: int,
+        *,
+        skip: int = 0,
+        limit: int = 10,
+        sort_by: str = "id",
+        order_by: str = "desc"
+    ):
+        return (
+            db.query(self.model)
+            .filter(self.model.company_id == company_id)
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_business_by_company_id(self, db: Session, company_id: int):
+        return db.query(self.model).filter(self.model.company_id == company_id).first()
+
 
 business = CRUDBusiness(Business)

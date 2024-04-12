@@ -82,7 +82,7 @@ def verify_code(
 
     Returns:
     - status_code (200): The code has been verified successfully.
-    - status_code (400): The request is invalid.
+    - status_code (400): The request is denied.
     - status_code (401): The business is not authorized.
     - status_code (404): The business is not found or the code is incorrect.
 

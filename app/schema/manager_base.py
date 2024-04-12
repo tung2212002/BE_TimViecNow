@@ -79,6 +79,10 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
         return v
 
 
+class ManagerBaseCreate(ManagerBaseCreateRequest):
+    pass
+
+
 class ManagerBaseUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
@@ -124,3 +128,7 @@ class ManagerBaseUpdateRequest(BaseModel):
                     "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
                 )
             return v
+
+
+class ManagerBaseUpdate(ManagerBaseUpdateRequest):
+    pass

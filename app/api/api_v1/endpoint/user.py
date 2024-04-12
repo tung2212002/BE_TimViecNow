@@ -48,10 +48,10 @@ def get_me(current_user=Depends(get_current_user)):
 @router.get("", summary="Get list of users.")
 def get_user(
     request: Request,
-    skip: int = Query(description="The number of users to skip.", example=0),
-    limit: int = Query(description="The number of users to return.", example=10),
-    sort_by: str = Query(description="The field to sort by.", example="id"),
-    order_by: str = Query(description="The order to sort by.", example="asc"),
+    skip: int = Query(0, description="The number of users to skip.", example=0),
+    limit: int = Query(10, description="The number of users to return.", example=10),
+    sort_by: str = Query("id", description="The field to sort by.", example="id"),
+    order_by: str = Query("asc", description="The order to sort by.", example="asc"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):

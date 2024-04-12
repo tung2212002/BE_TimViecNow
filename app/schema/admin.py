@@ -45,6 +45,10 @@ class AdminCreateRequest(AdminBase):
     pass
 
 
+class AdminCreate(AdminBase):
+    pass
+
+
 class AdminGetByEmailRequest(BaseModel):
     email: str
 
@@ -71,3 +75,7 @@ class AdminUpdateRequest(BaseModel):
             if v not in Gender.__members__.values():
                 raise ValueError("Invalid gender")
             return v
+
+
+class AdminUpdate(AdminUpdateRequest):
+    pass

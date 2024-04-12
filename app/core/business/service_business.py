@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import pwd_context
 from app.crud.manager_base import manager_base as manager_baseCRUD
+from app.crud.company import company as companyCRUD
 from app.crud.business import business as businessCRUD
 from app.crud.province import province as provinceCRUD
 from app.crud.district import district as districtCRUD
@@ -16,15 +17,15 @@ from app.schema import (
 )
 from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role, TypeAccount
-from app.model import ManagerBase, Business, Province, District
+from app.hepler.enum import Role
+from app.core.company import service_company
 
 
-def get_me(current_user):
+def get_me(db: Session, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
 
-    business_reseponse = get_info_user(current_user)
+    business_reseponse = get_info_user(db, current_user)
 
     return constant.SUCCESS, 200, business_reseponse
 
@@ -38,7 +39,7 @@ def get_business_by_email(db: Session, data: dict):
     if not business:
         return constant.ERROR, 404, "Businesss not found"
 
-    business_response = get_info_user(business)
+    business_response = get_info_user(db, business)
 
     return constant.SUCCESS, 200, business_response
 
@@ -48,7 +49,7 @@ def get_business_by_id(db: Session, id: int):
     if not business:
         return constant.ERROR, 404, "Business not found"
 
-    business_response = get_info_user(business)
+    business_response = get_info_user(db, business)
 
     return constant.SUCCESS, 200, business_response
 
@@ -61,7 +62,7 @@ def get_list_business(db: Session, data: dict):
     businesss = manager_baseCRUD.get_multi(db, **page.dict())
     if not businesss:
         return constant.ERROR, 404, "businesss not found"
-    businesss = [get_info_user(business) for business in businesss]
+    businesss = [get_info_user(db, business) for business in businesss]
     return constant.SUCCESS, 200, businesss
 
 
@@ -96,7 +97,7 @@ def create_business(db: Session, data: dict):
         obj_in=business_input,
     )
 
-    business_response = get_info_user(manager_base)
+    business_response = get_info_user(db, manager_base)
     access_token = signJWT(manager_base)
     refresh_token = signJWTRefreshToken(manager_base)
 
@@ -141,7 +142,7 @@ def update_business(db: Session, data: dict, current_user):
         db=db, db_obj=current_user, obj_in=manager_base
     )
     business = businessCRUD.update(db=db, db_obj=current_user.business, obj_in=business)
-    business_response = get_info_user(manager_base)
+    business_response = get_info_user(db, manager_base)
 
     return constant.SUCCESS, 200, business_response
 
@@ -169,7 +170,7 @@ def set_user_active(db: Session, id: int, active: bool):
     return response
 
 
-def get_info_user(manager_base):
+def get_info_user(db: Session, manager_base):
     role = manager_base.role
     if role == Role.ADMIN or role == Role.SUPER_USER:
         admin = manager_base.admin
@@ -189,9 +190,12 @@ def get_info_user(manager_base):
         if business.district
         else None
     )
+    company = companyCRUD.get_company_by_business_id(db=db, business_id=business.id)
+    company_response = service_company.get_company_info(company)
 
     return {
         **user.__dict__,
         "province": province,
         "district": district,
+        "company": company_response,
     }

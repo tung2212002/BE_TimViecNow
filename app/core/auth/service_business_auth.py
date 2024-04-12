@@ -46,7 +46,7 @@ def authenticate(db: Session, data: dict):
             },
         )
 
-    user_response = get_info_user(user)
+    user_response = get_info_user(db, user)
     response = (
         constant.SUCCESS,
         200,
@@ -90,7 +90,7 @@ def authenticate_google(db: Session, token: str):
                 },
             )
 
-        user_response = get_info_user(user)
+        user_response = get_info_user(db, user)
         response = (
             constant.SUCCESS,
             200,
@@ -168,7 +168,7 @@ def get_current_superuser(
         raise HTTPException(status_code=403, detail="Not permission")
     user = crud.manager_base.get_by_admin(db, id)
     if user is None:
-        return constant.ERROR, 403, "Not permission"
+        raise HTTPException(status_code=403, detail="Not permission")
     return user
 
 
@@ -200,7 +200,7 @@ def refresh_token(db: Session, request):
         return constant.ERROR, 404, "User not found"
 
     access_token = signJWT(user)
-    user_response = get_info_user(user)
+    user_response = get_info_user(db, user)
 
     response = (
         constant.SUCCESS,

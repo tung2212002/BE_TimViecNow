@@ -27,18 +27,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         sort_by: str = "id",
         order_by: str = "desc",
     ) -> List[ModelType]:
-
-        if order_by == "desc":
-            return (
-                db.query(self.model)
-                .order_by(getattr(self.model, sort_by).desc())
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
         return (
             db.query(self.model)
-            .order_by(getattr(self.model, sort_by))
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
             .offset(skip)
             .limit(limit)
             .all()

@@ -9,7 +9,9 @@ class UserJobSave(Base):
     user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), index=True)
     job_id = Column(Integer, ForeignKey("job.id", ondelete="CASCADE"), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), default=func.now(), onupdate=func.now()
+    )
 
     user = relationship("User", back_populates="user_job_save", uselist=False)
     job = relationship("Job", back_populates="user_job_save", uselist=False)

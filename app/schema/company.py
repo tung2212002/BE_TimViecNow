@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 import re
 from fastapi import File, UploadFile
-from typing import Optional
+from typing import Optional, List
 
-from app.hepler.enum import Role, Gender
+
+from app.hepler.enum import CompanyType
 from app.core import constant
 
 
@@ -15,10 +16,9 @@ class CompanyBase(BaseModel):
     is_premium: bool = False
     label: Optional[str] = None
     logo: Optional[UploadFile] = None
-    url: Optional[str] = None
-    url_website: Optional[str] = None
-    location: str
-    description: Optional[str] = None
+    website: Optional[str] = None
+    address: str
+    company_short_description: Optional[str] = None
     scale: str
     tax_code: str
     field: str
@@ -58,17 +58,42 @@ class CompanyBase(BaseModel):
 class CompanyItemResponse(BaseModel):
     id: int
     name: str
-    logo_url: Optional[str] = None
-    total_active_jobs: int
+    email: str
+    type: CompanyType
+    phone_number: str
     is_premium: bool
     label: Optional[str] = None
-    url: Optional[str] = None
+    logo: Optional[str] = None
+    website: Optional[str] = None
+    address: str
+    company_short_description: Optional[str] = None
+    scale: str
+    fields: List[object]
+    is_verified: bool
+
+
+class CompanyPrivateResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    type: CompanyType
+    phone_number: str
+    is_premium: bool
+    label: Optional[str] = None
+    logo: Optional[str] = None
+    website: Optional[str] = None
+    address: str
+    company_short_description: Optional[str] = None
+    scale: str
+    fields: List[object]
+    tax_code: str
+    is_verified: bool
 
 
 class CompanyJobResponse(CompanyBase):
     id: int
     name: str
-    logo_url: Optional[str] = None
+    logo: Optional[str] = None
 
 
 class CompanyGetRequest(BaseModel):
@@ -76,7 +101,11 @@ class CompanyGetRequest(BaseModel):
 
 
 class CompanyCreateRequest(CompanyBase):
-    pass
+    fields: List[int]
+
+
+class CompanyCreate(CompanyBase):
+    fields: List[int]
 
 
 class CompanyUpdateRequest(BaseModel):
@@ -87,13 +116,12 @@ class CompanyUpdateRequest(BaseModel):
     is_premium: Optional[bool] = None
     label: Optional[str] = None
     logo: Optional[UploadFile] = None
-    url: Optional[str] = None
-    url_website: Optional[str] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+    company_short_description: Optional[str] = None
     scale: Optional[str] = None
     tax_code: Optional[str] = None
-    field: Optional[str] = None
+    fields: Optional[List] = None
 
     @validator("email")
     def validate_email(cls, v):
@@ -117,3 +145,19 @@ class CompanyUpdateRequest(BaseModel):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
         return v
+
+
+class CompanyUpdate(BaseModel):
+    id: int
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+    total_active_jobs: Optional[int] = None
+    is_premium: Optional[bool] = None
+    label: Optional[str] = None
+    logo: Optional[UploadFile] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+    company_short_description: Optional[str] = None
+    scale: Optional[str] = None
+    tax_code: Optional[str] = None
+    fields: Optional[List] = None
