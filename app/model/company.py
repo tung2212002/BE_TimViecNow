@@ -31,7 +31,7 @@ class Company(Base):
     label_company = relationship(
         "LabelCompany", back_populates="company", uselist=False
     )
-    field = relationship("Field", secondary="company_field")
+    fields = relationship("Field", secondary="company_field")
 
     # business = relationship(
     #     "Business",

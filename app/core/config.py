@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET")
     GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI")
     GOOGLE_JAVASCRIPT_ORIGIN: str = os.getenv("GOOGLE_JAVASCRIPT_ORIGINS")
+    # AWS S3 information
+    AWS_S3_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_S3_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_S3_REGION: str = os.getenv("AWS_DEFAULT_REGION")
+    AWS_S3_BUCKET: str = os.getenv("AWS_BUCKET_NAME")
 
 
 settings = Settings()

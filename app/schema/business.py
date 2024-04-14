@@ -4,8 +4,9 @@ from fastapi import File, UploadFile
 from typing import Optional, Any
 from datetime import datetime
 
-from app.hepler.enum import Role, Gender
+from app.hepler.enum import Role, Gender, FolderBucket
 from app.core import constant
+from app.hepler.generate_file_name import generate_file_name
 
 
 class BusinessBase(BaseModel):
@@ -52,6 +53,13 @@ class BusinessItemResponse(BusinessBase):
     is_verified_company: bool
     is_verified_identity: bool
 
+    @validator("avatar")
+    def validate_avatar(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
+
 
 class BusinessGetRequest(BaseModel):
     id: int
@@ -84,6 +92,7 @@ class BusinessUpdateRequest(BaseModel):
     work_location: Optional[str] = None
     province_id: Optional[int] = None
     district_id: Optional[int] = None
+    avatar: Optional[UploadFile] = None
 
     @validator("phone_number")
     def validate_phone_number(cls, v):
@@ -98,6 +107,16 @@ class BusinessUpdateRequest(BaseModel):
             if v not in Gender.__members__.values():
                 raise ValueError("Invalid gender")
             return v
+
+    @validator("avatar")
+    def validate_avatar(cls, v):
+        if v is not None:
+            if v.content_type not in constant.ALLOWED_IMAGE_TYPES:
+                raise ValueError("Invalid image type")
+            elif v.size > constant.MAX_IMAGE_SIZE:
+                raise ValueError("Image size must be at most 2MB")
+            v.filename = generate_file_name(FolderBucket.AVATAR, v.filename)
+        return v
 
 
 class BusinessUpdate(BusinessUpdateRequest):

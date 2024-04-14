@@ -4,8 +4,9 @@ from fastapi import File, UploadFile
 from typing import Optional
 from datetime import datetime
 
-from app.hepler.enum import Role, Gender, TypeAccount
+from app.hepler.enum import Role, Gender, TypeAccount, FolderBucket
 from app.core import constant
+from app.hepler.generate_file_name import generate_file_name
 
 
 class AdminBase(BaseModel):
@@ -39,6 +40,13 @@ class AdminItemResponse(AdminBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     type_account: Optional[TypeAccount]
+
+    @validator("avatar")
+    def validate_avatar(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
 
 
 class AdminCreateRequest(AdminBase):

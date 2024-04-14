@@ -5,7 +5,8 @@ from typing import Optional
 from datetime import datetime
 
 from app.core import constant
-from app.hepler.enum import Role, TypeAccount
+from app.hepler.enum import Role, TypeAccount, FolderBucket
+from app.hepler.generate_file_name import generate_file_name
 
 
 class ManagerBaseBase(BaseModel):
@@ -37,6 +38,13 @@ class ManagerBaseItemResponse(ManagerBaseBase):
     last_login: Optional[datetime]
     role: Role
     type_account: Optional[TypeAccount]
+
+    @validator("avatar")
+    def validate_avatar(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
 
 
 class ManagerBaseGetRequest(BaseModel):
@@ -76,6 +84,7 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
                 raise ValueError("Invalid image type")
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
+            v.filename = generate_file_name(v.filename, FolderBucket.AVATAR)
         return v
 
 
@@ -114,6 +123,7 @@ class ManagerBaseUpdateRequest(BaseModel):
                 raise ValueError("Invalid image type")
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
+            v.filename = generate_file_name(v.filename, FolderBucket.AVATAR)
         return v
 
     @validator("password")

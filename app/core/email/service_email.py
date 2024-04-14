@@ -38,4 +38,4 @@ def fill_template(template: str, **kwargs) -> str:
 
 async def read_email_templates(file_path: Path) -> str:
     html_file_template = Path(__file__).parent / "templates" / file_path
-    return html_file_template.read_text()
+    return html_file_template.read_text(encoding="utf-8")
