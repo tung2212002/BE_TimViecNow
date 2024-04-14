@@ -19,6 +19,7 @@ from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role
 from app.core.company import service_company
+from app.storage.s3 import s3_service
 
 
 def get_me(db: Session, current_user):
@@ -76,6 +77,11 @@ def create_business(db: Session, data: dict):
     manager_base = manager_baseCRUD.get_by_email(db, manager_base_data.email)
     if manager_base:
         return constant.ERROR, 409, "Email already registered"
+    avatar = manager_base_data.avatar
+    if avatar:
+        key = avatar.filename
+        s3_service.upload_file(avatar, key)
+        manager_base_data.avatar = key
     province = provinceCRUD.get(db, business_data.province_id)
     if not province:
         return constant.ERROR, 404, "Province not found"
@@ -126,7 +132,11 @@ def update_business(db: Session, data: dict, current_user):
     except Exception as e:
         error = [f'{error["loc"][0]}: {error["msg"]}' for error in e.errors()]
         return constant.ERROR, 400, error
-
+    avatar = manager_base.avatar
+    if avatar:
+        key = avatar.filename
+        s3_service.upload_file(avatar, key)
+        manager_base.avatar = key
     if business.province_id:
         province = provinceCRUD.get(db, business.province_id)
         if not province:
@@ -191,7 +201,7 @@ def get_info_user(db: Session, manager_base):
         else None
     )
     company = companyCRUD.get_company_by_business_id(db=db, business_id=business.id)
-    company_response = service_company.get_company_info(company)
+    company_response = service_company.get_company_info(db, company)
 
     return {
         **user.__dict__,

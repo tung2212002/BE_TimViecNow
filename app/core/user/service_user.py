@@ -11,6 +11,7 @@ from app.schema import (
 from app.core.auth.service_user_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role, TypeAccount
+from app.storage.s3 import s3_service
 
 
 def get_me(current_user):
@@ -69,8 +70,13 @@ def create_user(db: Session, data: dict):
     user = userCRUD.get_by_email(db, user_data.email)
     if user:
         return constant.ERROR, 409, "Email already registered"
-
-    user = userCRUD.create(db, obj_in=user_data)
+    avatar = user_data.avatar
+    if avatar:
+        key = avatar.filename
+        s3_service.upload_file(avatar, key)
+        user_data.avatar = key
+    obj_in = schema_user.UserCreate(**user_data.__dict__)
+    user = userCRUD.create(db, obj_in=obj_in)
     user_reponse = schema_user.UserItemResponse(**user.__dict__)
 
     access_token = signJWT(user)

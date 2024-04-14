@@ -137,8 +137,17 @@ class CRUDManagerBase(
         db_obj: ManagerBase,
         obj_in: schema_manager_base.ManagerBaseUpdateRequest,
     ) -> ManagerBase:
-        if hasattr(obj_in, "password") and obj_in.password:
-            obj_in.hashed_password = get_password_hash(obj_in.password)
+
+        if isinstance(obj_in, dict):
+            if obj_in.get("password"):
+                obj_in["hashed_password"] = get_password_hash(obj_in["password"])
+                obj_in.pop("password")
+        elif hasattr(obj_in, "password") and obj_in.password:
+            obj_in = obj_in.copy(
+                update={"hashed_password": get_password_hash(obj_in.password)}
+            )
+            obj_in.pop("password")
+            obj_in.pop("confirm_password")
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> ManagerBase:

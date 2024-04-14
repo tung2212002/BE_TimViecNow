@@ -153,10 +153,8 @@ def create_user(
 
 @router.put("/{id}", summary="Update a user.")
 def update_user(
-    id: int = Path(..., description="The id of the user.", example=1),
-    full_name: str = Form(
-        None, description="The full name of the user.", example="John Doe"
-    ),
+    id: int = Path(..., description="The id of the user."),
+    full_name: str = Form(None, description="The full name of the user."),
     phone_number: str = Form(None, description="The phone number of the user."),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
     password: str = Form(None, description="The password of the user."),

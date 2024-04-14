@@ -111,4 +111,16 @@ class VerifyCodeType(str, Enum):
 
 class CompanyType(str, Enum):
     COMPANY = "company"
-    BUSINESS = "personal_business"
+    BUSINESS = "household"
+
+
+class FolderBucket(str, Enum):
+    AVATAR = "avatar"
+    LOGO = "logo"
+    CV = "cv"
+    JOB = "job"
+    COMPANY = "company"
+    CAMPAIGN = "campaign"
+    BUSINESS = "business"
+    FIELD = "field"
+    LABEL_COMPANY = "label_company"

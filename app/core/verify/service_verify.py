@@ -40,6 +40,8 @@ async def send_verify_background(
             await read_email_templates("email.html"),
             email=email_to,
             verify_code=verify_code,
+            full_name=current_user.full_name,
+            title="xác thực tài khoản",
         )
 
         obj_in = VerifyCodeCreate(

@@ -188,3 +188,81 @@ def verify_token_auth(
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
         return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.post("/change_password", summary="Change password.")
+def change_password(
+    request: Request,
+    data: dict = Body(
+        ...,
+        example={
+            "old_password": "@Password1234",
+            "new_password": "@Password12345",
+            "confirm_password": "@Password12345",
+        },
+    ),
+    db: Session = Depends(get_db),
+    current_user=Depends(service_business_auth.get_current_user),
+):
+    """
+    Change password.
+
+    This endpoint allows changing the password.
+
+    Parameters:
+    - old_password (str): The old password of the business.
+    - new_password (str): The new password of the business.
+    - confirm_password (str): The confirm password of the business.
+
+    Returns:
+    - status_code (200): The password has been changed successfully.
+    - status_code (400): The request is invalid.
+    - status_code (401): The password is incorrect.
+    - status_code (404): The business is not found.
+    - status_code (409): The new password is the same as the old password.
+
+    """
+    status, status_code, response = service_business_auth.change_password(
+        db, data, current_user
+    )
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.post("/send_forgot_password", summary="Forgot password.")
+def forgot_password(
+    request: Request,
+    data: dict = Body(
+        ...,
+        example={
+            "email": "clone46191@gmail.com",
+        },
+    ),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+):
+    """
+    Send code forgot password to email.
+
+    This endpoint allows sending code forgot password to email.
+
+    Parameters:
+    - email (str): The email of the business.
+
+    Returns:
+    - status_code (200): The password has been sent successfully.
+    - status_code (400): The request is invalid.
+    - status_code (404): The business is not found.
+
+    """
+    status, status_code, response = service_business_auth.send_forgot_password(
+        db, background_tasks, data
+    )
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)

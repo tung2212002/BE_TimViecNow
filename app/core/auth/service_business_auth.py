@@ -18,6 +18,7 @@ from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
 from app.core.business.service_business import get_info_user
+from app.core.email import service_email
 
 
 def authenticate(db: Session, data: dict):
@@ -221,3 +222,31 @@ def logout(db: Session, request: dict):
 
 def check_blacklist(db: Session, token: str):
     return crud.blacklist.get_by_token(db, token)
+
+
+def change_password(db: Session, data: dict, current_user):
+    try:
+        user_data = schema_auth.AuthChangePassword(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    if user_data.old_password == user_data.new_password:
+        return constant.ERROR, 409, "Old password and new password are the same"
+    if not verify_password(user_data.old_password, current_user.hashed_password):
+        return constant.ERROR, 401, "Incorrect password"
+    crud.manager_base.update(
+        db=db, obj_in={"password": user_data.new_password}, db_obj=current_user
+    )
+    return constant.SUCCESS, 200, "Change password successfully"
+
+
+async def send_forgot_password(db: Session, background_tasks, data: dict):
+    try:
+        user_data = schema_auth.AuthForgotPassword(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    user = crud.manager_base.get_by_email(db, user_data.email)
+    if user is None:
+        return constant.ERROR, 404, "User not found"
+    token = signJWT(user)
+    background_tasks.add_task(send_email_forgot_password, user.email, token)
+    return constant.SUCCESS, 200, "Send email successfully"
