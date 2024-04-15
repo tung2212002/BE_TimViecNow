@@ -14,7 +14,7 @@ from app.api import api_router
 Base.metadata.create_all(bind=engine)
 init_db(next(get_db()))
 
-app = FastAPI(title="DATN", version="0.0.1")
+app = FastAPI(title="TVNow", version="0.0.1")
 
 app.add_middleware(
     CORSMiddleware,
