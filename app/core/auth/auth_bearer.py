@@ -4,10 +4,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.auth.auth_handler import decodeJWT
 
-# from app.core.auth.service_auth import check_blacklist
-from app.db.base import get_db
-from app import crud
-
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):

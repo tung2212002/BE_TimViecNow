@@ -3,19 +3,16 @@ import re
 from fastapi import File, UploadFile
 from typing import Optional
 
-from app.hepler.enum import Role
+from app.hepler.enum import Role, TypeAccount, FolderBucket
 from app.core import constant
+from app.hepler.generate_file_name import generate_file_name
 
 
 class UserBase(BaseModel):
-    full_name: str = Field(
-        ...,
-    )
-    email: str = Field(
-        ...,
-    )
+    full_name: str
+    email: str
 
-    model_config = ConfigDict(from_attribute=True)
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -36,10 +33,18 @@ class UserBase(BaseModel):
 
 class UserItemResponse(UserBase):
     id: int
-    picture_path: str
-    is_active: bool
-    role: Role
-    phone_number: str
+    avatar: Optional[str] = None
+    is_active: bool = True
+    role: Role = Role.USER
+    phone_number: Optional[str] = None
+    type_account: Optional[TypeAccount] = TypeAccount.NORMAL
+
+    @validator("avatar")
+    def validate_avatar(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
 
 
 class UserGetRequest(BaseModel):
@@ -53,12 +58,13 @@ class UserGetRequest(BaseModel):
 
 
 class UserCreateRequest(UserBase):
-    picture: Optional[UploadFile] = None
+    avatar: Optional[UploadFile] = None
     password: str
+    confirm_password: str
     role: Role = Role.USER
 
     @validator("password")
-    def validate_password(cls, v):
+    def validate_password(cls, v, values):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
         elif len(v) > 50:
@@ -67,23 +73,33 @@ class UserCreateRequest(UserBase):
             raise ValueError(
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
+        elif "confirm_password" in values and v != values["confirm_password"]:
+            raise ValueError("Password and confirm password must match")
         return v
 
-    @validator("picture")
-    def validate_picture(cls, v):
+    @validator("avatar")
+    def validate_avatar(cls, v):
         if v is not None:
             if v.content_type not in constant.ALLOWED_IMAGE_TYPES:
                 raise ValueError("Invalid image type")
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
+            v.filename = generate_file_name(FolderBucket.AVATAR, v.filename)
         return v
+
+
+class UserCreate(UserBase):
+    avatar: Optional[str] = None
+    role: Role = Role.USER
+    password: str
+    confirm_password: str
 
 
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[str] = None
     phone_number: Optional[str] = None
-    picture: Optional[UploadFile] = None
+    avatar: Optional[UploadFile] = None
+    pass_word: Optional[str] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -96,15 +112,8 @@ class UserUpdateRequest(BaseModel):
                 raise ValueError("Full name must be alphabet")
             return v
 
-    @validator("email")
-    def validate_email(cls, v):
-        if v is not None:
-            if not re.match(constant.REGEX_EMAIL, v):
-                raise ValueError("Invalid email")
-            return v
-
-    @validator("picture")
-    def validate_picture(cls, v):
+    @validator("avatar")
+    def validate_avatar(cls, v):
         if v is not None:
             if v.content_type not in constant.ALLOWED_IMAGE_TYPES:
                 raise ValueError("Invalid image type")
@@ -117,3 +126,23 @@ class UserUpdateRequest(BaseModel):
         if v is not None:
             if not re.match(constant.REGEX_PHONE_NUMBER, v):
                 raise ValueError("Invalid phone number")
+            return v
+        return v
+
+    @validator("pass_word")
+    def validate_password(cls, v):
+        if v is not None:
+            if len(v) < 8:
+                raise ValueError("Password must be at least 8 characters")
+            elif len(v) > 50:
+                raise ValueError("Password must be at most 50 characters")
+            elif not re.match(constant.REGEX_PASSWORD, v):
+                raise ValueError(
+                    "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
+                )
+            return v
+        return v
+
+
+class UserUpdate(UserUpdateRequest):
+    pass

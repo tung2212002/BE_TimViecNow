@@ -10,6 +10,7 @@ from app.core import constant
 class AuthChangePassword(BaseModel):
     old_password: str
     new_password: str
+    confirm_password: str
 
     @validator("old_password")
     def validate_old_password(cls, v):
@@ -31,7 +32,13 @@ class AuthChangePassword(BaseModel):
             )
         return v
 
-    model_config = ConfigDict(from_attribute=True)
+    @validator("confirm_password")
+    def validate_confirm_password(cls, v, values):
+        if "new_password" in values and v != values["new_password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
 class AuthLogin(BaseModel):
@@ -55,6 +62,17 @@ class AuthLogin(BaseModel):
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
         return v
-    
+
     model_config = ConfigDict(from_attribute=True)
 
+
+class AuthForgotPassword(BaseModel):
+    email: str
+
+    @validator("email")
+    def validate_email(cls, v):
+        if not re.match(constant.REGEX_EMAIL, v):
+            raise ValueError("Invalid email")
+        return v
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
