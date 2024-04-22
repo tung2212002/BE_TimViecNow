@@ -7,7 +7,9 @@ from app.hepler.enum import Role, Gender
 
 
 class Business(Base):
-    manager_base_id = Column(Integer, ForeignKey("manager_base.id"), primary_key=True)
+    manager_base_id = Column(
+        Integer, ForeignKey("manager_base.id", ondelete="CASCADE"), primary_key=True
+    )
     province_id = Column(Integer, ForeignKey("province.id"), nullable=False)
     district_id = Column(Integer, ForeignKey("district.id"), nullable=True)
     phone_number = Column(String(10), nullable=False)
@@ -24,11 +26,6 @@ class Business(Base):
     manager_base = relationship("ManagerBase", back_populates="business")
     province = relationship("Province", back_populates="business", uselist=False)
     district = relationship("District", back_populates="business", uselist=False)
-    job_approval_request = relationship("JobApprovalRequest", back_populates="business")
     job = relationship("Job", back_populates="business")
     business_history = relationship("BusinessHistory", back_populates="business")
     campaign = relationship("Campaign", back_populates="business")
-    # company = relationship(
-    #     "Company", back_populates="businesses", uselist=False, foreign_keys=[company_id]
-    # )
-    # company_create = relationship("Company", back_populates="business", uselist=False)

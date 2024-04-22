@@ -17,10 +17,11 @@ from app.hepler.enum import JobStatus, Gender, JobType, SalaryType
 
 
 class Job(Base):
-    business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
+    business_id = Column(
+        Integer, ForeignKey("business.id", ondelete="CASCADE"), nullable=False
+    )
     job_experience_id = Column(Integer, ForeignKey("job_experience.id"), nullable=False)
-    working_time_id = Column(Integer, ForeignKey("working_time.id"), nullable=False)
-    job_position = Column(String(255), nullable=False)
+    job_position_id = Column(Integer, nullable=False)
     title = Column(String(255), index=True, nullable=False)
     job_description = Column(String(500), nullable=False)
     job_requirement = Column(String(500), nullable=False)
@@ -49,7 +50,12 @@ class Job(Base):
     is_diamond_employer = Column(Boolean, default=False)
     is_job_flash = Column(Boolean, default=False)
     working_time_text = Column(String(255), nullable=True)
-    campaign_id = Column(Integer, ForeignKey("campaign.id"), nullable=True)
+    campaign_id = Column(
+        Integer,
+        ForeignKey("campaign.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -66,6 +72,16 @@ class Job(Base):
     job_categories = relationship("Category", secondary="job_category")
     job_reports = relationship("JobReport", back_populates="job")
     user_job_save = relationship("UserJobSave", back_populates="job")
-    working_times = relationship("WorkingTime", secondary="job_working_time")
+    working_times = relationship("WorkingTime", back_populates="job")
     campaign = relationship("Campaign", back_populates="job")
     work_locations = relationship("WorkLocation", back_populates="job", uselist=True)
+
+    job_category_secondary = relationship(
+        "JobCategory", back_populates="job", uselist=True, overlaps="job_categories"
+    )
+    job_skill_secondary = relationship(
+        "JobSkill",
+        back_populates="job",
+        uselist=True,
+        overlaps="must_have_skills,should_have_skills",
+    )

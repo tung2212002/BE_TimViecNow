@@ -13,7 +13,11 @@ from app.schema.verify_code import VerifyCodeCreate, VerifyCodeUpdate, VerifyCod
 from app.schema.verify_code_block import VerifyCodeBlockCreate
 from app.hepler.enum import VerifyCodeType
 from app.core import constant
-from app.core.email.service_email import send_email_background, read_email_templates
+from app.core.email.service_email import (
+    send_email_background,
+    read_email_templates,
+    fill_template,
+)
 from app.hepler.exception_handler import get_message_validation_error
 
 
@@ -69,8 +73,6 @@ def verify_code(db: Session, data: dict, current_user):
     code_block = verify_code_blockCRUD.search(db, email=current_user.email, delta=5)
     if code_block:
         return constant.ERROR, 400, "Please wait 5 minutes to resend email"
-    # if not data.get["code"] is None or not data.get["session_id"] is None:
-    #     return constant.ERROR, 404, "Verify code and session id are required"
     code_by_session_id_and_email = (
         verify_codeCRUD.get_valid_code_by_session_id_and_email(
             db, data.session_id, current_user.email, 5
@@ -102,24 +104,7 @@ def verify_code(db: Session, data: dict, current_user):
         )
         return constant.ERROR, 404, "Verify code is incorrect"
     verify_codeCRUD.remove(db=db, id=code_by_session_id_and_email.id)
-    set_verify_active(db, current_user.id, True, VerifyCodeType.EMAIL)
+    businessCRUD.set_is_verified_email(
+        db=db, db_obj=current_user.business, is_verified_email=True
+    )
     return constant.SUCCESS, 200, "Verify code is correct"
-
-
-def set_verify_active(db: Session, id: int, active: bool, type: VerifyCodeType):
-    if type == VerifyCodeType.EMAIL:
-        manager_base = manager_baseCRUD.get(db, id)
-        businessCRUD.update(
-            db,
-            db_obj=manager_base.business,
-            obj_in={
-                "is_verified_email": active,
-            },
-        )
-        return manager_base
-
-
-def fill_template(template: str, **kwargs) -> str:
-    for key, value in kwargs.items():
-        template = template.replace("{{ " + key + " }}", value)
-    return template

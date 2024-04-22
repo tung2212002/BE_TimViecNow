@@ -85,7 +85,7 @@ def register_business(
 @router.post("/login", summary="Login business.")
 def login_auth(
     data: dict = Body(
-        ..., example={"email": "1@email.com", "password": "@Password1234"}
+        ..., example={"email": "clone46191@gmail.com", "password": "@Password1234"}
     ),
     db: Session = Depends(get_db),
 ):

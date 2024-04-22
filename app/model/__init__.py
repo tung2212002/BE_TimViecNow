@@ -34,7 +34,6 @@ from .job_approval_log import ApprovalLog
 from .job_category import JobCategory
 from .business_history import BusinessHistory
 from .working_time import WorkingTime
-from .job_working_time import JobWorkingTime
 from .verify_code import VerifyCode
 from .verify_code_block import VerifyCodeBlock
 from .social_network import SocialNetwork

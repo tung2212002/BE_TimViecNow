@@ -43,7 +43,7 @@ class CampaignCreateRequest(CampaignBase):
 
 
 class CampaignCreate(CampaignBase):
-    pass
+    business_id: int
 
 
 class CampaignUpdateRequest(CampaignBase):
