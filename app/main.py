@@ -1,10 +1,9 @@
 from os.path import dirname, join
 from dotenv import load_dotenv
 
-# dotenv_path = join(dirname(__file__), ".env")
 dotenv_path = join(dirname(dirname(__file__)), ".env")
-print(dotenv_path)
 load_dotenv(dotenv_path)
+
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from os.path import dirname, join

@@ -49,7 +49,7 @@ def authenticate_google(db: Session, data: dict):
     token = data.get("access_token")
     if token is None:
         return constant.ERROR, 400, "Token is required"
-    url = f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={token}"
+    url = f"{constant.GOOGLE_GET_USER_INFO_URL}{token}"
     response = requests.get(url)
     if response.status_code != 200:
         return constant.ERROR, 400, "Invalid token"

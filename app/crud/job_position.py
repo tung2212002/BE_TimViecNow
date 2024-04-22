@@ -9,10 +9,10 @@ from app.schema.job_position import (
 )
 
 
-class CRUDCategory(
+class CRUDJobPosition(
     CRUDBase[JobPosition, JobPositionCreateRequest, JobPositionUpdateRequest]
 ):
     pass
 
 
-job_position = CRUDCategory(JobPosition)
+job_position = CRUDJobPosition(JobPosition)

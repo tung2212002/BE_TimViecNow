@@ -37,9 +37,13 @@ class Gender(str, Enum):
 
 class JobStatus(str, Enum):
     PENDING = "pending"
-    APPROVED = "approved"
+    PUBLISHED = "published"
     REJECTED = "rejected"
     EXPIRED = "expired"
+    DRAFT = "draft"
+    BANNED = "banned"
+    STOPPED = "stopped"
+    ALL = "all"
 
 
 class JobType(str, Enum):
@@ -52,6 +56,7 @@ class JobApprovalStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    ALL = "all"
 
 
 class SalaryType(str, Enum):
@@ -83,9 +88,10 @@ class TokenType(str, Enum):
     REFRESH = "refresh_token"
 
 
-class CampaignStatus(int, Enum):
-    STOPPED = 0
-    OPEN = 1
+class CampaignStatus(str, Enum):
+    STOPPED = "stopped"
+    OPEN = "open"
+    ALL = "all"
 
 
 class FilterCampaign(str, Enum):
@@ -124,3 +130,10 @@ class FolderBucket(str, Enum):
     BUSINESS = "business"
     FIELD = "field"
     LABEL_COMPANY = "label_company"
+
+
+class VerifyType(str, Enum):
+    EMAIL = "email"
+    PHONE = "phone"
+    COMPANY = "company"
+    IDENTIFY = "identify"

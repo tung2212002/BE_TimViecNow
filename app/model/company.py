@@ -26,22 +26,11 @@ class Company(Base):
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
-    business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
+    business_id = Column(
+        Integer, ForeignKey("business.id", ondelete="CASCADE"), nullable=False
+    )
 
     label_company = relationship(
         "LabelCompany", back_populates="company", uselist=False
     )
     fields = relationship("Field", secondary="company_field")
-
-    # business = relationship(
-    #     "Business",
-    #     back_populates="company_create",
-    #     uselist=False,
-    #     foreign_keys=[business_id],
-    # )
-
-    # businesses = relationship(
-    #     "Business",
-    #     back_populates="company",
-    #     uselist=True,
-    # )

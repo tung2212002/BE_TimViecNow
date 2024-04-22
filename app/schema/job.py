@@ -1,16 +1,24 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 import re
 from fastapi import File, UploadFile
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Any
+from datetime import datetime, date
 import json
 
-from app.hepler.enum import Role, SalaryType, JobStatus, JobType, Gender
+from app.hepler.enum import (
+    Role,
+    SalaryType,
+    JobStatus,
+    JobType,
+    Gender,
+    JobApprovalStatus,
+)
 from app.core import constant
+from app.schema.page import Pagination
 
 
 class JobBase(BaseModel):
-    campaign_id: int
+    campaign_id: Optional[int] = None
     title: Optional[str] = None
     max_salary: Optional[int] = 0
     min_salary: Optional[int] = 0
@@ -21,17 +29,13 @@ class JobBase(BaseModel):
     phone_number_contact: str
     full_name_contact: str
     employment_type: JobType = JobType
-    gender_requirement: Gender.OTHER
-    deadline: str
+    gender_requirement: Gender = Gender.OTHER
+    deadline: date
     quantity: int = 1
-
-    @validator("deadline")
-    def validate_deadline(cls, v):
-        try:
-            datetime.strptime(v, "%Y-%m-%d")
-        except ValueError:
-            raise ValueError("Incorrect data format, should be YYYY-MM-DD")
-        return v
+    job_location: str
+    working_time_text: Optional[str] = None
+    job_position_id: int
+    job_experience_id: int
 
     @validator("phone_number_contact")
     def validate_phone_number_contact(cls, v):
@@ -54,9 +58,8 @@ class JobBase(BaseModel):
 
 class JobItemResponse(JobBase):
     id: int
-    updated_at: str
-    created_at: str
-    status: JobStatus
+    updated_at: Optional[datetime] = None
+    created_at: datetime
     is_featured: bool = False
     is_highlight: bool = False
     is_urgent: bool = False
@@ -68,22 +71,45 @@ class JobItemResponse(JobBase):
     employer_verified: bool = False
     is_new: bool = False
     is_hot: bool = False
-    email_contact: str
+    email_contact: Any
+    locations: List[object]
+    categories: List[object]
+    working_times: List[object]
+    must_have_skills: List[object]
+    should_have_skills: List[object]
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
-        return json.loads(v)
+        return json.loads(v) if isinstance(v, str) else v
 
 
 class JobGetRequest(BaseModel):
     id: int
 
 
+class JobFilterByBusiness(Pagination):
+    job_status: Optional[JobStatus] = None
+    job_approve_status: Optional[JobApprovalStatus] = None
+    business_id: int = None
+    company_id: int = None
+    campaign_id: int = None
+
+
+class JobFilterByUser(Pagination):
+    job_status: Optional[JobStatus] = None
+    job_approve_status: Optional[JobApprovalStatus] = None
+    business_id: int = None
+    company_id: int = None
+
+
 class JobCreateRequest(JobBase):
+    working_times: List[object] = []
     working_time_text: Optional[str] = None
     categories: List[int]
-    location: List[object]
+    locations: List[object]
     email_contact: List[str]
+    must_have_skills: List[int]
+    should_have_skills: List[int]
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
@@ -92,24 +118,17 @@ class JobCreateRequest(JobBase):
                 raise ValueError("Invalid email")
         if isinstance(v, list):
             v = json.dumps(list(set(v)))
+            print(type(v))
         return v
 
 
 class JobCreate(JobBase):
-    email_contact: List[str]
-
-    @validator("email_contact")
-    def validate_email_contact(cls, v):
-        for email in v:
-            if not re.match(constant.REGEX_EMAIL, email):
-                raise ValueError("Invalid email")
-        if isinstance(v, list):
-            v = json.dumps(list(set(v)))
-        return v
+    email_contact: str
+    business_id: int
+    employer_verified: bool = False
 
 
 class JobUpdateRequest(BaseModel):
-    id: int
     title: Optional[str] = None
     max_salary: Optional[int] = None
     min_salary: Optional[int] = None
@@ -122,7 +141,7 @@ class JobUpdateRequest(BaseModel):
     full_name_contact: Optional[str] = None
     employment_type: JobType = None
     gender_requirement: Gender = None
-    deadline: Optional[str] = None
+    deadline: Optional[date] = None
     is_featured: Optional[bool] = None
     is_highlight: Optional[bool] = None
     is_urgent: Optional[bool] = None
@@ -134,6 +153,14 @@ class JobUpdateRequest(BaseModel):
     employer_verified: Optional[bool] = None
     working_time_text: Optional[str] = None
     quantity: Optional[int] = None
+    working_times: Optional[List[object]] = None
+    categories: Optional[List[int]] = None
+    locations: Optional[List[object]] = None
+    must_have_skills: Optional[List[int]] = None
+    should_have_skills: Optional[List[int]] = None
+    job_experience_id: Optional[int] = None
+    job_position_id: Optional[int] = None
+    job_id: Optional[int] = None
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
@@ -143,10 +170,12 @@ class JobUpdateRequest(BaseModel):
                     raise ValueError("Invalid email")
             if isinstance(v, list):
                 v = json.dumps(list(set(v)))
+        print(type(v))
+        print(v)
         return v
 
 
-class JobUpdate(JobBase):
+class JobUpdate(BaseModel):
     title: Optional[str] = None
     max_salary: Optional[int] = None
     min_salary: Optional[int] = None
@@ -155,11 +184,11 @@ class JobUpdate(JobBase):
     job_requirement: Optional[str] = None
     job_benefit: Optional[str] = None
     phone_number_contact: Optional[str] = None
-    email_contact: Optional[List[str]] = None
+    email_contact: Optional[str] = None
     full_name_contact: Optional[str] = None
     employment_type: JobType = None
     gender_requirement: Gender = None
-    deadline: Optional[str] = None
+    deadline: Optional[date] = None
     is_featured: Optional[bool] = None
     is_highlight: Optional[bool] = None
     is_urgent: Optional[bool] = None
@@ -171,13 +200,13 @@ class JobUpdate(JobBase):
     employer_verified: Optional[bool] = None
     working_time_text: Optional[str] = None
     quantity: Optional[int] = None
+    locations: Optional[List[object]] = None
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
-        if v:
+        if v and isinstance(v, list):
             for email in v:
                 if not re.match(constant.REGEX_EMAIL, email):
                     raise ValueError("Invalid email")
-            if isinstance(v, list):
-                v = json.dumps(list(set(v)))
+            v = json.dumps(list(set(v)))
         return v

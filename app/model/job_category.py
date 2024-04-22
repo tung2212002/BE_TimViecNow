@@ -9,3 +9,7 @@ class JobCategory(Base):
     category_id = Column(
         Integer, ForeignKey("category.id", ondelete="CASCADE"), index=True
     )
+
+    job = relationship(
+        "Job", back_populates="job_category_secondary", overlaps="job_categories"
+    )

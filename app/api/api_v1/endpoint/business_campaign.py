@@ -7,6 +7,7 @@ from app.core import constant
 from app.core.campaign import service_campaign
 from app.core.auth.service_business_auth import get_current_user, get_current_admin
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import CampaignStatus
 
 router = APIRouter()
 
@@ -19,7 +20,9 @@ def get_campaign(
     sort_by: str = Query("id", description="The field to sort by.", example="id"),
     order_by: str = Query("asc", description="The order to sort by.", example="asc"),
     business_id: int = Query(None, description="The business id.", example=1),
-    status: str = Query(1, description="The status of campaign.", example=1),
+    status: str = Query(
+        CampaignStatus.OPEN, description="The status of campaign.", example=1
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):

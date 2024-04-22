@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.crud.company import company as companyCRUD
 from app.crud.field import field as fieldCRUD
 from app.crud.company_field import company_field as company_fieldCRUD
+from app.crud.business import business as businessCRUD
 from app.schema import (
     page as schema_page,
     company as schema_company,
@@ -13,6 +14,7 @@ from app.hepler.enum import Role
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 from app.storage.s3 import s3_service
+from app.core.auth import service_business_auth
 
 
 def get_list_company(db: Session, data: dict):
@@ -34,6 +36,8 @@ def get_company_by_id(db: Session, company_id: int):
 
 
 def create_company(db: Session, data: dict, current_user):
+    business = current_user.business
+    service_business_auth.verified_level(business, 2)
     if companyCRUD.get_company_by_business_id(
         db=db, business_id=current_user.business.id
     ):
@@ -73,6 +77,7 @@ def create_company(db: Session, data: dict, current_user):
                 "field_id": field,
             }
             company_fieldCRUD.create(db, obj_in=company_field_data)
+    businessCRUD.set_company(db=db, db_obj=business, company_id=company.id)
     company_response = get_company_info_private(db, company)
     return constant.SUCCESS, 201, company_response
 

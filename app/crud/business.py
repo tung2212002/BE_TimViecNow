@@ -105,5 +105,45 @@ class CRUDBusiness(
     def get_business_by_company_id(self, db: Session, company_id: int):
         return db.query(self.model).filter(self.model.company_id == company_id).first()
 
+    def set_company(
+        self, db: Session, *, db_obj: Business, company_id: int
+    ) -> Business:
+        db_obj.company_id = company_id
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_email(
+        self, db: Session, *, db_obj: Business, is_verified_email: bool
+    ) -> Business:
+        db_obj.is_verified_email = is_verified_email
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_phone(
+        self, db: Session, *, db_obj: Business, is_verified_phone: bool
+    ) -> Business:
+        db_obj.is_verified_phone = is_verified_phone
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_identity(
+        self, db: Session, *, db_obj: Business, is_verified_identity: bool
+    ) -> Business:
+        db_obj.is_verified_identity = is_verified_identity
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_company(
+        self, db: Session, *, db_obj: Business, is_verified_company: bool
+    ) -> Business:
+        db_obj.is_verified_company = is_verified_company
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
 
 business = CRUDBusiness(Business)

@@ -3,6 +3,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
 import requests
+from typing import List
 
 from app.core import constant
 from app.core.security import pwd_context
@@ -15,7 +16,7 @@ from app.schema import (
 from app.db.base import get_db
 from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
-from app.hepler.enum import Role, TypeAccount
+from app.hepler.enum import Role, TypeAccount, VerifyType
 from app.hepler.exception_handler import get_message_validation_error
 from app.core.business.service_business import get_info_user
 from app.core.email import service_email
@@ -60,52 +61,6 @@ def authenticate(db: Session, data: dict):
     return response
 
 
-def authenticate_google(db: Session, token: str):
-    try:
-        url = f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
-        response = requests.get(url)
-        if response.status_code != 200:
-            return constant.ERROR, 401, "Token invalid"
-        data = response.json()
-        email = data.get("email")
-        if email is None:
-            return constant.ERROR, 401, "Email not found"
-        user = crud.manager_base.get_by_email(db, email)
-        if user is None:
-            return constant.ERROR, 404, "User not found"
-
-        access_token = signJWT(user)
-        refresh_token = signJWTRefreshToken(user)
-
-        business = user.business
-        if business is None:
-            return (
-                constant.SUCCESS,
-                200,
-                {
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "user": schema_manager_base.ManagerBaseItemResponse(
-                        **user.__dict__
-                    ),
-                },
-            )
-
-        user_response = get_info_user(db, user)
-        response = (
-            constant.SUCCESS,
-            200,
-            {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "user": {**user_response},
-            },
-        )
-        return response
-    except Exception as e:
-        return constant.ERROR, 400, str(e)
-
-
 def verify_password(password: str, hashed_password: str):
     return pwd_context.verify(password, hashed_password)
 
@@ -114,7 +69,7 @@ def get_current_active_user(email: str):
     pass
 
 
-def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
+def get_current_user_by_role(db: Session, data: dict, allowed_roles: List[Role]):
     token_decode = data["payload"]
     if token_decode["type_account"] != TypeAccount.BUSINESS:
         raise HTTPException(status_code=403, detail="Not permission")
@@ -123,54 +78,28 @@ def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(ge
         raise HTTPException(status_code=401, detail="Token revoked")
     id = token_decode["id"]
     role = token_decode["role"]
-    if role == Role.BUSINESS:
-        user = crud.manager_base.get(db, id)
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+    if role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Not permission")
+    user = crud.manager_base.get_by_admin(db, id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
-        return user
-    elif role == Role.ADMIN or role == Role.SUPER_USER:
-        user = crud.manager_base.get_by_admin(db, id)
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
-        return user
+
+def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
+    return get_current_user_by_role(
+        db, data, [Role.BUSINESS, Role.ADMIN, Role.SUPER_USER]
+    )
 
 
 def get_current_admin(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
-    token_decode = data["payload"]
-    if token_decode["type_account"] != TypeAccount.BUSINESS:
-        raise HTTPException(status_code=403, detail="Not permission")
-    token = data["token"]
-    if check_blacklist(db, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
-    id = token_decode["id"]
-    role = token_decode["role"]
-    if role != Role.ADMIN and role != Role.SUPER_USER:
-        raise HTTPException(status_code=403, detail="Not permission")
-    user = crud.manager_base.get_by_admin(db, id)
-
-    if user is None:
-        raise HTTPException(status_code=403, detail="Not permission")
-    return user
+    return get_current_user_by_role(db, data, [Role.ADMIN, Role.SUPER_USER])
 
 
 def get_current_superuser(
     data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)
 ):
-    token_decode = data["payload"]
-    if token_decode["type_account"] != TypeAccount.BUSINESS:
-        raise HTTPException(status_code=403, detail="Not permission")
-    token = data["token"]
-    if check_blacklist(db, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
-    id = token_decode["id"]
-    role = token_decode["role"]
-    if role != Role.SUPER_USER:
-        raise HTTPException(status_code=403, detail="Not permission")
-    user = crud.manager_base.get_by_admin(db, id)
-    if user is None:
-        raise HTTPException(status_code=403, detail="Not permission")
-    return user
+    return get_current_user_by_role(db, data, [Role.SUPER_USER])
 
 
 def get_token_user(data: dict = Depends(JWTBearer())):
@@ -212,6 +141,58 @@ def refresh_token(db: Session, request):
         },
     )
     return response
+
+
+def verified_email(user) -> bool:
+    if not user.is_verified_email:
+        raise HTTPException(status_code=400, detail="Email not verified")
+
+
+def verified_phone(user) -> bool:
+    return True
+    if not user.is_verified_phone:
+        raise HTTPException(status_code=400, detail="Phone not verified")
+
+
+def verified_company(user) -> bool:
+    if not user.is_verified_company:
+        raise HTTPException(status_code=400, detail="Company not verified")
+
+
+def verified_identity(user) -> bool:
+    if not user.is_verified_identity:
+        raise HTTPException(status_code=400, detail="Indentity not verified")
+
+
+def verified(user, verify_types: List[VerifyType]) -> None:
+    for verify_type in verify_types:
+        if verify_type == VerifyType.EMAIL:
+            verified_email(user)
+        elif verify_type == VerifyType.PHONE:
+            verified_phone(user)
+        elif verify_type == VerifyType.COMPANY:
+            verified_company(user)
+        elif verify_type == VerifyType.IDENTIFY:
+            verified_identity(user)
+
+
+def verified_level(user, level: int) -> None:
+    if level == 1:
+        verified(user, [VerifyType.EMAIL])
+    elif level == 2:
+        verified(user, [VerifyType.EMAIL, VerifyType.PHONE])
+    elif level == 3:
+        verified(user, [VerifyType.EMAIL, VerifyType.PHONE, VerifyType.COMPANY])
+    elif level == 4:
+        verified(
+            user,
+            [
+                VerifyType.EMAIL,
+                VerifyType.PHONE,
+                VerifyType.COMPANY,
+                VerifyType.IDENTIFY,
+            ],
+        )
 
 
 def logout(db: Session, request: dict):
