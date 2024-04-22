@@ -27,8 +27,8 @@ api_router.include_router(position.router, prefix="/position", tags=["position"]
 api_router.include_router(category.router, prefix="/category", tags=["category"])
 api_router.include_router(field.router, prefix="/field", tags=["field"])
 api_router.include_router(job.router, prefix="/job", tags=["job"])
-api_router.include_router(company.router, prefix="/company", tags=["company"])
 
+api_router.include_router(company.router, prefix="/business/company", tags=["company"])
 api_router.include_router(
     business_company.router,
     prefix="/business/business_company",
