@@ -10,15 +10,24 @@ class Role(str, Enum):
     BUSINESS = "business"
 
 
-class SortType(str, Enum):
+class OrderType(str, Enum):
     ASC = "asc"
     DESC = "desc"
 
 
-class OrderBy(str, Enum):
+class SortBy(str, Enum):
     ID = "id"
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
+
+
+class SortByJob(str, Enum):
+    ID = "id"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    DEADLINE = "deadline"
+    QUANTITY = "quantity"
+    SALARY = "salary"
 
 
 class Provider(str, Enum):
@@ -56,6 +65,7 @@ class JobApprovalStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    STOPPED = "stopped"
     ALL = "all"
 
 

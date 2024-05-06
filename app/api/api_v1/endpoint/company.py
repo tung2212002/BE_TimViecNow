@@ -26,13 +26,15 @@ router = APIRouter()
 
 @router.get("", summary="Get list of companies.")
 def get_companies(
-    request: Request,
     skip: int = Query(0, description="The number of companies to skip.", example=0),
     limit: int = Query(
         10, description="The number of companies to return.", example=10
     ),
     sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("asc", description="The order to sort by.", example="asc"),
+    order_by: str = Query("desc", description="The order to sort by.", example="desc"),
+    fields: List[int] = Query(
+        None, description="The fields of the company.", example=[1, 2]
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -52,7 +54,7 @@ def get_companies(
     - status_code (400): The request is invalid.
 
     """
-    args = {item[0]: item[1] for item in request.query_params.multi_items()}
+    args = {item[0]: item[1] for item in locals().items() if item[0] != "db"}
 
     status, status_code, response = service_company.get_list_company(db, args)
 
@@ -146,9 +148,9 @@ def create_company(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.put("/{id}", summary="Update a user.")
-def update_user(
-    id: int = Path(..., description="The id of the user."),
+@router.put("/{id}", summary="Update a company.")
+def update_company(
+    id: int = Path(..., description="The id of the company."),
     address: str = Form(None, description="The address of the company."),
     email: str = Form(None, description="The email of the company."),
     phone_number: str = Form(None, description="The phone number of the company."),

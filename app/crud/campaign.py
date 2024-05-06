@@ -10,12 +10,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
     def get_multi(
         self,
         db: Session,
-        business_id: int = None,
         *,
+        business_id: int = None,
         skip=0,
         limit=10,
         sort_by="id",
-        order_by="asc",
+        order_by="desc",
         status=CampaignStatus.ALL,
     ):
         query = db.query(self.model)

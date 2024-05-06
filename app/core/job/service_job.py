@@ -41,8 +41,8 @@ def get_list_job_by_business(db: Session, data: dict, current_user):
         return constant.ERROR, 400, get_message_validation_error(e)
     if current_user.role == Role.BUSINESS:
         page.business_id = current_user.business.id
-
-    return get_list_job(db, page.dict())
+    response = get_list_job(db, page.dict())
+    return constant.SUCCESS, 200, response
 
 
 def get_list_job_by_user(db: Session, data: dict):
@@ -52,13 +52,66 @@ def get_list_job_by_user(db: Session, data: dict):
         return constant.ERROR, 400, get_message_validation_error(e)
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    return get_list_job(db, page.dict())
+    jobs = get_list_job(db, page.dict())
+
+    params = job_schema.JobCount(**data)
+    number_of_all_jobs = jobCRUD.count(db, **params.dict())
+
+    response = {
+        "count": number_of_all_jobs,
+        "jobs": jobs,
+    }
+    return constant.SUCCESS, 200, response
+
+
+def search_job_by_user(db: Session, data: dict):
+    try:
+        page = job_schema.JobSearchByUser(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+
+    page.job_status = JobStatus.PUBLISHED
+    page.job_approve_status = JobApprovalStatus.APPROVED
+    jobs, jobs_of_district = jobCRUD.search(db, **page.dict())
+
+    count = 0
+    jobs_of_district_response = []
+    if page.province_id or page.district_id:
+        for key, value in jobs_of_district:
+            count += value
+            if value > 0 and key is not None:
+                district = service_location.get_district_info(db, key)
+                jobs_of_district_response.append(
+                    {
+                        "district": district,
+                        "count": value,
+                    }
+                )
+    else:
+        params = job_schema.JobCount(**data)
+        count = jobCRUD.count(db, **params.dict())
+
+    jobs_response = []
+    for job in jobs:
+        job_res = get_job_info(db, job)
+        jobs_response.append(job_res) if job_res.company else None
+    response = {
+        "count": count,
+        "option": data,
+        "jobs": jobs_response,
+        "jobs_of_district": jobs_of_district_response,
+    }
+    return constant.SUCCESS, 200, response
 
 
 def get_list_job(db: Session, data: dict):
     jobs = jobCRUD.get_multi(db, **data)
-    jobs_response = [get_job_info(db, job) for job in jobs]
-    return constant.SUCCESS, 200, jobs_response
+    jobs_response = []
+    for job in jobs:
+        job_res = get_job_info(db, job)
+        jobs_response.append(job_res) if job_res.company else None
+
+    return jobs_response
 
 
 def get_job_by_id_for_business(db: Session, job_id: int, current_user):
@@ -79,8 +132,8 @@ def get_job_by_id_for_user(db: Session, job_id: int):
     if not job:
         return constant.ERROR, 404, "Job not found"
     if (
-        job.job_status != JobStatus.PUBLISHED
-        or job.job_approve_status != JobApprovalStatus.APPROVED
+        job.status != JobStatus.PUBLISHED
+        or job.job_approval_request.status != JobApprovalStatus.APPROVED
     ):
         return constant.ERROR, 404, "Job not found"
     job_response = get_job_info(db, job)
@@ -100,6 +153,15 @@ def get_job_by_campaign_id(db: Session, campaign_id: int, current_user):
     job = jobCRUD.get_by_campaign_id(db, campaign_id)
     job_response = get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
+
+
+def get_jobs_active_by_company(db: Session, company_id: int):
+    obj_in = {
+        "company_id": company_id,
+        "job_status": JobStatus.PUBLISHED,
+        "job_approve_status": JobApprovalStatus.APPROVED,
+    }
+    return jobCRUD.count(db, **obj_in)
 
 
 def create_job(db: Session, data: dict, current_user):
@@ -154,7 +216,7 @@ def create_job(db: Session, data: dict, current_user):
     service_job_approval_request.create_job_approval_request_job(db, job.id)
 
     job_response = get_job_info(db, job)
-    return constant.SUCCESS, 200, job_response
+    return constant.SUCCESS, 201, job_response
 
 
 def update_job(db: Session, data: dict, current_user):
@@ -218,14 +280,14 @@ def delete_job(db: Session, job_id: int, current_user):
     return constant.SUCCESS, 200, "Job has been deleted"
 
 
-def get_job_info(db: Session, job):
+def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
     working_times_response = service_working_times.get_working_times_by_job_id(
         db, job.id
     )
     work_locations_response = service_work_locations.get_work_locations_by_job_id(
         db, job.id
     )
-    company = companyCRUD.get(db, job.business_id)
+    company = companyCRUD.get_company_by_business_id(db, job.business_id)
     company_response = service_company.get_company_info(db, company)
     categories_response = service_category.get_list_category_by_model(
         db, job.job_categories
@@ -236,7 +298,7 @@ def get_job_info(db: Session, job):
     should_have_skills_response = service_skill.get_list_skill_by_model(
         db, job.should_have_skills
     )
-    job_response = job_schema.JobItemResponse(
+    job_response = Schema(
         **{
             k: v
             for k, v in job.__dict__.items()
@@ -255,5 +317,34 @@ def get_job_info(db: Session, job):
         categories=categories_response,
         must_have_skills=must_have_skills_response,
         should_have_skills=should_have_skills_response,
+    )
+    return job_response
+
+
+def get_job_info_general(db: Session, job):
+    job_response = job_schema.JobItemResponseGeneral(
+        **job.__dict__,
+    )
+    return job_response
+
+
+def search_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
+    work_locations_response = service_work_locations.get_work_locations_by_job_id(
+        db, job.id
+    )
+    company = companyCRUD.get_company_by_business_id(db, job.business_id)
+    company_response = service_company.get_company_info(db, company)
+
+    job_response = Schema(
+        **{
+            k: v
+            for k, v in job.__dict__.items()
+            if k
+            not in [
+                "locations",
+            ]
+        },
+        locations=work_locations_response,
+        company=company_response,
     )
     return job_response

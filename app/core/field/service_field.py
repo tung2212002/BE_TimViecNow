@@ -1,12 +1,14 @@
 from sqlalchemy.orm import Session
 
 from app.crud.field import field as fieldCRUD
+from app.crud.company_field import company_field as company_fieldCRUD
 from app.schema import (
     field as schema_field,
     page as schema_page,
 )
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
+from app.hepler.response_custom import custom_response_error
 
 
 def get_list_field(db: Session, data: dict):
@@ -65,3 +67,44 @@ def delete_field(db: Session, field_id: int):
 
     field = fieldCRUD.remove(db, id=field_id)
     return constant.SUCCESS, 200, field
+
+
+def check_fields_exist(db: Session, fields: list):
+    for field in fields:
+        field_data = fieldCRUD.get(db, field)
+        if not field_data:
+            return custom_response_error(
+                status_code=404,
+                status=constant.ERROR,
+                response=f"Field id {field} not found",
+            )
+
+
+def create_fields_company(db: Session, company_id: int, fields: list):
+    for field in fields:
+        company_field_data = {
+            "company_id": company_id,
+            "field_id": field,
+        }
+        company_fieldCRUD.create(db, obj_in=company_field_data)
+        field_data = fieldCRUD.get(db, field)
+        fieldCRUD.update(db, db_obj=field_data, obj_in={"count": field_data.count + 1})
+    return True
+
+
+def update_fields_company(
+    db: Session, company_id: int, new_field_ids: list, old_fields: list
+):
+    new_field_ids = list(set(new_field_ids))
+    current_field_ids = [field.field_id for field in old_fields]
+    add_field_ids = list(set(new_field_ids) - set(current_field_ids))
+    for field in old_fields:
+        if field.field_id not in new_field_ids:
+            company_fieldCRUD.remove(db, id=field.id)
+    for field_id in add_field_ids:
+        company_field_data = {
+            "company_id": company_id,
+            "field_id": field_id,
+        }
+        company_fieldCRUD.create(db, obj_in=company_field_data)
+    return new_field_ids

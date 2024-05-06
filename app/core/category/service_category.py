@@ -67,7 +67,9 @@ def check_category_exist(db: Session, category_id: int):
     category = categoryCRUD.get(db, category_id)
     if not category:
         return custom_response_error(
-            status_code=404, status=constant.ERROR, response="Category not found"
+            status_code=404,
+            status=constant.ERROR,
+            response=f"Category id {category_id} not found",
         )
     return category
 
@@ -99,6 +101,8 @@ def create_category_job(db: Session, job_id: int, category_ids: list):
         job_categoryCRUD.create(
             db, obj_in={"job_id": job_id, "category_id": category_id}
         )
+        category = categoryCRUD.get(db, category_id)
+        categoryCRUD.update(db, db_obj=category, obj_in={"count": category.count + 1})
     return category_ids
 
 

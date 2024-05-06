@@ -12,7 +12,7 @@ class SocialNetwork(Base):
     full_name = Column(String(50), nullable=True)
     phone_number = Column(String(10), nullable=True)
     avatar = Column(String(255), nullable=True)
-    email = Column(String(50), nullable=False)
+    email = Column(String(255), nullable=False)
     access_token = Column(String(500), nullable=False)
     is_active = Column(Boolean, default=True)
     role = Column(Enum(Role), default=Role.SOCIAL_NETWORK)

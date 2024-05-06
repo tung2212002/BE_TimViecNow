@@ -51,7 +51,7 @@ def get_business(
     skip: int = Query(description="The number of users to skip.", example=0),
     limit: int = Query(description="The number of users to return.", example=10),
     sort_by: str = Query(description="The field to sort by.", example="id"),
-    order_by: str = Query(description="The order to sort by.", example="asc"),
+    order_by: str = Query(description="The order to sort by.", example="desc"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
