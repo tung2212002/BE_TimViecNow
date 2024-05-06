@@ -1,12 +1,14 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 import re
 from fastapi import File, UploadFile
-from typing import Optional, List
+from typing import Optional, List, Any
+import json
 
 
 from app.hepler.enum import CompanyType, FolderBucket
 from app.core import constant
 from app.hepler.generate_file_name import generate_file_name
+from app.schema.page import Pagination
 
 
 class CompanyBase(BaseModel):
@@ -57,11 +59,24 @@ class CompanyItemResponse(BaseModel):
     company_short_description: Optional[str] = None
     scale: str
     is_verified: bool
-    total_active_jobs: int = 0
+    total_active_jobs: int = None
     tax_code: str
+    banner: Optional[str] = None
 
     @validator("logo")
     def validate_logo(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
+    @validator("banner")
+    def validate_banner(cls, v):
         if v is not None:
             if not v.startswith("https://"):
                 v = constant.BUCKET_URL + v
@@ -84,11 +99,24 @@ class CompanyPrivateResponse(BaseModel):
     tax_code: str
     is_verified: bool
     total_active_jobs: int = 0
+    banner: Optional[str] = None
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("logo")
     def validate_logo(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
+    @validator("banner")
+    def validate_banner(cls, v):
         if v is not None:
             if not v.startswith("https://"):
                 v = constant.BUCKET_URL + v
@@ -107,9 +135,18 @@ class CompanyJobResponse(CompanyBase):
                 v = constant.BUCKET_URL + v
         return v
 
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
 
 class CompanyGetRequest(BaseModel):
     id: int
+
+
+class CompanyPagination(Pagination):
+    fields: Optional[List[int]] = None
 
 
 class CompanyCreateRequest(CompanyBase):
@@ -124,6 +161,12 @@ class CompanyCreateRequest(CompanyBase):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
             v.filename = generate_file_name(FolderBucket.LOGO, v.filename)
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.dumps(v)
         return v
 
 
@@ -168,6 +211,12 @@ class CompanyUpdateRequest(BaseModel):
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
             v.filename = generate_file_name(FolderBucket.LOGO, v.filename)
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.dumps(v)
         return v
 
 

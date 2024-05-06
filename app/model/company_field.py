@@ -9,3 +9,7 @@ class CompanyField(Base):
         Integer, ForeignKey("company.id", ondelete="CASCADE"), index=True
     )
     field_id = Column(Integer, ForeignKey("field.id", ondelete="CASCADE"), index=True)
+
+    company = relationship(
+        "Company", back_populates="company_field_secondary", overlaps="fields"
+    )

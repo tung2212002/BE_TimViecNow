@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum,
     Date,
     JSON,
+    Text,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -23,9 +24,9 @@ class Job(Base):
     job_experience_id = Column(Integer, ForeignKey("job_experience.id"), nullable=False)
     job_position_id = Column(Integer, nullable=False)
     title = Column(String(255), index=True, nullable=False)
-    job_description = Column(String(500), nullable=False)
-    job_requirement = Column(String(500), nullable=False)
-    job_benefit = Column(String(500), nullable=False)
+    job_description = Column(Text, nullable=False)
+    job_requirement = Column(Text, nullable=False)
+    job_benefit = Column(Text, nullable=False)
     job_location = Column(String(255), nullable=False)
     max_salary = Column(Integer, default=0, nullable=True)
     min_salary = Column(Integer, default=0, nullable=True)
@@ -49,7 +50,7 @@ class Job(Base):
     is_vip_employer = Column(Boolean, default=False)
     is_diamond_employer = Column(Boolean, default=False)
     is_job_flash = Column(Boolean, default=False)
-    working_time_text = Column(String(255), nullable=True)
+    working_time_text = Column(Text, nullable=True)
     campaign_id = Column(
         Integer,
         ForeignKey("campaign.id", ondelete="CASCADE"),
@@ -57,12 +58,16 @@ class Job(Base):
         unique=True,
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     business = relationship("Business", back_populates="job", uselist=False)
     job_experience = relationship("JobExperience", back_populates="job", uselist=False)
     cv_applications = relationship("CVApplication", back_populates="job")
-    job_approval_request = relationship("JobApprovalRequest", back_populates="job")
+    job_approval_request = relationship(
+        "JobApprovalRequest", back_populates="job", uselist=False
+    )
     must_have_skills = relationship(
         "Skill", secondary="job_skill", overlaps="should_have_skills"
     )

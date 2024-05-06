@@ -129,7 +129,9 @@ def delete_campaign(db: Session, campaign_id: int, current_user):
 
 
 def get_campaign_info(db: Session, campaign):
-    job = service_job.get_job_info(db, campaign.job[0]) if campaign.job else None
+    job = (
+        service_job.get_job_info_general(db, campaign.job[0]) if campaign.job else None
+    )
     campaign_response = schema_campaign.CampaignItemResponse(
         **{k: v for k, v in campaign.__dict__.items() if k not in ["job"]},
         job=job.dict() if job else None,

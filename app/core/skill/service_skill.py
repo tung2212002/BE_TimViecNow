@@ -17,9 +17,7 @@ def get_list_skill(db: Session, data: dict):
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
 
-    skills = skillCRUD.get_multi(db, **page.dict())
-
-    skills_response = get_list_skill(db, skills)
+    skills_response = get_list_skill_info(db, page.dict())
     return constant.SUCCESS, 200, skills_response
 
 
@@ -58,6 +56,7 @@ def get_list_skill_by_ids(db: Session, skill_ids: list):
 
 def check_skill_exist(db: Session, skill_id: int):
     skill = skillCRUD.get(db, skill_id)
+    print(skill)
     if not skill:
         return custom_response_error(
             status=404, response="Skill id {} not found".format(skill_id)
@@ -68,6 +67,7 @@ def check_skill_exist(db: Session, skill_id: int):
 def check_skills_exist(db: Session, skill_ids: list):
     list_skills = []
     for skill_id in skill_ids:
+        print(skill_id)
         skill = check_skill_exist(db, skill_id)
         list_skills.append(skill)
     return list_skills

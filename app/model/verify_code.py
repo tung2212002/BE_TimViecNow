@@ -10,7 +10,7 @@ from app.hepler.enum import VerifyCodeStatus
 class VerifyCode(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(6), nullable=False)
-    email = Column(String(50), nullable=False)
+    email = Column(String(255), nullable=False)
     status = Column(Enum(VerifyCodeStatus), default=VerifyCodeStatus.ACTIVE)
     failed_attempts = Column(Integer, default=0, nullable=False)
     session_id = Column(String(255), index=True, nullable=False)

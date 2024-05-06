@@ -15,19 +15,6 @@ class CRUDUser(
     def get_by_email(self, db: Session, email: str) -> User:
         return db.query(self.model).filter(self.model.email == email).first()
 
-    # def get_multi(
-    #     self,
-    #     db: Session,
-    #     *,
-    #     skip: int = 0,
-    #     limit: int = 10,
-    #     sort_by: str = "id",
-    #     order_by: str = "desc"
-    # ) -> List[User]:
-    #     return super().get_multi(
-    #         db, skip=skip, limit=limit, sort_by=sort_by, order_by=order_by
-    #     )
-
     def create(self, db: Session, *, obj_in: schema_user.UserCreateRequest) -> User:
         db_obj = User(
             **obj_in.dict(exclude_unset=True, exclude={"password", "confirm_password"}),

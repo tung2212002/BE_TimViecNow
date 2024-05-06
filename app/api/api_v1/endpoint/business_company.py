@@ -17,7 +17,7 @@ def get_company(
     skip: int = Query(0, description="The number of users to skip.", example=0),
     limit: int = Query(100, description="The number of users to return.", example=100),
     sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("asc", description="The order to sort by.", example="asc"),
+    order_by: str = Query("desc", description="The order to sort by.", example="desc"),
     business_id: int = Query(None, description="The business id.", example=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
