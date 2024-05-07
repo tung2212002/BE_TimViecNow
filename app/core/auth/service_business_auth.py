@@ -20,6 +20,7 @@ from app.hepler.enum import Role, TypeAccount, VerifyType
 from app.hepler.exception_handler import get_message_validation_error
 from app.core.business.service_business import get_info_user
 from app.core.email import service_email
+from app.hepler.response_custom import custom_response_error
 
 
 def authenticate(db: Session, data: dict):
@@ -102,6 +103,23 @@ def get_current_superuser(
     return get_current_user_by_role(db, data, [Role.SUPER_USER])
 
 
+def check_permission_business(current_user, roles: List[Role], business_id: int = None):
+    if business_id:
+        if current_user.role not in [Role.SUPER_USER, Role.ADMIN]:
+            if current_user.business.id != business_id:
+                custom_response_error(
+                    status_code=403, status=constant.ERROR, response="Permission denied"
+                )
+            else:
+                return Role.BUSINESS
+    else:
+        if current_user.role not in roles:
+            custom_response_error(
+                status_code=403, status=constant.ERROR, response="Permission denied"
+            )
+    return Role.ADMIN
+
+
 def get_token_user(data: dict = Depends(JWTBearer())):
     return data["token"]
 
@@ -144,24 +162,30 @@ def refresh_token(db: Session, request):
 
 
 def verified_email(user) -> bool:
-    if not user.is_verified_email:
-        raise HTTPException(status_code=400, detail="Email not verified")
+    try:
+        if not user.is_verified_email:
+            raise HTTPException(status_code=401, detail="Email not verified")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Email not verified")
 
 
 def verified_phone(user) -> bool:
     return True
     if not user.is_verified_phone:
-        raise HTTPException(status_code=400, detail="Phone not verified")
+        raise HTTPException(status_code=401, detail="Phone not verified")
 
 
 def verified_company(user) -> bool:
-    if not user.is_verified_company:
-        raise HTTPException(status_code=400, detail="Company not verified")
+    try:
+        if not user.is_verified_company:
+            raise HTTPException(status_code=401, detail="Company not verified")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Company not verified")
 
 
 def verified_identity(user) -> bool:
     if not user.is_verified_identity:
-        raise HTTPException(status_code=400, detail="Indentity not verified")
+        raise HTTPException(status_code=401, detail="Indentity not verified")
 
 
 def verified(user, verify_types: List[VerifyType]) -> None:

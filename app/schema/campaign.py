@@ -74,12 +74,17 @@ class CampaignDeleteRequest(BaseModel):
     id: int
 
 
-class CampaignGetListRequest(Pagination):
+class CampaignGetListPagination(Pagination):
     business_id: Optional[int] = None
-    status: Optional[int] = None
+    status: Optional[CampaignStatus] = CampaignStatus.ALL
 
     @validator("status")
     def validate_status(cls, v):
         if v and not v in CampaignStatus.__members__.values():
             raise ValueError("Invalid status")
         return v
+
+
+class CountGetListPagination(BaseModel):
+    business_id: Optional[int] = None
+    status: Optional[CampaignStatus] = CampaignStatus.ALL

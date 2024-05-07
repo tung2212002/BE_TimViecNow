@@ -23,7 +23,6 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query = query.filter(self.model.business_id == business_id)
         if status != CampaignStatus.ALL:
             query = query.filter(self.model.status == status)
-
         return (
             query.order_by(
                 getattr(self.model, sort_by).desc()
@@ -34,6 +33,20 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             .limit(limit)
             .all()
         )
+
+    def count(
+        self,
+        db: Session,
+        *,
+        business_id: int = None,
+        status=CampaignStatus.ALL,
+    ):
+        query = db.query(self.model)
+        if business_id:
+            query = query.filter(self.model.business_id == business_id)
+        if status != CampaignStatus.ALL:
+            query = query.filter(self.model.status == status)
+        return query.count()
 
 
 campaign = CRUDCampaign(Campaign)
