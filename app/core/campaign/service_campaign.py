@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.crud.campaign import campaign as campaignCRUD
 from app.core.job import service_job
+from app.core.auth import service_business_auth
 from app.schema import (
     page as schema_page,
     campaign as schema_campaign,
@@ -16,31 +17,50 @@ from app.hepler.response_custom import custom_response_error
 
 def get_list_campaign(db: Session, data: dict, current_user):
     try:
-        page = schema_page.Pagination(**data)
+        page = schema_campaign.CampaignGetListPagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
     campaigns = []
     business_id = data.get("business_id")
-    if not business_id and current_user.role == Role.BUSINESS:
-        business_id = current_user.business.id
-        campaigns = campaignCRUD.get_multi(db, business_id, **page.dict())
-    elif (
-        not business_id and current_user.role not in [Role.SUPER_USER, Role.ADMIN]
-    ) or (
-        business_id
-        and current_user.business.id != business_id
-        and current_user.role not in [Role.SUPER_USER, Role.ADMIN]
-    ):
-        return constant.ERROR, 403, "Permission denied"
-    elif business_id:
-        campaigns = campaignCRUD.get_multi_by_business_id(
-            db, business_id, **page.dict()
-        )
-    else:
-        campaigns = campaignCRUD.get_multi(db, **page.dict())
+    role = service_business_auth.check_permission_business(
+        current_user,
+        roles=[Role.BUSINESS, Role.ADMIN, Role.SUPER_USER],
+        business_id=business_id,
+    )
+    # if not business_id and current_user.role == Role.BUSINESS:
+    #     business_id = current_user.business.id
+    #     campaigns = campaignCRUD.get_multi(db, business_id=business_id, **page.dict())
+    # elif (
+    #     not business_id and current_user.role not in [Role.SUPER_USER, Role.ADMIN]
+    # ) or (
+    #     business_id
+    #     and (
+    #         current_user.role != Role.SUPER_USER
+    #         or (
+    #             current_user.business.id != business_id
+    #             and current_user.role not in [Role.ADMIN]
+    #         )
+    #     )
+    # ):
+    #     return constant.ERROR, 403, "Permission denied"
+    # elif business_id:
+    #     campaigns = campaignCRUD.get_multi_by_business_id(
+    #         db, business_id, **page.dict()
+    #     )
+    # else:
+    #     campaigns = campaignCRUD.get_multi(db, **page.dict())
+    # if role == Role.BUSINESS:
+    #     campaigns = campaignCRUD.get_multi_by_business_id(
+    #         db, business_id, **page.dict()
+    #     )
 
+    # else:
+    campaigns = campaignCRUD.get_multi(db, **page.dict())
+    count = campaignCRUD.count(
+        db, **schema_campaign.CountGetListPagination(**data).dict()
+    )
     campaigns_response = [get_campaign_info(db, campaign) for campaign in campaigns]
-    return constant.SUCCESS, 200, campaigns_response
+    return constant.SUCCESS, 200, {"count": count, "campaigns": campaigns_response}
 
 
 def get_campaign_by_id(db: Session, campaign_id: int, current_user):
