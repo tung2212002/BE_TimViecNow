@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from typing import Optional, Any
 from datetime import datetime
 

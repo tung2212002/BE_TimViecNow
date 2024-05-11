@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from typing import Optional
 from datetime import datetime
 
@@ -63,7 +63,7 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
     confirm_password: str
     role: Optional[Role] = Role.BUSINESS
 
-    @validator("password")
+    @validator("confirm_password")
     def validate_password(cls, v, values):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
@@ -73,7 +73,7 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
             raise ValueError(
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
-        elif "confirm_password" in values and v != values["confirm_password"]:
+        elif "password" in values and v != values["password"]:
             raise ValueError("Password and confirm password must match")
         return v
 
@@ -86,6 +86,10 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
                 raise ValueError("Image size must be at most 2MB")
             v.filename = generate_file_name(v.filename, FolderBucket.AVATAR)
         return v
+
+    @validator("role")
+    def validate_role(cls, v):
+        return v or Role.BUSINESS
 
 
 class ManagerBaseCreate(ManagerBaseCreateRequest):

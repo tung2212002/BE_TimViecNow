@@ -1,6 +1,6 @@
-from pydantic import BaseModel, validator, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import datetime, time
+from datetime import datetime
 
 from app.schema.page import Pagination
 from app.hepler.enum import JobApprovalStatus
@@ -10,7 +10,7 @@ class JobApprovalRequestBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     job_id: int
-    status: Optional[JobApprovalStatus] = JobApprovalStatus.PENDING
+    status: Optional[JobApprovalStatus] = None
 
 
 class JobApprovalRequestCreate(JobApprovalRequestBase):
@@ -29,5 +29,5 @@ class JobApprovalRequestResponse(JobApprovalRequestBase):
 
 
 class JobApprovalFilter(Pagination):
-    status: Optional[JobApprovalStatus] = JobApprovalStatus.ALL
+    status: Optional[JobApprovalStatus] = None
     job_id: Optional[int] = None

@@ -24,5 +24,5 @@ def init_db(db: Session) -> None:
             phone_number=settings.FIRST_SUPERUSER_PHONE_NUMBER,
         )
         user_in = dict(user_in)
-        user_in["manager_base_id"] = manager_base.id
+        user_in["id"] = manager_base.id
         user = crud.admin.create(db, obj_in=user_in)

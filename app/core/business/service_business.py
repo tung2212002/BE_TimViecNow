@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 
-from app.core.security import pwd_context
 from app.crud.manager_base import manager_base as manager_baseCRUD
 from app.crud.company import company as companyCRUD
 from app.crud.business import business as businessCRUD
@@ -31,7 +30,7 @@ def get_me(db: Session, current_user):
     return constant.SUCCESS, 200, business_reseponse
 
 
-def get_business_by_email(db: Session, data: dict):
+def get_by_email(db: Session, data: dict):
     try:
         business_data = schema_business.BusinessGetByEmailRequest(**data)
     except Exception as e:
@@ -45,7 +44,7 @@ def get_business_by_email(db: Session, data: dict):
     return constant.SUCCESS, 200, business_response
 
 
-def get_business_by_id(db: Session, id: int):
+def get_by_id(db: Session, id: int):
     business = manager_baseCRUD.get(db, id)
     if not business:
         return constant.ERROR, 404, "Business not found"
@@ -55,7 +54,7 @@ def get_business_by_id(db: Session, id: int):
     return constant.SUCCESS, 200, business_response
 
 
-def get_list_business(db: Session, data: dict):
+def get(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -67,7 +66,7 @@ def get_list_business(db: Session, data: dict):
     return constant.SUCCESS, 200, businesss
 
 
-def create_business(db: Session, data: dict):
+def create(db: Session, data: dict):
     try:
         data["role"] = Role.BUSINESS
         manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
@@ -97,7 +96,7 @@ def create_business(db: Session, data: dict):
     )
 
     business_input = dict(business_data)
-    business_input["manager_base_id"] = manager_base.id
+    business_input["id"] = manager_base.id
     business = businessCRUD.create(
         db,
         obj_in=business_input,
@@ -119,13 +118,9 @@ def create_business(db: Session, data: dict):
     return response
 
 
-def update_business(db: Session, data: dict, current_user):
-    if current_user is None:
-        return constant.ERROR, 401, "Unauthorized"
-    if current_user.role != Role.BUSINESS:
-        return constant.ERROR, 401, "Unauthorized"
+def update(db: Session, data: dict, current_user):
     if data["id"] != current_user.id:
-        return constant.ERROR, 401, "Unauthorized"
+        return constant.ERROR, 401, "Permission denied"
     try:
         business = schema_business.BusinessUpdateRequest(**data)
         manager_base = schema_manager_base.ManagerBaseUpdateRequest(**data)
@@ -157,14 +152,15 @@ def update_business(db: Session, data: dict, current_user):
     return constant.SUCCESS, 200, business_response
 
 
-def delete_business(db: Session, id: int, current_user):
+def delete(db: Session, id: int, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
     if id != current_user.id:
         return constant.ERROR, 401, "Unauthorized"
     if id is None:
         return constant.ERROR, 400, "Id is required"
-    response = constant.SUCCESS, 200, manager_baseCRUD.remove(db, id)
+    manager_baseCRUD.remove(db, id=id)
+    response = constant.SUCCESS, 200, "Business has been deleted successfully"
     return response
 
 

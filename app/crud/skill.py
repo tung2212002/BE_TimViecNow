@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from .base import CRUDBase
 from app.model import Skill
-from app.schema.skill import SkillItemResponse, SkillCreate, SkillUpdate
+from app.schema.skill import SkillCreate, SkillUpdate
 
 
 class CRUDSkill(CRUDBase[Skill, SkillCreate, SkillUpdate]):

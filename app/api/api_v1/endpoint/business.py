@@ -1,26 +1,25 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    Request,
     File,
     UploadFile,
     Form,
-    Body,
     Query,
     Path,
 )
 from sqlalchemy.orm import Session
-from typing import Annotated, Any
+from typing import Annotated
 
 from app.db.base import get_db
 from app.core.auth.service_business_auth import (
     get_current_user,
     get_current_admin,
+    get_current_business,
 )
 from app.core import constant
 from app.core.business import service_business
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import OrderType, SortBy, Gender
 
 router = APIRouter()
 
@@ -47,11 +46,14 @@ def get_business(db: Session = Depends(get_db), current_user=Depends(get_current
 
 @router.get("", summary="Get list of business.")
 def get_business(
-    request: Request,
-    skip: int = Query(description="The number of users to skip.", example=0),
-    limit: int = Query(description="The number of users to return.", example=10),
-    sort_by: str = Query(description="The field to sort by.", example="id"),
-    order_by: str = Query(description="The order to sort by.", example="desc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.ASC
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
@@ -73,9 +75,9 @@ def get_business(
     - status_code (400): The request is invalid.
 
     """
-    args = {item[0]: item[1] for item in request.query_params.multi_items()}
+    args = locals()
 
-    status, status_code, response = service_business.get_list_business(db, args)
+    status, status_code, response = service_business.get(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -103,7 +105,7 @@ def get_user_bbusiness(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_business.get_business_by_id(db, id)
+    status, status_code, response = service_business.get_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -113,28 +115,89 @@ def get_user_bbusiness(
 
 @router.post("", summary="Register a new business by admin.")
 def create_business(
-    full_name: Annotated[str, Form(..., description="The full name of the business.")],
-    email: Annotated[str, Form(..., description="The email of the business.")],
-    password: Annotated[str, Form(..., description="The password of the business.")],
+    full_name: Annotated[
+        str,
+        Form(
+            ...,
+            description="The full name of the business.",
+            json_schema_extra={"example": "Tung Ong"},
+        ),
+    ],
+    email: Annotated[
+        str,
+        Form(
+            ...,
+            description="The email of the business.",
+            json_schema_extra={"example": "tungong@email.com"},
+        ),
+    ],
+    password: Annotated[
+        str,
+        Form(
+            ...,
+            description="The password of the business.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
+    ],
     confirm_password: Annotated[
-        str, Form(..., description="The confirm password of the business.")
+        str,
+        Form(
+            ...,
+            description="The confirm password of the business.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
     ],
     province_id: Annotated[
-        int, Form(..., description="The province id of the business.")
+        int,
+        Form(
+            ...,
+            description="The province id of the business.",
+            json_schema_extra={"example": 1},
+        ),
     ],
     phone_number: Annotated[
-        str, Form(..., description="The phone number of the business.")
+        str,
+        Form(
+            ...,
+            description="The phone number of the business.",
+            json_schema_extra={"example": "0323456789"},
+        ),
     ],
-    gender: Annotated[str, Form(..., description="Gender of the business.")],
+    gender: Annotated[
+        Gender,
+        Form(
+            ...,
+            description="Gender of the business.",
+            json_schema_extra={"example": Gender.OTHER},
+        ),
+    ],
     company_name: Annotated[
-        str, Form(..., description="The name company of the business.")
+        str,
+        Form(
+            ...,
+            description="The company of the business.",
+            json_schema_extra={"example": "Tung Ong Company"},
+        ),
     ],
     work_position: Annotated[
-        str, Form(..., description="The work position of the business.")
+        str,
+        Form(
+            ...,
+            description="The work position of the business.",
+            json_schema_extra={"example": "Nhân viên"},
+        ),
     ],
-    work_location: str = Form(None, description="The work location of the business."),
+    work_location: str = Form(
+        None,
+        description="The work location of the business.",
+        json_schema_extra={"example": "Hà Nội"},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the business."),
-    district_id: int = Form(None, description="The district id of the business."),
+    district_id: int = Form(
+        None,
+        description="The district id of the business.",
+        json_schema_extra={"example": 1},
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
@@ -163,10 +226,9 @@ def create_business(
     - status_code (409): The business is already registered.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-
-    status, status_code, response = service_business.create_business(db, data)
+    status, status_code, response = service_business.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -177,18 +239,49 @@ def create_business(
 @router.put("/{id}", summary="Update a business.")
 def update_business(
     id: int = Path(..., description="The id of the user.", example=1),
-    full_name: str = Form(None, description="The full name of the user."),
-    phone_number: str = Form(None, description="The phone number of the user."),
-    avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    province_id: int = Form(None, description="The province id of the user."),
-    district_id: int = Form(None, description="The district id of the user."),
-    work_position: str = Form(None, description="The work position of the user."),
-    work_location: str = Form(None, description="The work location of the user."),
-    company: str = Form(None, description="The company of the user."),
-    gender: str = Form(None, description="Gender of the user."),
-    password: str = Form(None, description="The password of the user."),
+    full_name: str = Form(
+        None,
+        description="The full name of the business.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    province_id: int = Form(
+        None,
+        description="The province id of the business.",
+        json_schema_extra={"example": 1},
+    ),
+    phone_number: str = Form(
+        None,
+        description="The phone number of the business.",
+        json_schema_extra={"example": "0323456789"},
+    ),
+    gender: Gender = Form(
+        None,
+        description="Gender of the business.",
+        json_schema_extra={"example": Gender.OTHER},
+    ),
+    company_name: str = Form(
+        None,
+        description="The company of the business.",
+        json_schema_extra={"example": "Tung Ong Company"},
+    ),
+    work_position: str = Form(
+        None,
+        description="The work position of the business.",
+        json_schema_extra={"example": "Nhân viên"},
+    ),
+    work_location: str = Form(
+        None,
+        description="The work location of the business.",
+        json_schema_extra={"example": "Hà Nội"},
+    ),
+    avatar: UploadFile = File(None, description="The profile avatar of the business."),
+    district_id: int = Form(
+        None,
+        description="The district id of the business.",
+        json_schema_extra={"example": 1},
+    ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_business),
 ):
     """
     Update a business.
@@ -205,9 +298,8 @@ def update_business(
     - district_id (int): The district id of the user.
     - work_position (str): The work position of the user.
     - work_location (str): The work location of the user.
-    - company (str): The company of
+    - company_name (str): The company of the user.
     - gender (str): The gender of the user.
-    - password (str): The password of the user.
 
     Returns:
     - status_code (200): The user has been updated successfully.
@@ -216,12 +308,9 @@ def update_business(
     - status_code (404): The user is not found.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-
-    status, status_code, response = service_business.update_business(
-        db, data, current_user
-    )
+    status, status_code, response = service_business.update(db, data, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -249,10 +338,7 @@ def delete_business(
     - status_code (404): The user is not found.
 
     """
-
-    status, status_code, response = service_business.delete_business(
-        db, id, current_user
-    )
+    status, status_code, response = service_business.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

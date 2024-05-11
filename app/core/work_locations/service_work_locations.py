@@ -1,10 +1,8 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 from app.crud.work_location import work_location as work_locationCRUD
 from app.crud.province import province as provinceCRUD
 from app.crud.district import district as districtCRUD
-from app.model.work_location import WorkLocation
 from app.schema import (
     work_location as work_location_schema,
     province as schema_province,

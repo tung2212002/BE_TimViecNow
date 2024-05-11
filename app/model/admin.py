@@ -1,13 +1,18 @@
-from sqlalchemy import Column, String, Enum, Integer, ForeignKey, DateTime, Boolean
-from sqlalchemy.sql import func
+from sqlalchemy import Column, String, Enum, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
-from app.hepler.enum import Role, Gender
+from app.hepler.enum import Gender
 from app.db.base_class import Base
 
 
 class Admin(Base):
-    manager_base_id = Column(
+    # manager_base_id = Column(
+    #     Integer,
+    #     ForeignKey("manager_base.id", ondelete="CASCADE"),
+    #     primary_key=True,
+    #     index=True,
+    # )
+    id = Column(
         Integer,
         ForeignKey("manager_base.id", ondelete="CASCADE"),
         primary_key=True,
@@ -17,5 +22,11 @@ class Admin(Base):
     phone_number = Column(String(10), nullable=False)
     gender = Column(Enum(Gender), nullable=True)
 
-    manager_base = relationship("ManagerBase", back_populates="admin", uselist=False)
+    manager_base = relationship(
+        "ManagerBase",
+        back_populates="admin",
+        uselist=False,
+        single_parent=True,
+        passive_deletes=True,
+    )
     approval_log = relationship("ApprovalLog", back_populates="admin")

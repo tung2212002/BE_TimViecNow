@@ -21,8 +21,16 @@ class ManagerBase(Base):
     last_login = Column(DateTime(timezone=True), default=func.now())
 
     admin = relationship(
-        "Admin", back_populates="manager_base", lazy=True, uselist=False
+        "Admin",
+        back_populates="manager_base",
+        lazy=True,
+        uselist=False,
+        passive_deletes=True,
     )
     business = relationship(
-        "Business", back_populates="manager_base", lazy=True, uselist=False
+        "Business",
+        back_populates="manager_base",
+        lazy=True,
+        uselist=False,
+        passive_deletes=True,
     )

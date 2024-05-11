@@ -1,14 +1,10 @@
 from sqlalchemy.orm import Session
 
 from app.crud.company import company as companyCRUD
-from app.crud.field import field as fieldCRUD
-from app.crud.company_field import company_field as company_fieldCRUD
 from app.crud.business import business as businessCRUD
-
+from app.crud.company_business import company_business as company_businessCRUD
 from app.schema import (
-    page as schema_page,
     company as schema_company,
-    job as schema_job,
     field as schema_field,
 )
 from app.hepler.enum import Role
@@ -20,12 +16,18 @@ from app.core.field import service_field
 from app.core.job import service_job
 
 
-def get_list_company(db: Session, data: dict):
+def get(db: Session, data: dict, current_user=None):
     try:
         page = schema_company.CompanyPagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    companies = companyCRUD.get_multi(db, **page.dict())
+    if data.get("business_id") and current_user and current_user.role == Role.BUSINESS:
+        if data.get("business_id") != current_user.id:
+            return constant.ERROR, 403, "Permission denied"
+        company = current_user.business.company
+        return constant.SUCCESS, 200, get_company_info(db, company)
+
+    companies = companyCRUD.get_multi(db, **page.model_dump())
     companies_response = []
     if data.get("fields"):
         companies_response = [
@@ -37,7 +39,7 @@ def get_list_company(db: Session, data: dict):
     return constant.SUCCESS, 200, companies_response
 
 
-def get_company_by_id(db: Session, company_id: int):
+def get_by_id(db: Session, company_id: int):
     company = companyCRUD.get(db, company_id)
     if not company:
         return constant.ERROR, 404, "Company not found"
@@ -45,14 +47,12 @@ def get_company_by_id(db: Session, company_id: int):
     return constant.SUCCESS, 200, company_response
 
 
-def create_company(db: Session, data: dict, current_user):
+def create(db: Session, data: dict, current_user):
     business = current_user.business
     if not business:
         return constant.ERROR, 404, "Business not found"
     service_business_auth.verified_level(business, 2)
-    if companyCRUD.get_company_by_business_id(
-        db=db, business_id=current_user.business.id
-    ):
+    if companyCRUD.get_company_by_business_id(db=db, business_id=current_user.id):
         return constant.ERROR, 403, "Permission denied"
     if companyCRUD.get_company_by_tax_code(db, data.get("tax_code")):
         return constant.ERROR, 400, "Tax code already exists"
@@ -74,24 +74,23 @@ def create_company(db: Session, data: dict, current_user):
 
     if current_user.role == Role.BUSINESS:
         company_data = {
-            **company_data.dict(),
-            "business_id": current_user.business.id,
+            **company_data.model_dump(),
+            "business_id": current_user.id,
         }
     obj_in = schema_company.CompanyCreate(**company_data)
     company = companyCRUD.create(db, obj_in=obj_in)
     if fields:
         service_field.create_fields_company(db, company.id, fields)
-    businessCRUD.set_company(db=db, db_obj=business, company_id=company.id)
     company_response = get_company_info_private(db, company)
     return constant.SUCCESS, 201, company_response
 
 
-def update_company(db: Session, data: dict, current_user):
+def update(db: Session, data: dict, current_user):
     company_id = data.get("company_id")
     company = companyCRUD.get(db, company_id)
     if not company:
         return constant.ERROR, 404, "Company not found"
-    if company.business_id != current_user.business.id:
+    if company.business_id != current_user.id:
         return constant.ERROR, 403, "Permission denied"
     try:
         company_data = schema_company.CompanyUpdateRequest(**data)
@@ -107,7 +106,7 @@ def update_company(db: Session, data: dict, current_user):
         s3_service.upload_file(logo, key)
         company_data.logo = key
 
-    obj_in = schema_company.CompanyUpdate(**company_data.dict())
+    obj_in = schema_company.CompanyUpdate(**company_data.model_dump())
     company = companyCRUD.update(db, db_obj=company, obj_in=obj_in)
     service_field.update_fields_company(db, company.id, new_fields, old_fields)
 
@@ -115,11 +114,14 @@ def update_company(db: Session, data: dict, current_user):
     return constant.SUCCESS, 200, company_response
 
 
-def delete_company(db: Session, company_id: int, current_user):
+def delete(db: Session, company_id: int, current_user):
     company = companyCRUD.get(db, company_id)
+    business = current_user.business
+    if not business:
+        return constant.ERROR, 404, "Business not found"
     if not company:
         return constant.ERROR, 404, "Company not found"
-    if company.business_id != current_user.business.id:
+    if company.business_id != business.id:
         return constant.ERROR, 403, "Permission denied"
     company = companyCRUD.remove(db, id=company_id)
     return constant.SUCCESS, 200, "Company has been deleted"

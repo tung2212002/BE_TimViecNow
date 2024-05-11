@@ -11,13 +11,13 @@ from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 
 
-def get_list_job_position(db: Session, data: dict):
+def get_position(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
 
-    job_positions = job_positionCRUD.get_multi(db, **page.dict())
+    job_positions = job_positionCRUD.get_multi(db, **page.model_dump())
 
     job_positions_response = [
         schema_job_position.JobPositionItemResponse(**job_position.__dict__)
@@ -26,13 +26,13 @@ def get_list_job_position(db: Session, data: dict):
     return constant.SUCCESS, 200, job_positions_response
 
 
-def get_list_group_position(db: Session, data: dict):
+def get_group(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
 
-    group_positions = group_positionCRUD.get_multi(db, **page.dict())
+    group_positions = group_positionCRUD.get_multi(db, **page.model_dump())
 
     group_position_response = [
         schema_group_position.GroupPositionItemResponse(
@@ -48,8 +48,8 @@ def get_list_group_position(db: Session, data: dict):
     return constant.SUCCESS, 200, group_position_response
 
 
-def get_job_position_by_id(db: Session, job_position_id: int):
-    job_position = job_positionCRUD.get(db, job_position_id)
+def get_position_by_id(db: Session, id: int):
+    job_position = job_positionCRUD.get(db, id)
     if not job_position:
         return constant.ERROR, 404, "Job position not found"
     job_position_response = schema_job_position.JobPositionItemResponse(
@@ -58,8 +58,8 @@ def get_job_position_by_id(db: Session, job_position_id: int):
     return constant.SUCCESS, 200, job_position_response
 
 
-def get_group_position_by_id(db: Session, group_position_id: int):
-    group_position = group_positionCRUD.get(db, group_position_id)
+def get_group_by_id(db: Session, id: int):
+    group_position = group_positionCRUD.get(db, id)
     if not group_position:
         return constant.ERROR, 404, "Group position not found"
     group_position_response = schema_group_position.GroupPositionItemResponse(
@@ -72,20 +72,20 @@ def get_group_position_by_id(db: Session, group_position_id: int):
     return constant.SUCCESS, 200, group_position_response
 
 
-def create_job_position(db: Session, data: dict):
+def create_position(db: Session, data: dict):
     try:
         job_position_data = schema_job_position.JobPositionCreateRequest(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    group_position_id = job_position_data.group_position_id
-    if not group_positionCRUD.get(db, group_position_id) or not group_position_id:
+    id = job_position_data.id
+    if not group_positionCRUD.get(db, id) or not id:
         return constant.ERROR, 404, "Group position not found"
 
     job_position = job_positionCRUD.create(db, obj_in=job_position_data)
     return constant.SUCCESS, 201, job_position
 
 
-def create_group_position(db: Session, data: dict):
+def create_group(db: Session, data: dict):
     try:
         group_position_data = schema_group_position.GroupPositionCreateRequest(**data)
     except Exception as e:
@@ -98,8 +98,8 @@ def create_group_position(db: Session, data: dict):
     return constant.SUCCESS, 201, group_position
 
 
-def update_job_position(db: Session, job_position_id: int, data: dict):
-    job_position = job_positionCRUD.get(db, job_position_id)
+def update_position(db: Session, id: int, data: dict):
+    job_position = job_positionCRUD.get(db, id)
     if not job_position:
         return constant.ERROR, 404, "Job position not found"
 
@@ -114,8 +114,8 @@ def update_job_position(db: Session, job_position_id: int, data: dict):
     return constant.SUCCESS, 200, job_position
 
 
-def update_group_position(db: Session, group_position_id: int, data: dict):
-    group_position = group_positionCRUD.get(db, group_position_id)
+def update_group(db: Session, id: int, data: dict):
+    group_position = group_positionCRUD.get(db, id)
     if not group_position:
         return constant.ERROR, 404, "Group position not found"
 
@@ -130,19 +130,19 @@ def update_group_position(db: Session, group_position_id: int, data: dict):
     return constant.SUCCESS, 200, group_position
 
 
-def delete_job_position(db: Session, job_position_id: int):
-    job_position = job_positionCRUD.get(db, job_position_id)
+def delete_position(db: Session, id: int):
+    job_position = job_positionCRUD.get(db, id)
     if not job_position:
         return constant.ERROR, 404, "Job position not found"
 
-    job_position = job_positionCRUD.remove(db, id=job_position_id)
+    job_position = job_positionCRUD.remove(db, id=id)
     return constant.SUCCESS, 200, job_position
 
 
-def delete_group_position(db: Session, group_position_id: int):
-    group_position = group_positionCRUD.get(db, group_position_id)
+def delete_group(db: Session, id: int):
+    group_position = group_positionCRUD.get(db, id)
     if not group_position:
         return constant.ERROR, 404, "Group position not found"
 
-    group_position = group_positionCRUD.remove(db, id=group_position_id)
+    group_position = group_positionCRUD.remove(db, id=id)
     return constant.SUCCESS, 200, group_position

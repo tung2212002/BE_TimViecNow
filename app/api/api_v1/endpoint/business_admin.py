@@ -1,19 +1,14 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    Request,
     File,
     UploadFile,
     Form,
-    Body,
     Query,
     Path,
 )
 from sqlalchemy.orm import Session
-from typing import Annotated, Any
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from typing import Annotated
 
 from app.db.base import get_db
 from app.core.auth.service_business_auth import (
@@ -22,6 +17,7 @@ from app.core.auth.service_business_auth import (
 )
 from app.core import constant
 from app.core.admin import service_admin
+from app.hepler.enum import OrderType, SortBy, Gender
 from app.hepler.response_custom import custom_response_error, custom_response
 
 router = APIRouter()
@@ -29,11 +25,14 @@ router = APIRouter()
 
 @router.get("", summary="Get list of admin by superuser.")
 def get(
-    request: Request,
-    skip: int = Query(description="The number of users to skip.", example=0),
-    limit: int = Query(description="The number of users to return.", example=10),
-    sort_by: str = Query(description="The field to sort by.", example="id"),
-    order_by: str = Query(description="The order to sort by.", example="desc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.ASC
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_superuser),
 ):
@@ -55,9 +54,9 @@ def get(
     - status_code (400): The request is invalid.
 
     """
-    args = {item[0]: item[1] for item in request.query_params.multi_items()}
+    args = locals()
 
-    status, status_code, response = service_admin.get_list_admin(db, args)
+    status, status_code, response = service_admin.get(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -85,7 +84,7 @@ def get_by_id(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_admin.get_admin_by_id(db, id)
+    status, status_code, response = service_admin.get_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -95,16 +94,51 @@ def get_by_id(
 
 @router.post("", summary="Register a new admin by superuser.")
 def create_admin(
-    full_name: Annotated[str, Form(..., description="The full name of the admin.")],
-    email: Annotated[str, Form(..., description="The email of the admin.")],
-    password: Annotated[str, Form(..., description="The password of the admin.")],
+    full_name: Annotated[
+        str,
+        Form(
+            ...,
+            description="The full name of the admin.",
+            json_schema_extra={"example": "Tung Ong"},
+        ),
+    ],
+    email: Annotated[
+        str,
+        Form(
+            ...,
+            description="The email of the admin.",
+            json_schema_extra={"example": "ongtung@gmail.com"},
+        ),
+    ],
+    password: Annotated[
+        str,
+        Form(
+            ...,
+            description="The password of the admin.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
+    ],
     confirm_password: Annotated[
-        str, Form(..., description="The confirm password of the admin.")
+        str,
+        Form(
+            ...,
+            description="The confirm password of the admin.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
     ],
     phone_number: Annotated[
-        str, Form(..., description="The phone number of the admin.")
+        str,
+        Form(
+            ...,
+            description="The phone number of the admin.",
+            json_schema_extra={"example": "0323456789"},
+        ),
     ],
-    gender: str = Form(None, description="Gender of the admin."),
+    gender: str = Form(
+        None,
+        description="Gender of the admin.",
+        json_schema_extra={"example": Gender.OTHER},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the admin."),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_superuser),
@@ -130,9 +164,9 @@ def create_admin(
     - status_code (409): The admin is already registered.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-    status, status_code, response = service_admin.create_admin(db, data)
+    status, status_code, response = service_admin.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -143,11 +177,27 @@ def create_admin(
 @router.put("/{id}", summary="Update a admin.")
 def update_admin(
     id: int = Path(..., description="The id of the user.", example=1),
-    full_name: str = Form(None, description="The full name of the user."),
-    phone_number: str = Form(None, description="The phone number of the user."),
+    full_name: str = Form(
+        None,
+        description="The full name of the user.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    phone_number: str = Form(
+        None,
+        description="The phone number of the user.",
+        json_schema_extra={"example": "0323456789"},
+    ),
+    gender: Gender = Form(
+        None,
+        description="Gender of the user.",
+        json_schema_extra={"example": Gender.OTHER},
+    ),
+    password: str = Form(
+        None,
+        description="The password of the user.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    gender: str = Form(None, description="Gender of the user."),
-    password: str = Form(None, description="The password of the user."),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
@@ -172,9 +222,9 @@ def update_admin(
 
     """
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
+    data = locals()
 
-    status, status_code, response = service_admin.update_admin(db, data, current_user)
+    status, status_code, response = service_admin.update(db, data, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -203,7 +253,7 @@ def delete_admin(
 
     """
 
-    status, status_code, response = service_admin.delete_admin(db, id, current_user)
+    status, status_code, response = service_admin.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

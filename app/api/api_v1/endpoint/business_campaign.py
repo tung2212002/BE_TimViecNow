@@ -1,27 +1,32 @@
-from fastapi import APIRouter, Depends, Query, Path, Body, Request
+from fastapi import APIRouter, Depends, Query, Path, Body
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.db.base import get_db
 from app.core import constant
 from app.core.campaign import service_campaign
-from app.core.auth.service_business_auth import get_current_user, get_current_admin
+from app.core.auth.service_business_auth import get_current_user, get_current_business
 from app.hepler.response_custom import custom_response_error, custom_response
-from app.hepler.enum import CampaignStatus
+from app.hepler.enum import CampaignStatus, OrderType, SortBy
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of campaign.")
 def get_campaign(
-    request: Request,
-    skip: int = Query(0, description="The number of users to skip.", example=0),
-    limit: int = Query(100, description="The number of users to return.", example=100),
-    sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("desc", description="The order to sort by.", example="desc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.DESC
+    ),
     business_id: int = Query(None, description="The business id.", example=1),
-    status: str = Query(
-        CampaignStatus.OPEN, description="The status of campaign.", example=1
+    company_id: int = Query(None, description="The company id.", example=1),
+    status: CampaignStatus = Query(
+        None,
+        description="The status of campaign.",
+        example=CampaignStatus.OPEN,
     ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -37,6 +42,7 @@ def get_campaign(
     - sort_by (str): The field to sort by.
     - order_by (str): The order to sort by.
     - business_id (int): The business id.
+    - company_id (int): The company id.
     - status (int): The status of campaign.
 
     Returns:
@@ -45,11 +51,9 @@ def get_campaign(
     - status_code (403): The permission is denied.
 
     """
-    args = {item[0]: item[1] for item in request.query_params.multi_items()}
+    args = locals()
 
-    status_message, status_code, response = service_campaign.get_list_campaign(
-        db, {**args}, current_user
-    )
+    status_message, status_code, response = service_campaign.get(db, args, current_user)
 
     if status_message == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -57,9 +61,9 @@ def get_campaign(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.get("/{campaign_id}", summary="Get campaign by id.")
+@router.get("/{id}", summary="Get campaign by id.")
 def get_campaign_by_id(
-    campaign_id: int = Path(description="The campaign id.", example=1),
+    id: int = Path(description="The campaign id.", example=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -69,7 +73,7 @@ def get_campaign_by_id(
     This endpoint allows getting a campaign by id.
 
     Parameters:
-    - campaign_id (int): The campaign id.
+    - id (int): The campaign id.
 
     Returns:
     - status_code (200): The campaign has been found successfully.
@@ -77,9 +81,7 @@ def get_campaign_by_id(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = service_campaign.get_campaign_by_id(
-        db, campaign_id, current_user
-    )
+    status, status_code, response = service_campaign.get_by_id(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -98,7 +100,7 @@ def create_campaign(
         },
     ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_business),
 ):
     """
     Create campaign.
@@ -114,9 +116,7 @@ def create_campaign(
     - status_code (400): The request is invalid.
 
     """
-    status, status_code, response = service_campaign.create_campaign(
-        db, data, current_user
-    )
+    status, status_code, response = service_campaign.create(db, data, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -124,9 +124,9 @@ def create_campaign(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.put("/{campaign_id}", summary="Update campaign.")
+@router.put("/{id}", summary="Update campaign.")
 def update_campaign(
-    campaign_id: int = Path(description="The campaign id.", example=1),
+    id: int = Path(description="The campaign id.", example=1),
     data: dict = Body(
         ...,
         description="The campaign data.",
@@ -136,7 +136,7 @@ def update_campaign(
         },
     ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_business),
 ):
     """
     Update campaign.
@@ -144,7 +144,7 @@ def update_campaign(
     This endpoint allows updating a campaign.
 
     Parameters:
-    - campaign_id (int): The campaign id.
+    - id (int): The campaign id.
     - title (str): The title of the campaign.
     - is_flash (bool): The campaign is flash.
 
@@ -155,8 +155,8 @@ def update_campaign(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = service_campaign.update_campaign(
-        db, {**data, "campaign_id": campaign_id}, current_user
+    status, status_code, response = service_campaign.update(
+        db, {**data, "id": id}, current_user
     )
 
     if status == constant.ERROR:
@@ -165,9 +165,9 @@ def update_campaign(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.delete("/{campaign_id}", summary="Delete campaign.")
+@router.delete("/{id}", summary="Delete campaign.")
 def delete_campaign(
-    campaign_id: int = Path(description="The campaign id.", example=1),
+    id: int = Path(description="The campaign id.", example=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -177,7 +177,7 @@ def delete_campaign(
     This endpoint allows deleting a campaign.
 
     Parameters:
-    - campaign_id (int): The campaign id.
+    - id (int): The campaign id.
 
     Returns:
     - status_code (200): The campaign has been deleted successfully.
@@ -185,9 +185,7 @@ def delete_campaign(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = service_campaign.delete_campaign(
-        db, campaign_id, current_user
-    )
+    status, status_code, response = service_campaign.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

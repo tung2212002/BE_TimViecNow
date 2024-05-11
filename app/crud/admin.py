@@ -1,11 +1,10 @@
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.core.security import get_password_hash, verify_password
+from app.core.security import verify_password
 from .base import CRUDBase
 from app.model.admin import Admin
-from app.model.manager_base import ManagerBase
-from app.schema import admin as schema_admin, manager_base as schema_manager_base
+from app.schema import admin as schema_admin
 from app.hepler.enum import Role
 from app.crud.manager_base import manager_base
 

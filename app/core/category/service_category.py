@@ -11,7 +11,7 @@ from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
 
 
-def get_list_category(db: Session, data: dict):
+def get(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -21,11 +21,44 @@ def get_list_category(db: Session, data: dict):
     return constant.SUCCESS, 200, categories_response
 
 
-def get_category_by_id(db: Session, category_id: int):
+def get_by_id(db: Session, category_id: int):
     category_response = get_category_info(db, category_id)
     if not category_response:
         return constant.ERROR, 404, "Category not found"
     return constant.SUCCESS, 200, category_response
+
+
+def create(db: Session, data: dict):
+    try:
+        category_data = schema_category.CategoryCreateRequest(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    category = categoryCRUD.get_by_name(db, category_data.name)
+    if category:
+        return constant.ERROR, 409, "Category already registered"
+
+    category = categoryCRUD.create(db, obj_in=category_data)
+    return constant.SUCCESS, 201, category
+
+
+def update(db: Session, category_id: int, data):
+    try:
+        data = schema_category.CategoryUpdateRequest(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    category = categoryCRUD.get(db, category_id)
+    if not category:
+        return constant.ERROR, 404, "Category not found"
+    response = categoryCRUD.update(db, db_obj=category, obj_in=data)
+    return constant.SUCCESS, 200, response
+
+
+def delete(db: Session, category_id: int):
+    category = categoryCRUD.get(db, category_id)
+    if not category:
+        return constant.ERROR, 404, "Category not found"
+    response = categoryCRUD.remove(db, id=category_id)
+    return constant.SUCCESS, 200, response
 
 
 def get_category_info(db: Session, category):
@@ -82,27 +115,12 @@ def check_categories_exist(db: Session, category_ids: list):
     return list_categories
 
 
-def create_category(db: Session, data: dict):
-    try:
-        category_data = schema_category.CategoryCreateRequest(**data)
-    except Exception as e:
-        return constant.ERROR, 400, get_message_validation_error(e)
-    category = categoryCRUD.get_by_name(db, category_data.name)
-    if category:
-        return constant.ERROR, 409, "Category already registered"
-
-    category = categoryCRUD.create(db, obj_in=category_data)
-    return constant.SUCCESS, 201, category
-
-
 def create_category_job(db: Session, job_id: int, category_ids: list):
     category_ids = list(set(category_ids))
     for category_id in category_ids:
         job_categoryCRUD.create(
             db, obj_in={"job_id": job_id, "category_id": category_id}
         )
-        category = categoryCRUD.get(db, category_id)
-        categoryCRUD.update(db, db_obj=category, obj_in={"count": category.count + 1})
     return category_ids
 
 

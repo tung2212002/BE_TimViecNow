@@ -11,7 +11,7 @@ from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
 
 
-def get_list_skill(db: Session, data: dict):
+def get(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -21,11 +21,34 @@ def get_list_skill(db: Session, data: dict):
     return constant.SUCCESS, 200, skills_response
 
 
-def get_skill_by_id(db: Session, skill_id: int):
-    skill_response = get_skill_info_by_id(db, skill_id)
+def get_by_id(db: Session, id: int):
+    skill_response = get_skill_info_by_id(db, id)
     if not skill_response:
         return constant.ERROR, 404, "Skill not found"
     return constant.SUCCESS, 200, skill_response
+
+
+def update(db: Session, id: int, data: dict):
+    skill = skillCRUD.get(db, id)
+    if not skill:
+        return constant.ERROR, 404, "Skill not found"
+
+    try:
+        skill_data = schema_skill.SkillUpdateRequest(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+
+    skill = skillCRUD.update(db, db_obj=skill, obj_in=skill_data)
+    return constant.SUCCESS, 200, skill
+
+
+def delete(db: Session, id: int):
+    skill = skillCRUD.get(db, id)
+    if not skill:
+        return constant.ERROR, 404, "Skill not found"
+
+    skill = skillCRUD.remove(db, id=id)
+    return constant.SUCCESS, 200, skill
 
 
 def get_skill_info(db: Session, skill):
@@ -56,7 +79,6 @@ def get_list_skill_by_ids(db: Session, skill_ids: list):
 
 def check_skill_exist(db: Session, skill_id: int):
     skill = skillCRUD.get(db, skill_id)
-    print(skill)
     if not skill:
         return custom_response_error(
             status=404, response="Skill id {} not found".format(skill_id)
@@ -67,7 +89,6 @@ def check_skill_exist(db: Session, skill_id: int):
 def check_skills_exist(db: Session, skill_ids: list):
     list_skills = []
     for skill_id in skill_ids:
-        print(skill_id)
         skill = check_skill_exist(db, skill_id)
         list_skills.append(skill)
     return list_skills
@@ -93,20 +114,6 @@ def create_skill_job(db: Session, job_id: int, skill_ids: list):
     return skill_ids
 
 
-def update_skill(db: Session, skill_id: int, data: dict):
-    skill = skillCRUD.get(db, skill_id)
-    if not skill:
-        return constant.ERROR, 404, "Skill not found"
-
-    try:
-        skill_data = schema_skill.SkillUpdateRequest(**data)
-    except Exception as e:
-        return constant.ERROR, 400, get_message_validation_error(e)
-
-    skill = skillCRUD.update(db, db_obj=skill, obj_in=skill_data)
-    return constant.SUCCESS, 200, skill
-
-
 def update_skill_job(db: Session, new_skill_ids: list, skills: list):
     new_skill_ids = list(set(new_skill_ids))
     current_skill_ids = [skill.skill_id for skill in skills]
@@ -117,12 +124,3 @@ def update_skill_job(db: Session, new_skill_ids: list, skills: list):
     for skill_id in add_skill_ids:
         job_skillCRUD.create(db, obj_in={"job_id": skill.job_id, "skill_id": skill_id})
     return new_skill_ids
-
-
-def delete_skill(db: Session, skill_id: int):
-    skill = skillCRUD.get(db, skill_id)
-    if not skill:
-        return constant.ERROR, 404, "Skill not found"
-
-    skill = skillCRUD.remove(db, id=skill_id)
-    return constant.SUCCESS, 200, skill

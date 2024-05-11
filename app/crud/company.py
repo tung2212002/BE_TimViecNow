@@ -1,4 +1,3 @@
-from typing import List
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
@@ -24,11 +23,15 @@ class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest])
         limit = kwargs.get("limit")
         sort_by = kwargs.get("sort_by")
         order_by = kwargs.get("order_by")
+        key_word = kwargs.get("keyword")
+        fields = kwargs.get("fields")
         query = db.query(self.model)
-        if kwargs.get("fields"):
+        if fields:
             query = query.join(CompanyField, CompanyField.company_id == self.model.id)
             for field_id in kwargs.get("fields"):
                 query = query.filter(CompanyField.field_id == field_id)
+        if key_word:
+            query = query.filter(self.model.name.ilike(f"%{key_word}%"))
         return (
             query.order_by(
                 getattr(self.model, sort_by).desc()
