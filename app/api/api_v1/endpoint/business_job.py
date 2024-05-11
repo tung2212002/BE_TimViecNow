@@ -1,26 +1,19 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     Request,
-    File,
-    UploadFile,
-    Form,
     Body,
     Query,
     Path,
 )
 from sqlalchemy.orm import Session
-from typing import Annotated, Any, List
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
-from datetime import datetime, date
 
 from app.db.base import get_db
-from app.core.auth.service_business_auth import get_current_user
+from app.core.auth.service_business_auth import get_current_user, get_current_business
 from app.core import constant
 from app.core.job import service_job
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import SortBy, OrderType, JobStatus, JobApprovalStatus
 
 router = APIRouter()
 
@@ -28,15 +21,21 @@ router = APIRouter()
 @router.get("", summary="Get list of job.")
 def get_job(
     request: Request,
-    skip: int = Query(0, description="The number of users to skip.", example=0),
-    limit: int = Query(100, description="The number of users to return.", example=100),
-    sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("desc", description="The order to sort by.", example="desc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.DESC
+    ),
     business_id: int = Query(None, description="The business id.", example=1),
     company_id: int = Query(None, description="The company id.", example=1),
-    job_status: str = Query(None, description="The job status.", example="all"),
-    job_approve_status: str = Query(
-        None, description="The job approve status.", example="all"
+    job_status: JobStatus = Query(
+        None, description="The job status.", example=JobStatus.PUBLISHED
+    ),
+    job_approve_status: JobApprovalStatus = Query(
+        None, description="The job approve status.", example=JobApprovalStatus.PENDING
     ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -65,7 +64,7 @@ def get_job(
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
 
-    status, status_code, response = service_job.get_list_job_by_business(
+    status, status_code, response = service_job.get_by_business(
         db, {**args}, current_user
     )
 
@@ -99,7 +98,7 @@ def get_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.get_job_by_id_for_business(
+    status, status_code, response = service_job.get_by_id_for_business(
         db, job_id, current_user
     )
 
@@ -151,7 +150,7 @@ def create_job(
         },
     ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_business),
 ):
     """
     Create a new job.
@@ -168,7 +167,7 @@ def create_job(
     - status_code (409): The job is already registered.
 
     """
-    status, status_code, response = service_job.create_job(db, data, current_user)
+    status, status_code, response = service_job.create(db, data, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -177,7 +176,7 @@ def create_job(
 
 
 @router.put("/{job_id}", summary="Update a new job.")
-def create_job(
+def Update_job(
     job_id: int = Path(
         ...,
         description="The job id.",
@@ -222,7 +221,7 @@ def create_job(
         },
     ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_business),
 ):
     """
     Update a new job.
@@ -230,6 +229,7 @@ def create_job(
     This endpoint allows update a new job with the provided information.
 
     Parameters:
+    - job_id (int): The job id.
     - data (dict): The information of the job.
 
     Returns:
@@ -239,7 +239,7 @@ def create_job(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.update_job(
+    status, status_code, response = service_job.update(
         db, {**data, "job_id": job_id}, current_user
     )
 
@@ -274,7 +274,7 @@ def delete_job(
     - status_code (403): The permission is denied.
 
     """
-    status, status_code, response = service_job.delete_job(db, job_id, current_user)
+    status, status_code, response = service_job.delete(db, job_id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

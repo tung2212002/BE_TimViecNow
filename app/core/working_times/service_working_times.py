@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 from app.crud.working_time import working_time as working_timeCRUD
-from app.model.working_time import WorkingTime
 from app.schema import working_time as working_time_schema
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error

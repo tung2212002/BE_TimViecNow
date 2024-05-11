@@ -8,6 +8,7 @@ from app.api.api_v1.endpoint import (
     business_admin,
     location,
     position,
+    position_group,
     category,
     skill,
     field,
@@ -25,12 +26,15 @@ api_router.include_router(user.router, prefix="/user/users", tags=["user"])
 api_router.include_router(verify.router, prefix="/verify", tags=["verify"])
 api_router.include_router(location.router, prefix="/location", tags=["location"])
 api_router.include_router(position.router, prefix="/position", tags=["position"])
+api_router.include_router(
+    position_group.router, prefix="/position_group", tags=["position_group"]
+)
 api_router.include_router(category.router, prefix="/category", tags=["category"])
 api_router.include_router(skill.router, prefix="/skill", tags=["skill"])
 api_router.include_router(field.router, prefix="/field", tags=["field"])
 api_router.include_router(job.router, prefix="/job", tags=["job"])
+api_router.include_router(company.router, prefix="/company", tags=["company"])
 
-api_router.include_router(company.router, prefix="/business/company", tags=["company"])
 api_router.include_router(
     business_company.router,
     prefix="/business/business_company",

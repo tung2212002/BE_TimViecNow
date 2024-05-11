@@ -1,7 +1,6 @@
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.core.security import get_password_hash, verify_password
 from .base import CRUDBase
 from app.model.social_network import SocialNetwork
 from app.schema import social_network as schema_social_network

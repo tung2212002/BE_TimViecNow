@@ -3,7 +3,6 @@ from typing import List
 
 from app.core.security import get_password_hash, verify_password
 from .base import CRUDBase
-from app.model.admin import Admin
 from app.model.manager_base import ManagerBase
 from app.schema import manager_base as schema_manager_base
 from app.hepler.enum import Role
@@ -119,10 +118,12 @@ class CRUDManagerBase(
         return db.query(ManagerBase).filter(ManagerBase.email == email).first()
 
     def create(
-        self, db: Session, *, obj_in: schema_manager_base.ManagerBaseCreateRequest
+        self, db: Session, *, obj_in: schema_manager_base.ManagerBaseCreate
     ) -> ManagerBase:
         db_obj = ManagerBase(
-            **obj_in.dict(exclude_unset=True, exclude={"password", "confirm_password"}),
+            **obj_in.model_dump(
+                exclude_unset=True, exclude={"password", "confirm_password"}
+            ),
             hashed_password=get_password_hash(obj_in.password),
         )
         db.add(db_obj)

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from .base import CRUDBase
 from app.model import Category
-from app.schema.category import CategoryItemResponse, CategoryCreate, CategoryUpdate
+from app.schema.category import CategoryCreate, CategoryUpdate
 
 
 class CRUDCategory(CRUDBase[Category, CategoryCreate, CategoryUpdate]):

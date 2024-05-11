@@ -1,18 +1,14 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     File,
     UploadFile,
     Form,
     Body,
     Request,
 )
-import requests
 
 from sqlalchemy.orm import Session
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 from app.db.base import get_db
 from app.core.auth import service_user_auth
 from app.core import constant
@@ -24,10 +20,26 @@ router = APIRouter()
 
 @router.post("/register", summary="Register a new user.")
 def register_auth(
-    full_name: str = Form(..., description="The full name of the user."),
-    email: str = Form(..., description="The email of the user."),
-    password: str = Form(..., description="The password of the user."),
-    confirm_password: str = Form(..., description="The confirm password of the user."),
+    full_name: str = Form(
+        ...,
+        description="The full name of the user.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    email: str = Form(
+        ...,
+        description="The email of the user.",
+        json_schema_extra={"example": "ongtung@gmail.com"},
+    ),
+    password: str = Form(
+        ...,
+        description="The password of the user.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    confirm_password: str = Form(
+        ...,
+        description="The confirm password of the user.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
     db: Session = Depends(get_db),
 ):
@@ -49,10 +61,9 @@ def register_auth(
     - status_code (409): The user is already registered.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-
-    status, status_code, response = service_user.create_user(db, data)
+    status, status_code, response = service_user.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -63,7 +74,9 @@ def register_auth(
 @router.post("/login", summary="Login user.")
 def login_auth(
     data: dict = Body(
-        ..., example={"email": "1@email.com", "password": "@Password1234"}
+        ...,
+        description="The data to login a user.",
+        example={"email": "ongtung@gmail.com", "password": "@Password1234"},
     ),
     db: Session = Depends(get_db),
 ):
@@ -190,6 +203,47 @@ def verify_token_auth(
     """
     token = request.headers.get("Authorization").split(" ")[1]
     status, status_code, response = service_user_auth.check_verify_token(db, token)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.post("/change_password", summary="Change password.")
+def change_password(
+    data: dict = Body(
+        ...,
+        example={
+            "old_password": "@Password1234",
+            "new_password": "@Password12345",
+            "confirm_password": "@Password12345",
+        },
+    ),
+    db: Session = Depends(get_db),
+    current_user=Depends(service_user_auth.get_current_user),
+):
+    """
+    Change password.
+
+    This endpoint allows changing the password.
+
+    Parameters:
+    - old_password (str): The old password of the business.
+    - new_password (str): The new password of the business.
+    - confirm_password (str): The confirm password of the business.
+
+    Returns:
+    - status_code (200): The password has been changed successfully.
+    - status_code (400): The request is invalid.
+    - status_code (401): The password is incorrect.
+    - status_code (404): The business is not found.
+    - status_code (409): The new password is the same as the old password.
+
+    """
+    status, status_code, response = service_user_auth.change_password(
+        db, data, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

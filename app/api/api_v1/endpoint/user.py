@@ -1,19 +1,14 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     Request,
     File,
     UploadFile,
     Form,
-    Body,
     Query,
     Path,
 )
 from sqlalchemy.orm import Session
-from typing import Annotated, Any
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 
 from app.db.base import get_db
 from app.core.auth.service_user_auth import get_current_user
@@ -21,6 +16,7 @@ from app.core.auth.service_business_auth import get_current_admin
 from app.core import constant
 from app.core.user import service_user
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import OrderType, SortBy
 
 router = APIRouter()
 
@@ -48,10 +44,14 @@ def get_me(current_user=Depends(get_current_user)):
 @router.get("", summary="Get list of users.")
 def get_user(
     request: Request,
-    skip: int = Query(0, description="The number of users to skip.", example=0),
-    limit: int = Query(10, description="The number of users to return.", example=10),
-    sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("desc", description="The order to sort by.", example="desc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.ASC
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
@@ -73,9 +73,9 @@ def get_user(
     - status_code (400): The request is invalid.
 
     """
-    args = {item[0]: item[1] for item in request.query_params.multi_items()}
+    args = locals()
 
-    status, status_code, response = service_user.get_list_user(db, args)
+    status, status_code, response = service_user.get(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -103,7 +103,7 @@ def get_user_by_id(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_user.get_user_by_id(db, id)
+    status, status_code, response = service_user.get_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -113,10 +113,26 @@ def get_user_by_id(
 
 @router.post("", summary="Register a new user by admin.")
 def create_user(
-    full_name: str = Form(..., description="The full name of the user."),
-    email: str = Form(..., description="The email of the user."),
-    password: str = Form(..., description="The password of the user."),
-    confirm_password: str = Form(..., description="The confirm password of the user."),
+    full_name: str = Form(
+        ...,
+        description="The full name of the user.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    email: str = Form(
+        ...,
+        description="The email of the user.",
+        json_schema_extra={"example": "ongtung@gmail.com"},
+    ),
+    password: str = Form(
+        ...,
+        description="The password of the user.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    confirm_password: str = Form(
+        ...,
+        description="The confirm password of the user.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
@@ -141,9 +157,9 @@ def create_user(
     - status_code (409): The user is already registered.
 
     """
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
+    data = locals()
 
-    status, status_code, response = service_user.create_user(db, data)
+    status, status_code, response = service_user.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -154,10 +170,21 @@ def create_user(
 @router.put("/{id}", summary="Update a user.")
 def update_user(
     id: int = Path(..., description="The id of the user."),
-    full_name: str = Form(None, description="The full name of the user."),
-    phone_number: str = Form(None, description="The phone number of the user."),
-    avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    password: str = Form(None, description="The password of the user."),
+    full_name: str = Form(
+        None,
+        description="The full name of the user.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    phone_number: str = Form(
+        None,
+        description="The phone number of the user.",
+        json_schema_extra={"example": "0323456789"},
+    ),
+    avatar: UploadFile = File(
+        None,
+        description="The profile avatar of the user.",
+        json_schema_extra={"example": "avatar.jpg"},
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -180,11 +207,9 @@ def update_user(
     - status_code (404): The user is not found.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-
-    status, status_code, response = service_user.update_user(db, id, data, current_user)
-
+    status, status_code, response = service_user.update(db, id, data, current_user)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
@@ -211,8 +236,7 @@ def delete_user(
     - status_code (404): The user is not found.
 
     """
-
-    status, status_code, response = service_user.delete_user(db, id, current_user)
+    status, status_code, response = service_user.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

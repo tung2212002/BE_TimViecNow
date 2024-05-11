@@ -12,4 +12,12 @@ class JobSkill(Base):
         "Job",
         back_populates="job_skill_secondary",
         overlaps="must_have_skills,should_have_skills",
+        single_parent=True,
+    )
+
+    skill = relationship(
+        "Skill",
+        back_populates="job_skill_secondary",
+        overlaps="must_have_skills,should_have_skills",
+        single_parent=True,
     )

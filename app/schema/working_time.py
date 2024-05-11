@@ -1,6 +1,5 @@
 from pydantic import BaseModel, validator, ConfigDict
-from typing import Optional
-from datetime import datetime, time
+from datetime import time
 
 
 class WorkingTimeBase(BaseModel):

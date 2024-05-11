@@ -27,6 +27,7 @@ from .user_job_save import UserJobSave
 from .job_skill import JobSkill
 from .job_report import JobReport
 from .field import Field
+from .company_business import CompanyBusiness
 from .company_field import CompanyField
 from .cv_application import CVApplication
 from .job_approval_request import JobApprovalRequest

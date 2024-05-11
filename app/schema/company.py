@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from typing import Optional, List, Any
 import json
 
@@ -21,6 +21,7 @@ class CompanyBase(BaseModel):
     company_short_description: Optional[str] = None
     scale: str
     tax_code: str
+    type: CompanyType
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
@@ -147,6 +148,8 @@ class CompanyGetRequest(BaseModel):
 
 class CompanyPagination(Pagination):
     fields: Optional[List[int]] = None
+    business_id: Optional[int] = None
+    keyword: Optional[str] = None
 
 
 class CompanyCreateRequest(CompanyBase):
@@ -169,6 +172,12 @@ class CompanyCreateRequest(CompanyBase):
             return json.dumps(v)
         return v
 
+    @validator("fields")
+    def validate_fields(cls, v):
+        if len(v) == 0:
+            raise ValueError("Fields must not be empty")
+        return v
+
 
 class CompanyCreate(CompanyBase):
     logo: Optional[str] = None
@@ -176,7 +185,7 @@ class CompanyCreate(CompanyBase):
 
 
 class CompanyUpdateRequest(BaseModel):
-    id: int
+    company_id: int
     email: Optional[str] = None
     phone_number: Optional[str] = None
     is_premium: Optional[bool] = None
@@ -184,6 +193,7 @@ class CompanyUpdateRequest(BaseModel):
     logo: Optional[UploadFile] = None
     website: Optional[str] = None
     address: Optional[str] = None
+    type: Optional[CompanyType] = None
     company_short_description: Optional[str] = None
     scale: Optional[str] = None
     tax_code: Optional[str] = None
@@ -221,7 +231,7 @@ class CompanyUpdateRequest(BaseModel):
 
 
 class CompanyUpdate(BaseModel):
-    id: int
+    company_id: int
     email: Optional[str] = None
     phone_number: Optional[str] = None
     is_premium: Optional[bool] = None
@@ -229,6 +239,7 @@ class CompanyUpdate(BaseModel):
     logo: Optional[str] = None
     website: Optional[str] = None
     address: Optional[str] = None
+    type: Optional[CompanyType] = None
     company_short_description: Optional[str] = None
     scale: Optional[str] = None
     tax_code: Optional[str] = None

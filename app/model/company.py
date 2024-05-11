@@ -6,14 +6,15 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
-    JSON,
     Text,
+    event,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session
 from sqlalchemy.sql import func
 
 from app.db.base_class import Base
-from app.hepler.enum import Role, CompanyType
+from app.hepler.enum import CompanyType
+from app.model.company_business import CompanyBusiness
 
 
 class Company(Base):
@@ -41,10 +42,44 @@ class Company(Base):
         Integer, ForeignKey("business.id", ondelete="CASCADE"), nullable=False
     )
 
+    business = relationship("Business", back_populates="company")
     label_company = relationship(
-        "LabelCompany", back_populates="company", uselist=False
+        "LabelCompany",
+        back_populates="company",
+        uselist=False,
+        passive_deletes=True,
     )
-    fields = relationship("Field", secondary="company_field")
+    fields = relationship(
+        "Field",
+        secondary="company_field",
+        overlaps="fields",
+        passive_deletes=True,
+    )
     company_field_secondary = relationship(
-        "CompanyField", back_populates="company", overlaps="fields"
+        "CompanyField",
+        back_populates="company",
+        overlaps="fields",
+        passive_deletes=True,
     )
+    businesses = relationship(
+        "Business",
+        secondary="company_business",
+        overlaps="company,company,company_business,business",
+        passive_deletes=True,
+    )
+    campaigns = relationship(
+        "Campaign",
+        back_populates="company",
+        passive_deletes=True,
+    )
+
+
+@event.listens_for(Company, "after_insert")
+def receive_after_insert(mapper, connection, target):
+    session = Session(bind=connection)
+    company_business = CompanyBusiness(
+        company_id=target.id, business_id=target.business_id
+    )
+    session.add(company_business)
+    session.commit()
+    session.close()

@@ -1,13 +1,10 @@
 from fastapi import BackgroundTasks
-from pathlib import Path
 from sqlalchemy.orm import Session
 import uuid
 
-from app.core.email_config import conf
 from app.hepler.verify_code import generate_code
 from app.crud.verify_code import verify_code as verify_codeCRUD
 from app.crud.verify_code_block import verify_code_block as verify_code_blockCRUD
-from app.crud.manager_base import manager_base as manager_baseCRUD
 from app.crud.business import business as businessCRUD
 from app.schema.verify_code import VerifyCodeCreate, VerifyCodeUpdate, VerifyCodeRequest
 from app.schema.verify_code_block import VerifyCodeBlockCreate

@@ -1,5 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, Enum, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Integer, String, Enum, DateTime
 from sqlalchemy.sql import func
 
 
@@ -8,7 +7,6 @@ from app.hepler.enum import VerifyCodeStatus
 
 
 class VerifyCode(Base):
-    id = Column(Integer, primary_key=True, index=True)
     code = Column(String(6), nullable=False)
     email = Column(String(255), nullable=False)
     status = Column(Enum(VerifyCodeStatus), default=VerifyCodeStatus.ACTIVE)
@@ -19,4 +17,6 @@ class VerifyCode(Base):
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
     expired_at = Column(DateTime(timezone=True), index=True)
-    manager_base_id = Column(Integer, ForeignKey("manager_base.id"))
+    manager_base_id = Column(
+        Integer, ForeignKey("manager_base.id", ondelete="CASCADE"), nullable=False
+    )

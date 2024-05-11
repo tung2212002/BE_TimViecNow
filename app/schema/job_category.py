@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 class JobCategorydBase(BaseModel):

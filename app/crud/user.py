@@ -28,8 +28,13 @@ class CRUDUser(
     def update(
         self, db: Session, *, db_obj: User, obj_in: schema_user.UserUpdateRequest
     ) -> User:
-        if hasattr(obj_in, "password") and obj_in.password:
-            obj_in.hashed_password = get_password_hash(obj_in.password)
+        if isinstance(obj_in, dict) and obj_in.get("password"):
+            obj_in["hashed_password"] = get_password_hash(obj_in["new_password"])
+        elif hasattr(obj_in, "new_password"):
+            obj_in = obj_in.model_dump(exclude_unset=True)
+            obj_in.update(
+                {"hashed_password": get_password_hash(obj_in["new_password"])}
+            )
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> User:

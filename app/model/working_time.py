@@ -12,4 +12,8 @@ class WorkingTime(Base):
     date_from = Column(Integer, nullable=False)
     date_to = Column(Integer, nullable=False)
 
-    job = relationship("Job", back_populates="working_times")
+    job = relationship(
+        "Job",
+        back_populates="working_times",
+        single_parent=True,
+    )

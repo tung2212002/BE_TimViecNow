@@ -13,7 +13,7 @@ from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
 
 
-def get_list_province(db: Session, data: dict):
+def get_province(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -23,7 +23,7 @@ def get_list_province(db: Session, data: dict):
     return constant.SUCCESS, 200, provinces_response
 
 
-def get_list_district(db: Session, data: dict):
+def get_district(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -38,15 +38,15 @@ def get_list_district(db: Session, data: dict):
     return constant.SUCCESS, 200, districts_response
 
 
-def get_province_by_id(db: Session, province_id: int):
-    province_response = get_province_info(db, province_id)
+def get_province_by_id(db: Session, id: int):
+    province_response = get_province_info(db, id)
     if not province_response:
         return constant.ERROR, 404, "Province not found"
     return constant.SUCCESS, 200, province_response
 
 
-def get_district_by_id(db: Session, district_id: int):
-    district_response = get_district_info(db, district_id)
+def get_district_by_id(db: Session, id: int):
+    district_response = get_district_info(db, id)
     if not district_response:
         return constant.ERROR, 404, "District not found"
     return constant.SUCCESS, 200, district_response

@@ -5,7 +5,6 @@ from app.model import GroupPosition
 from app.schema.group_position import (
     GroupPositionCreateRequest,
     GroupPositionUpdateRequest,
-    GroupPositionItemResponse,
 )
 
 

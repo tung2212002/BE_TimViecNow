@@ -6,7 +6,7 @@ from app.db.base_class import Base
 
 
 class JobReport(Base):
-    job_id = Column(Integer, ForeignKey("job.id"), index=True)
+    job_id = Column(Integer, ForeignKey("job.id", ondelete="CASCADE"), index=True)
     user_id = Column(Integer, ForeignKey("user.id"), index=True)
     report_type = Column(String(10), index=True)
     report_content = Column(String(100), index=True)

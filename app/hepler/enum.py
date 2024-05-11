@@ -21,6 +21,13 @@ class SortBy(str, Enum):
     UPDATED_AT = "updated_at"
 
 
+class SortJobBy(str, Enum):
+    ID = "id"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    DEADLINE = "deadline"
+
+
 class SortByJob(str, Enum):
     ID = "id"
     CREATED_AT = "created_at"
@@ -52,7 +59,6 @@ class JobStatus(str, Enum):
     DRAFT = "draft"
     BANNED = "banned"
     STOPPED = "stopped"
-    ALL = "all"
 
 
 class JobType(str, Enum):
@@ -66,7 +72,6 @@ class JobApprovalStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     STOPPED = "stopped"
-    ALL = "all"
 
 
 class SalaryType(str, Enum):
@@ -101,11 +106,9 @@ class TokenType(str, Enum):
 class CampaignStatus(str, Enum):
     STOPPED = "stopped"
     OPEN = "open"
-    ALL = "all"
 
 
 class FilterCampaign(str, Enum):
-    ALL = "all"
     ONLY_OPEN = "only_open"
     HAS_NEW_CV = "has_new_cv"
     ACTIVED_CV_COUT = "actived_cv_count"

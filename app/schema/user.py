@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from typing import Optional
 
 from app.hepler.enum import Role, TypeAccount, FolderBucket
@@ -46,9 +46,21 @@ class UserItemResponse(UserBase):
                 v = constant.BUCKET_URL + v
         return v
 
+    @validator("is_active")
+    def validate_is_active(cls, v):
+        return v or True
+
+    @validator("role")
+    def validate_role(cls, v):
+        return v or Role.USER
+
+    @validator("type_account")
+    def validate_type_account(cls, v):
+        return v or TypeAccount.NORMAL
+
 
 class UserGetRequest(BaseModel):
-    email: str = Field(..., example="1@email.com")
+    email: str
 
     @validator("email")
     def validate_email(cls, v):
@@ -63,7 +75,7 @@ class UserCreateRequest(UserBase):
     confirm_password: str
     role: Role = Role.USER
 
-    @validator("password")
+    @validator("confirm_password")
     def validate_password(cls, v, values):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
@@ -73,7 +85,7 @@ class UserCreateRequest(UserBase):
             raise ValueError(
                 "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
             )
-        elif "confirm_password" in values and v != values["confirm_password"]:
+        elif "password" in values and v != values["password"]:
             raise ValueError("Password and confirm password must match")
         return v
 
@@ -87,6 +99,10 @@ class UserCreateRequest(UserBase):
             v.filename = generate_file_name(FolderBucket.AVATAR, v.filename)
         return v
 
+    @validator("role")
+    def validate_role(cls, v):
+        return v or Role.USER
+
 
 class UserCreate(UserBase):
     avatar: Optional[str] = None
@@ -94,12 +110,15 @@ class UserCreate(UserBase):
     password: str
     confirm_password: str
 
+    @validator("role")
+    def validate_role(cls, v):
+        return v or Role.USER
+
 
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
     avatar: Optional[UploadFile] = None
-    pass_word: Optional[str] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
@@ -126,20 +145,6 @@ class UserUpdateRequest(BaseModel):
         if v is not None:
             if not re.match(constant.REGEX_PHONE_NUMBER, v):
                 raise ValueError("Invalid phone number")
-            return v
-        return v
-
-    @validator("pass_word")
-    def validate_password(cls, v):
-        if v is not None:
-            if len(v) < 8:
-                raise ValueError("Password must be at least 8 characters")
-            elif len(v) > 50:
-                raise ValueError("Password must be at most 50 characters")
-            elif not re.match(constant.REGEX_PASSWORD, v):
-                raise ValueError(
-                    "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
-                )
             return v
         return v
 

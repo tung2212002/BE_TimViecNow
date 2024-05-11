@@ -1,12 +1,10 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 from datetime import datetime, date
 import json
 
 from app.hepler.enum import (
-    Role,
     SalaryType,
     JobStatus,
     JobType,
@@ -16,7 +14,6 @@ from app.hepler.enum import (
     OrderType,
 )
 from app.core import constant
-from app.schema.page import Pagination
 
 
 class JobBase(BaseModel):
@@ -219,7 +216,7 @@ class JobGetRequest(BaseModel):
 
 class PaginationJob(BaseModel):
     skip: Optional[int] = 0
-    limit: Optional[int] = 100
+    limit: Optional[int] = 10
     sort_by: Optional[SortByJob] = SortByJob.CREATED_AT
     order_by: Optional[OrderType] = OrderType.DESC
 
@@ -227,78 +224,108 @@ class PaginationJob(BaseModel):
 
     @validator("limit")
     def validate_limit(cls, v):
-        if v < 0 or v > 1000:
-            raise ValueError("Invalid limit")
-        return v
+        if v is not None:
+            if v < 0 or v > 1000:
+                raise ValueError("Invalid limit")
+        return v or 10
 
     @validator("skip")
     def validate_skip(cls, v):
-        if v < 0:
-            raise ValueError("Invalid skip")
-        return v
+        if v is not None:
+            if v < 0:
+                raise ValueError("Invalid skip")
+        return v or 0
 
     @validator("sort_by")
     def validate_sort_by(cls, v):
         if v and v == SortByJob.SALARY:
             return "max_salary"
-        return v
+        return v or SortByJob.CREATED_AT
+
+    @validator("order_by")
+    def validate_order_by(cls, v):
+        return v or OrderType.DESC
 
 
 class JobFilterByBusiness(PaginationJob):
     job_status: Optional[JobStatus] = None
     job_approve_status: Optional[JobApprovalStatus] = None
-    business_id: int = None
-    company_id: int = None
-    campaign_id: int = None
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    campaign_id: Optional[int] = None
 
 
 class JobFilterByUser(PaginationJob):
     job_status: Optional[JobStatus] = None
     job_approve_status: Optional[JobApprovalStatus] = None
-    business_id: int = None
-    company_id: int = None
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
     deadline: Optional[date] = datetime.now().date()
-    province_id: int = None
+    province_id: Optional[int] = None
 
 
 class JobCount(BaseModel):
     job_status: Optional[JobStatus] = JobStatus.PUBLISHED
     job_approve_status: Optional[JobApprovalStatus] = JobApprovalStatus.APPROVED
-    business_id: int = None
-    company_id: int = None
-    province_id: int = None
-    district_id: int = None
-    category_id: int = None
-    field_id: int = None
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    province_id: Optional[int] = None
+    district_id: Optional[int] = None
+    category_id: Optional[int] = None
+    field_id: Optional[int] = None
     employment_type: Optional[JobType] = None
-    job_experience_id: int = None
-    job_position_id: int = None
-    min_salary: int = None
-    max_salary: int = None
+    job_experience_id: Optional[int] = None
+    job_position_id: Optional[int] = None
+    min_salary: Optional[int] = None
+    max_salary: Optional[int] = None
     salary_type: Optional[SalaryType] = None
     deadline: Optional[date] = datetime.now().date()
-    keyword: str = None
+    keyword: Optional[str] = None
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+    @validator("job_status")
+    def validate_job_status(cls, v):
+        return v or JobStatus.PUBLISHED
+
+    @validator("job_approve_status")
+    def validate_job_approve_status(cls, v):
+        return v or JobApprovalStatus.APPROVED
+
+    @validator("deadline")
+    def validate_deadline(cls, v):
+        return v or datetime.now().date()
 
 
 class JobSearchByUser(PaginationJob):
     job_status: Optional[JobStatus] = JobStatus.PUBLISHED
     job_approve_status: Optional[JobApprovalStatus] = JobApprovalStatus.APPROVED
-    business_id: int = None
-    company_id: int = None
-    province_id: int = None
-    district_id: int = None
-    category_id: int = None
-    field_id: int = None
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    province_id: Optional[int] = None
+    district_id: Optional[int] = None
+    category_id: Optional[int] = None
+    field_id: Optional[int] = None
     employment_type: Optional[JobType] = None
-    job_experience_id: int = None
-    job_position_id: int = None
-    min_salary: int = None
-    max_salary: int = None
+    job_experience_id: Optional[int] = None
+    job_position_id: Optional[int] = None
+    min_salary: Optional[int] = None
+    max_salary: Optional[int] = None
     salary_type: Optional[SalaryType] = None
     deadline: Optional[date] = datetime.now().date()
-    keyword: str = None
+    keyword: Optional[str] = None
+
+    @validator("job_status")
+    def validate_deadline(cls, v):
+        return v or datetime.now().date()
+
+    @validator("job_status")
+    def validate_job_status(cls, v):
+        return v or JobStatus.PUBLISHED
+
+    @validator("job_approve_status")
+    def validate_job_approve_status(cls, v):
+        return v or JobApprovalStatus.APPROVED
 
 
 class JobCreateRequest(JobBase):
@@ -332,10 +359,15 @@ class JobCreateRequest(JobBase):
     def validate_job_benefit(cls, v):
         return json.dumps(v) if isinstance(v, str) else v
 
+    @validator("working_times")
+    def validate_working_times(cls, v):
+        return v or []
+
 
 class JobCreate(JobBase):
     email_contact: str
     business_id: int
+    campaign_id: int
     employer_verified: bool = False
 
 

@@ -1,9 +1,6 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
-from typing import Optional
 
-from app.hepler.enum import Role
 from app.core import constant
 
 

@@ -1,13 +1,10 @@
 from sqlalchemy.orm import Session
-import jwt
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import HTTPException, Depends
-import requests
 from typing import List
 
 from app.core import constant
 from app.core.security import pwd_context
-from app.core.config import settings
 from app import crud
 from app.schema import (
     auth as schema_auth,
@@ -19,7 +16,6 @@ from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount, VerifyType
 from app.hepler.exception_handler import get_message_validation_error
 from app.core.business.service_business import get_info_user
-from app.core.email import service_email
 from app.hepler.response_custom import custom_response_error
 
 
@@ -93,6 +89,12 @@ def get_current_user(data: dict = Depends(JWTBearer()), db: Session = Depends(ge
     )
 
 
+def get_current_business(
+    data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)
+):
+    return get_current_user_by_role(db, data, [Role.BUSINESS])
+
+
 def get_current_admin(data: dict = Depends(JWTBearer()), db: Session = Depends(get_db)):
     return get_current_user_by_role(db, data, [Role.ADMIN, Role.SUPER_USER])
 
@@ -106,7 +108,7 @@ def get_current_superuser(
 def check_permission_business(current_user, roles: List[Role], business_id: int = None):
     if business_id:
         if current_user.role not in [Role.SUPER_USER, Role.ADMIN]:
-            if current_user.business.id != business_id:
+            if current_user.id != business_id:
                 custom_response_error(
                     status_code=403, status=constant.ERROR, response="Permission denied"
                 )
@@ -117,6 +119,8 @@ def check_permission_business(current_user, roles: List[Role], business_id: int 
             custom_response_error(
                 status_code=403, status=constant.ERROR, response="Permission denied"
             )
+        elif current_user.role == Role.BUSINESS:
+            return Role.BUSINESS
     return Role.ADMIN
 
 
@@ -253,5 +257,4 @@ async def send_forgot_password(db: Session, background_tasks, data: dict):
     if user is None:
         return constant.ERROR, 404, "User not found"
     token = signJWT(user)
-    background_tasks.add_task(send_email_forgot_password, user.email, token)
     return constant.SUCCESS, 200, "Send email successfully"

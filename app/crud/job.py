@@ -1,7 +1,6 @@
-from typing import Type, Optional
+from typing import Type
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from datetime import date, datetime
 from sqlalchemy import distinct
 
 from .base import CRUDBase
@@ -11,13 +10,13 @@ from app.model.business import Business
 from app.model.work_location import WorkLocation
 from app.model.province import Province
 from app.model.district import District
-from app.model.category import Category
+from app.model.campaign import Campaign
 from app.model.field import Field
 from app.model.job_category import JobCategory
 from app.model.company import Company
 from app.model.company_field import CompanyField
 from app.schema.job import JobCreate, JobUpdate
-from app.hepler.enum import JobStatus, JobApprovalStatus, JobType, SalaryType
+from app.hepler.enum import JobStatus, SalaryType
 
 
 class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
@@ -32,12 +31,14 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self.field = Field
         self.company = Company
         self.company_field = CompanyField
+        self.campaign = Campaign
 
     def get_multi(
         self,
         db: Session,
         **kwargs,
     ):
+        print(kwargs)
         query = db.query(self.model)
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -150,13 +151,13 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
 
         if company_id or field_id:
             query = query.join(
-                self.business, self.model.business_id == self.business.id
+                self.campaign, self.model.campaign_id == self.campaign.id
             )
             if company_id:
-                query = query.filter(self.business.company_id == company_id)
+                query = query.filter(self.campaign.company_id == company_id)
             if field_id:
                 query = query.join(
-                    self.company, self.business.company_id == self.company.id
+                    self.company, self.campaign.company_id == self.company.id
                 )
                 query = query.join(
                     self.company_field, self.company.id == self.company_field.company_id
@@ -165,9 +166,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             query = query.filter(self.model.campaign_id == campaign_id)
         if business_id:
             query = query.filter(self.model.business_id == business_id)
-        if job_status != JobStatus.ALL:
+        if job_status:
             query = query.filter(self.model.status == job_status)
-        if job_approve_status != JobApprovalStatus.ALL:
+        if job_approve_status:
             query = query.join(
                 self.job_approval_request,
                 self.model.id == self.job_approval_request.job_id,

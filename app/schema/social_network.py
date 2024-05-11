@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from typing import Optional
 
 from app.hepler.enum import Role, TypeAccount, Provider

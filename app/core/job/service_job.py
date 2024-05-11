@@ -2,27 +2,18 @@ from sqlalchemy.orm import Session
 
 from app.schema import (
     job as job_schema,
-    page as page_schema,
-    campaign as campaign_schema,
-    working_time as working_time_schema,
 )
 from app.crud import (
     job as jobCRUD,
     campaign as campaignCRUD,
     experience as experienceCRUD,
     job_position as job_positionCRUD,
-    working_time as working_timeCRUD,
-    work_location as work_locationCRUD,
-    job_category as job_categoryCRUD,
-    skill as skillCRUD,
-    job_skill as job_skillCRUD,
-    category as categoryCRUD,
     company as companyCRUD,
 )
 from app.core.auth import service_business_auth
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role, JobStatus, JobType, CampaignStatus, JobApprovalStatus
+from app.hepler.enum import Role, JobStatus, CampaignStatus, JobApprovalStatus
 from app.core.location import service_location
 from app.core.working_times import service_working_times
 from app.core.work_locations import service_work_locations
@@ -31,31 +22,38 @@ from app.core.category import service_category
 from app.core.auth import service_business_auth
 from app.core.skill import service_skill
 from app.core.campaign import service_campaign
-from app.core.job_approval_requests import service_job_approval_request
 
 
-def get_list_job_by_business(db: Session, data: dict, current_user):
+def get_by_business(db: Session, data: dict, current_user):
     try:
         page = job_schema.JobFilterByBusiness(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
     if current_user.role == Role.BUSINESS:
-        page.business_id = current_user.business.id
-    response = get_list_job(db, page.dict())
+        if page.business_id and page.business_id != current_user.id:
+            return constant.ERROR, 403, "Permission denied"
+        page.business_id = current_user.id
+        company = companyCRUD.get_company_by_business_id(db, current_user.id)
+        if not company:
+            return constant.ERROR, 404, "Business not join company"
+        if page.company_id and page.company_id != company.id:
+            return constant.ERROR, 403, "Permission denied"
+        page.company_id = company.id
+    response = get_list_job(db, page.model_dump())
     return constant.SUCCESS, 200, response
 
 
-def get_list_job_by_user(db: Session, data: dict):
+def get_by_user(db: Session, data: dict):
     try:
         page = job_schema.JobFilterByUser(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    jobs = get_list_job(db, page.dict())
+    jobs = get_list_job(db, page.model_dump())
 
     params = job_schema.JobCount(**data)
-    number_of_all_jobs = jobCRUD.count(db, **params.dict())
+    number_of_all_jobs = jobCRUD.count(db, **params.model_dump())
 
     response = {
         "count": number_of_all_jobs,
@@ -64,7 +62,7 @@ def get_list_job_by_user(db: Session, data: dict):
     return constant.SUCCESS, 200, response
 
 
-def search_job_by_user(db: Session, data: dict):
+def search_by_user(db: Session, data: dict):
     try:
         page = job_schema.JobSearchByUser(**data)
     except Exception as e:
@@ -72,7 +70,7 @@ def search_job_by_user(db: Session, data: dict):
 
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    jobs, jobs_of_district = jobCRUD.search(db, **page.dict())
+    jobs, jobs_of_district = jobCRUD.search(db, **page.model_dump())
 
     count = 0
     jobs_of_district_response = []
@@ -89,7 +87,7 @@ def search_job_by_user(db: Session, data: dict):
                 )
     else:
         params = job_schema.JobCount(**data)
-        count = jobCRUD.count(db, **params.dict())
+        count = jobCRUD.count(db, **params.model_dump())
 
     jobs_response = []
     for job in jobs:
@@ -97,7 +95,7 @@ def search_job_by_user(db: Session, data: dict):
         jobs_response.append(job_res) if job_res.company else None
     response = {
         "count": count,
-        "option": data,
+        "option": page,
         "jobs": jobs_response,
         "jobs_of_district": jobs_of_district_response,
     }
@@ -114,20 +112,26 @@ def get_list_job(db: Session, data: dict):
     return jobs_response
 
 
-def get_job_by_id_for_business(db: Session, job_id: int, current_user):
+def get_by_id_for_business(db: Session, job_id: int, current_user):
     job = jobCRUD.get(db, job_id)
+    company = companyCRUD.get_company_by_business_id(db, current_user.id)
     if not job:
         return constant.ERROR, 404, "Job not found"
-    if job.business_id != current_user.business.id and current_user.role not in [
-        Role.SUPER_USER,
-        Role.ADMIN,
-    ]:
+    if (
+        (job.business_id != current_user.id or job.campaign.company_id != company.id)
+        and current_user.role
+        not in [
+            Role.SUPER_USER,
+            Role.ADMIN,
+        ]
+        or not company
+    ):
         return constant.ERROR, 403, "Permission denied"
     job_response = get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
 
 
-def get_job_by_id_for_user(db: Session, job_id: int):
+def get_by_id_for_user(db: Session, job_id: int):
     job = jobCRUD.get(db, job_id)
     if not job:
         return constant.ERROR, 404, "Job not found"
@@ -140,14 +144,20 @@ def get_job_by_id_for_user(db: Session, job_id: int):
     return constant.SUCCESS, 200, job_response
 
 
-def get_job_by_campaign_id(db: Session, campaign_id: int, current_user):
+def get_by_campaign_id(db: Session, campaign_id: int, current_user):
     campaign = campaignCRUD.get(db, campaign_id)
+    company = companyCRUD.get_company_by_business_id(db, current_user.id)
     if not campaign:
         return constant.ERROR, 404, "Campaign not found"
-    if campaign.business_id != current_user.business.id and current_user.role not in [
-        Role.SUPER_USER,
-        Role.ADMIN,
-    ]:
+    if (
+        (campaign.business_id != current_user.id or campaign.company_id != company.id)
+        and current_user.role
+        not in [
+            Role.SUPER_USER,
+            Role.ADMIN,
+        ]
+        or not company
+    ):
         return constant.ERROR, 403, "Permission denied"
 
     job = jobCRUD.get_by_campaign_id(db, campaign_id)
@@ -155,21 +165,17 @@ def get_job_by_campaign_id(db: Session, campaign_id: int, current_user):
     return constant.SUCCESS, 200, job_response
 
 
-def get_jobs_active_by_company(db: Session, company_id: int):
-    obj_in = {
-        "company_id": company_id,
-        "job_status": JobStatus.PUBLISHED,
-        "job_approve_status": JobApprovalStatus.APPROVED,
-    }
-    return jobCRUD.count(db, **obj_in)
-
-
-def create_job(db: Session, data: dict, current_user):
-    service_business_auth.verified_level(current_user.business, 2)
+def create(db: Session, data: dict, current_user):
+    business = current_user.business
+    service_business_auth.verified_level(business, 2)
     try:
         job_data = job_schema.JobCreateRequest(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
+
+    company = business.company
+    if not company:
+        return constant.ERROR, 404, "Require join company"
 
     service_skill.check_skills_exist(db, job_data.must_have_skills)
     service_skill.check_skills_exist(db, job_data.should_have_skills)
@@ -183,23 +189,21 @@ def create_job(db: Session, data: dict, current_user):
         return constant.ERROR, 404, "Job position not found"
     campaign = service_campaign.check_campaign_exist(
         db,
-        business_id=current_user.business.id,
+        business_id=current_user.id,
         campaign_id=job_data.campaign_id,
+        status=CampaignStatus.OPEN,
         title=job_data.title,
     )
-    job_data.campaign_id = campaign.id
-    company = companyCRUD.get_company_by_business_id(db, current_user.business.id)
-    if not company:
-        return constant.ERROR, 404, "Require join company"
     if jobCRUD.get_by_campaign_id(db, campaign.id):
         return constant.ERROR, 400, "Campaign already has job"
+    job_data.campaign_id = campaign.id
 
     is_verified_company = company.is_verified
     job_skills = job_data.must_have_skills + job_data.should_have_skills
     job_categories = job_data.categories
     job_data_in = job_schema.JobCreate(
-        **job_data.dict(),
-        business_id=current_user.business.id,
+        **job_data.model_dump(),
+        business_id=current_user.id,
         status=JobStatus.PENDING,
         employer_verified=is_verified_company,
     )
@@ -213,13 +217,12 @@ def create_job(db: Session, data: dict, current_user):
     )
     service_skill.create_skill_job(db, job.id, job_skills)
     service_category.create_category_job(db, job.id, job_categories)
-    service_job_approval_request.create_job_approval_request_job(db, job.id)
 
     job_response = get_job_info(db, job)
     return constant.SUCCESS, 201, job_response
 
 
-def update_job(db: Session, data: dict, current_user):
+def update(db: Session, data: dict, current_user):
     try:
         job_data = job_schema.JobUpdateRequest(**data)
     except Exception as e:
@@ -227,7 +230,13 @@ def update_job(db: Session, data: dict, current_user):
     job = jobCRUD.get(db, job_data.job_id)
     if not job:
         return constant.ERROR, 404, "Job not found"
-    if job.business_id != current_user.business.id:
+    company = current_user.business.company
+    if (
+        job.business_id != current_user.id
+        or not company
+        or job.campaign.business_id != current_user.id
+        or job.campaign.company_id != company.id
+    ):
         return constant.ERROR, 403, "Permission denied"
 
     must_have_skills_data = job_data.must_have_skills
@@ -247,7 +256,7 @@ def update_job(db: Session, data: dict, current_user):
     if not job_positionCRUD.get(db, job_data.job_position_id):
         return constant.ERROR, 404, "Job position not found"
 
-    job_data_in = job_schema.JobUpdate(**job_data.dict())
+    job_data_in = job_schema.JobUpdate(**job_data.model_dump())
     job = jobCRUD.update(db=db, db_obj=job, obj_in=job_data_in)
 
     working_times = job.working_times
@@ -270,14 +279,28 @@ def update_job(db: Session, data: dict, current_user):
     return constant.SUCCESS, 200, job_response
 
 
-def delete_job(db: Session, job_id: int, current_user):
+def delete(db: Session, job_id: int, current_user):
     job = jobCRUD.get(db, job_id)
+    company = companyCRUD.get_company_by_business_id(db, current_user.id)
     if not job:
         return constant.ERROR, 404, "Job not found"
-    if job.business_id != current_user.business.id:
+    if (
+        not company
+        or job.business_id != current_user.id
+        or job.campaign.company_id != company.id
+    ):
         return constant.ERROR, 403, "Permission denied"
     job = jobCRUD.remove(db, id=job_id)
     return constant.SUCCESS, 200, "Job has been deleted"
+
+
+def get_jobs_active_by_company(db: Session, company_id: int):
+    obj_in = {
+        "company_id": company_id,
+        "job_status": JobStatus.PUBLISHED,
+        "job_approve_status": JobApprovalStatus.APPROVED,
+    }
+    return jobCRUD.count(db, **obj_in)
 
 
 def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):

@@ -1,7 +1,6 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     File,
     UploadFile,
     Form,
@@ -10,42 +9,103 @@ from fastapi import (
     BackgroundTasks,
 )
 from sqlalchemy.orm import Session
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 from typing import Annotated
-from pydantic import Field
 
 from app.db.base import get_db
 from app.core.auth import service_business_auth
 from app.core import constant
 from app.core.business import service_business
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import Gender
 
 router = APIRouter()
 
 
 @router.post("/register", summary="Register a new business.")
 def register_business(
-    full_name: Annotated[str, Form(..., description="The full name of the business.")],
-    email: Annotated[str, Form(..., description="The email of the business.")],
-    password: Annotated[str, Form(..., description="The password of the business.")],
+    full_name: Annotated[
+        str,
+        Form(
+            ...,
+            description="The full name of the business.",
+            json_schema_extra={"example": "Tung Ong"},
+        ),
+    ],
+    email: Annotated[
+        str,
+        Form(
+            ...,
+            description="The email of the business.",
+            json_schema_extra={"example": "tungong@email.com"},
+        ),
+    ],
+    password: Annotated[
+        str,
+        Form(
+            ...,
+            description="The password of the business.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
+    ],
     confirm_password: Annotated[
-        str, Form(..., description="The confirm password of the business.")
+        str,
+        Form(
+            ...,
+            description="The confirm password of the business.",
+            json_schema_extra={"example": "@Password1234"},
+        ),
     ],
     province_id: Annotated[
-        int, Form(..., description="The province id of the business.")
+        int,
+        Form(
+            ...,
+            description="The province id of the business.",
+            json_schema_extra={"example": 1},
+        ),
     ],
     phone_number: Annotated[
-        str, Form(..., description="The phone number of the business.")
+        str,
+        Form(
+            ...,
+            description="The phone number of the business.",
+            json_schema_extra={"example": "0323456789"},
+        ),
     ],
-    gender: Annotated[str, Form(..., description="Gender of the business.")],
-    company_name: Annotated[str, Form(..., description="The company of the business.")],
+    gender: Annotated[
+        Gender,
+        Form(
+            ...,
+            description="Gender of the business.",
+            json_schema_extra={"example": Gender.OTHER},
+        ),
+    ],
+    company_name: Annotated[
+        str,
+        Form(
+            ...,
+            description="The company of the business.",
+            json_schema_extra={"example": "Tung Ong Company"},
+        ),
+    ],
     work_position: Annotated[
-        str, Form(..., description="The work position of the business.")
+        str,
+        Form(
+            ...,
+            description="The work position of the business.",
+            json_schema_extra={"example": "Nhân viên"},
+        ),
     ],
-    work_location: str = Form(None, description="The work location of the business."),
+    work_location: str = Form(
+        None,
+        description="The work location of the business.",
+        json_schema_extra={"example": "Hà Nội"},
+    ),
     avatar: UploadFile = File(None, description="The profile avatar of the business."),
-    district_id: int = Form(None, description="The district id of the business."),
+    district_id: int = Form(
+        None,
+        description="The district id of the business.",
+        json_schema_extra={"example": 1},
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -73,9 +133,10 @@ def register_business(
     - status_code (409): The business is already registered.
 
     """
+    data = locals()
 
-    data = {k: v for k, v in locals().items() if k not in ["db"]}
-    status, status_code, response = service_business.create_business(db, data)
+    status, status_code, response = service_business.create(db, data)
+
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
@@ -85,7 +146,7 @@ def register_business(
 @router.post("/login", summary="Login business.")
 def login_auth(
     data: dict = Body(
-        ..., example={"email": "clone46191@gmail.com", "password": "@Password1234"}
+        ..., example={"email": "tungong@email.com", "password": "@Password1234"}
     ),
     db: Session = Depends(get_db),
 ):
@@ -155,7 +216,6 @@ def logout_auth(
     - status_code (404): The business is not found.
 
     """
-
     status, status_code, response = service_business_auth.logout(db, request)
 
     if status == constant.ERROR:
@@ -192,7 +252,6 @@ def verify_token_auth(
 
 @router.post("/change_password", summary="Change password.")
 def change_password(
-    request: Request,
     data: dict = Body(
         ...,
         example={
@@ -234,7 +293,6 @@ def change_password(
 
 @router.post("/send_forgot_password", summary="Forgot password.")
 def forgot_password(
-    request: Request,
     data: dict = Body(
         ...,
         example={
@@ -258,6 +316,7 @@ def forgot_password(
     - status_code (404): The business is not found.
 
     """
+    return custom_response(200, constant.SUCCESS, {"Feature": "Coming soon"})
     status, status_code, response = service_business_auth.send_forgot_password(
         db, background_tasks, data
     )

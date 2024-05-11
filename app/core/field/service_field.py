@@ -11,7 +11,7 @@ from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
 
 
-def get_list_field(db: Session, data: dict):
+def get_field(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -25,15 +25,15 @@ def get_list_field(db: Session, data: dict):
     return constant.SUCCESS, 200, categories_response
 
 
-def get_field_by_id(db: Session, field_id: int):
-    field = fieldCRUD.get(db, field_id)
+def get_by_id(db: Session, id: int):
+    field = fieldCRUD.get(db, id)
     if not field:
         return constant.ERROR, 404, "Field not found"
     field_response = schema_field.FieldItemResponse(**field.__dict__)
     return constant.SUCCESS, 200, field_response
 
 
-def create_field(db: Session, data: dict):
+def create(db: Session, data: dict):
     try:
         field_data = schema_field.FieldCreateRequest(**data)
     except Exception as e:
@@ -46,8 +46,8 @@ def create_field(db: Session, data: dict):
     return constant.SUCCESS, 201, field
 
 
-def update_field(db: Session, field_id: int, data: dict):
-    field = fieldCRUD.get(db, field_id)
+def update(db: Session, id: int, data: dict):
+    field = fieldCRUD.get(db, id)
     if not field:
         return constant.ERROR, 404, "Field not found"
 
@@ -60,12 +60,12 @@ def update_field(db: Session, field_id: int, data: dict):
     return constant.SUCCESS, 200, field
 
 
-def delete_field(db: Session, field_id: int):
-    field = fieldCRUD.get(db, field_id)
+def delete(db: Session, id: int):
+    field = fieldCRUD.get(db, id)
     if not field:
         return constant.ERROR, 404, "Field not found"
 
-    field = fieldCRUD.remove(db, id=field_id)
+    field = fieldCRUD.remove(db, id=id)
     return constant.SUCCESS, 200, field
 
 
@@ -87,8 +87,6 @@ def create_fields_company(db: Session, company_id: int, fields: list):
             "field_id": field,
         }
         company_fieldCRUD.create(db, obj_in=company_field_data)
-        field_data = fieldCRUD.get(db, field)
-        fieldCRUD.update(db, db_obj=field_data, obj_in={"count": field_data.count + 1})
     return True
 
 

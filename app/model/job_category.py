@@ -11,5 +11,14 @@ class JobCategory(Base):
     )
 
     job = relationship(
-        "Job", back_populates="job_category_secondary", overlaps="job_categories"
+        "Job",
+        back_populates="job_category_secondary",
+        overlaps="job_categories",
+        single_parent=True,
+    )
+    category = relationship(
+        "Category",
+        back_populates="job_category_secondary",
+        overlaps="job_categories",
+        single_parent=True,
     )
