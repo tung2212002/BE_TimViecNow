@@ -8,7 +8,7 @@ from app.hepler.enum import Role, Gender, TypeAccount
 
 class User(Base):
     full_name = Column(String(50), nullable=False)
-    email = Column(String(255), primary_key=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     phone_number = Column(String(10), nullable=True)
     gender = Column(Enum(Gender), nullable=True)

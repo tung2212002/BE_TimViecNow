@@ -6,7 +6,7 @@ from app.db.base_class import Base
 
 class Province(Base):
     name = Column(String(50), nullable=False, unique=True, index=True)
-    code = Column(String(10), index=True, primary_key=True)
+    code = Column(String(10), index=True, unique=True)
     name_with_type = Column(String(50), nullable=False, unique=True, index=True)
     slug = Column(String(50), nullable=False, unique=True, index=True)
     type = Column(String(50), nullable=False)
