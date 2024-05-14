@@ -1,3 +1,4 @@
+from app.db.base_class import Base
 from .cruitment_demand import CruitmentDemand
 from .work_market import WorkMarket
 from .blacklist import Blacklist
