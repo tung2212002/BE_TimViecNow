@@ -38,7 +38,6 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         db: Session,
         **kwargs,
     ):
-        print(kwargs)
         query = db.query(self.model)
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -123,11 +122,13 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         return jobs, number_job_of_district
 
     def get_number_job_of_district(self, db: Session, **filters):
+
         query = db.query(
             self.work_location.district_id,
             func.count(distinct(self.model.id)),
         )
         query = query.join(self.model, self.work_location.job_id == self.model.id)
+        query = self.apply_filters(query, **filters)
         query = query.group_by(
             self.work_location.district_id,
         )
