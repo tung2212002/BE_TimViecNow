@@ -11,7 +11,7 @@ class CVApplication(Base):
     )
     user_id = Column(
         Integer,
-        ForeignKey("user.id", ondelete="CASCADE"),
+        ForeignKey("user.id"),
         nullable=False,
         index=True,
     )
@@ -22,5 +22,15 @@ class CVApplication(Base):
     letter_cover = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    job = relationship("Job", back_populates="cv_applications", uselist=False)
-    user = relationship("User", back_populates="cv_applications", uselist=False)
+    job = relationship(
+        "Job",
+        back_populates="cv_applications",
+        uselist=False,
+        single_parent=True,
+    )
+    user = relationship(
+        "User",
+        back_populates="cv_applications",
+        uselist=False,
+        single_parent=True,
+    )

@@ -1,9 +1,7 @@
 from pydantic import BaseModel, ConfigDict, validator
 from typing import Optional
-import re
-from datetime import datetime, timezone
+from datetime import datetime
 
-from app.core import constant
 from app.hepler.enum import VerifyCodeStatus
 
 
@@ -13,6 +11,10 @@ class VerifyCodeBase(BaseModel):
     status: Optional[VerifyCodeStatus] = VerifyCodeStatus.ACTIVE
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+    @validator("status")
+    def validate_status(cls, v):
+        return v or VerifyCodeStatus.ACTIVE
 
 
 class VerifyCodeRequest(BaseModel):

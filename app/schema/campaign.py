@@ -1,10 +1,8 @@
 from pydantic import BaseModel, validator, ConfigDict
-from typing import Optional, Any
-from datetime import datetime, timezone
-import re
+from typing import Optional
+from datetime import datetime
 
 from app.hepler.enum import CampaignStatus
-from app.core import constant
 from app.schema.page import Pagination
 
 
@@ -29,6 +27,14 @@ class CampaignItemResponse(CampaignBase):
     optimal_score: Optional[int] = 0
     job: Optional[dict] = None
 
+    @validator("status")
+    def validate_status(cls, v):
+        return v or CampaignStatus.OPEN
+
+    @validator("optimal_score")
+    def validate_optimal_score(cls, v):
+        return v or 0
+
 
 class CampaignGetRequest(BaseModel):
     id: int
@@ -43,43 +49,58 @@ class CampaignCreateRequest(CampaignBase):
 
 
 class CampaignCreate(CampaignBase):
-    pass
+    business_id: int
 
 
 class CampaignUpdateRequest(CampaignBase):
     status: Optional[str] = CampaignStatus.OPEN
     optimal_score: Optional[int] = 0
-    campaign_id: int
+    id: int
 
     @validator("status")
     def validate_status(cls, v):
         if not v in CampaignStatus.__members__.values():
             raise ValueError("Invalid status")
-        return v
+        return v or CampaignStatus.OPEN
+
+    @validator("optimal_score")
+    def validate_optimal_score(cls, v):
+        return v or 0
 
 
 class CampaignUpdate(CampaignBase):
     status: Optional[str] = CampaignStatus.OPEN
     optimal_score: Optional[int] = 0
-    campaign_id: int
+    id: int
 
     @validator("status")
     def validate_status(cls, v):
         if not v in CampaignStatus.__members__.values():
             raise ValueError("Invalid status")
-        return v
+        return v or CampaignStatus.OPEN
+
+    @validator("optimal_score")
+    def validate_optimal_score(cls, v):
+        return v or 0
 
 
 class CampaignDeleteRequest(BaseModel):
     id: int
 
 
-class CampaignGetListRequest(Pagination):
+class CampaignGetListPagination(Pagination):
     business_id: Optional[int] = None
-    status: Optional[int] = None
+    company_id: Optional[int] = None
+    status: Optional[CampaignStatus] = None
 
     @validator("status")
     def validate_status(cls, v):
         if v and not v in CampaignStatus.__members__.values():
             raise ValueError("Invalid status")
         return v
+
+
+class CountGetListPagination(BaseModel):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    status: Optional[CampaignStatus] = None

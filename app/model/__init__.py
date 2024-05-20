@@ -1,3 +1,4 @@
+from app.db.base_class import Base
 from .cruitment_demand import CruitmentDemand
 from .work_market import WorkMarket
 from .blacklist import Blacklist
@@ -27,6 +28,7 @@ from .user_job_save import UserJobSave
 from .job_skill import JobSkill
 from .job_report import JobReport
 from .field import Field
+from .company_business import CompanyBusiness
 from .company_field import CompanyField
 from .cv_application import CVApplication
 from .job_approval_request import JobApprovalRequest
@@ -34,7 +36,6 @@ from .job_approval_log import ApprovalLog
 from .job_category import JobCategory
 from .business_history import BusinessHistory
 from .working_time import WorkingTime
-from .job_working_time import JobWorkingTime
 from .verify_code import VerifyCode
 from .verify_code_block import VerifyCodeBlock
 from .social_network import SocialNetwork

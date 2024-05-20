@@ -15,19 +15,6 @@ class CRUDUser(
     def get_by_email(self, db: Session, email: str) -> User:
         return db.query(self.model).filter(self.model.email == email).first()
 
-    # def get_multi(
-    #     self,
-    #     db: Session,
-    #     *,
-    #     skip: int = 0,
-    #     limit: int = 10,
-    #     sort_by: str = "id",
-    #     order_by: str = "desc"
-    # ) -> List[User]:
-    #     return super().get_multi(
-    #         db, skip=skip, limit=limit, sort_by=sort_by, order_by=order_by
-    #     )
-
     def create(self, db: Session, *, obj_in: schema_user.UserCreateRequest) -> User:
         db_obj = User(
             **obj_in.dict(exclude_unset=True, exclude={"password", "confirm_password"}),
@@ -41,8 +28,13 @@ class CRUDUser(
     def update(
         self, db: Session, *, db_obj: User, obj_in: schema_user.UserUpdateRequest
     ) -> User:
-        if hasattr(obj_in, "password") and obj_in.password:
-            obj_in.hashed_password = get_password_hash(obj_in.password)
+        if isinstance(obj_in, dict) and obj_in.get("password"):
+            obj_in["hashed_password"] = get_password_hash(obj_in["new_password"])
+        elif hasattr(obj_in, "new_password"):
+            obj_in = obj_in.model_dump(exclude_unset=True)
+            obj_in.update(
+                {"hashed_password": get_password_hash(obj_in["new_password"])}
+            )
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
     def authenticate(self, db: Session, *, email: str, password: str) -> User:

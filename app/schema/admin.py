@@ -1,12 +1,10 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
 from typing import Optional
 from datetime import datetime
 
-from app.hepler.enum import Role, Gender, TypeAccount, FolderBucket
+from app.hepler.enum import Role, Gender, TypeAccount
 from app.core import constant
-from app.hepler.generate_file_name import generate_file_name
 
 
 class AdminBase(BaseModel):

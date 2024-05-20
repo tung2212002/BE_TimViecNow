@@ -1,7 +1,4 @@
-from pydantic import BaseModel, ConfigDict, validator
-from typing import Optional
-
-from app.core import constant
+from pydantic import BaseModel, validator
 
 
 class VerifyCodeBlockCreate(BaseModel):

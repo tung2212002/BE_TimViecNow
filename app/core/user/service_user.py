@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 
-from app.core.security import pwd_context
 from app.crud import user as userCRUD
 from app.core import constant
 from app.schema import (
@@ -10,7 +9,7 @@ from app.schema import (
 )
 from app.core.auth.service_user_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role, TypeAccount
+from app.hepler.enum import Role
 from app.storage.s3 import s3_service
 
 
@@ -42,7 +41,7 @@ def get_user_by_email(db: Session, data: dict):
     return constant.SUCCESS, 200, user
 
 
-def get_user_by_id(db: Session, id: int):
+def get_by_id(db: Session, id: int):
     user = userCRUD.get(db, id)
     if not user:
         return constant.ERROR, 404, "User not found"
@@ -50,7 +49,7 @@ def get_user_by_id(db: Session, id: int):
     return constant.SUCCESS, 200, user
 
 
-def get_list_user(db: Session, data: dict):
+def get(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
@@ -62,7 +61,7 @@ def get_list_user(db: Session, data: dict):
     return constant.SUCCESS, 200, users
 
 
-def create_user(db: Session, data: dict):
+def create(db: Session, data: dict):
     try:
         user_data = schema_user.UserCreateRequest(**data)
     except Exception as e:
@@ -94,7 +93,7 @@ def create_user(db: Session, data: dict):
     return response
 
 
-def update_user(db: Session, id: int, data: dict, current_user):
+def update(db: Session, id: int, data: dict, current_user):
     if current_user is None or current_user.id != id:
         return constant.ERROR, 401, "Unauthorized"
     try:
@@ -109,7 +108,7 @@ def update_user(db: Session, id: int, data: dict, current_user):
     return response
 
 
-def delete_user(db: Session, id: int, current_user):
+def delete(db: Session, id: int, current_user):
     if current_user is None:
         return constant.ERROR, 404, "User not found"
     if current_user.id != id:

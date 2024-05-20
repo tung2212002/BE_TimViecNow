@@ -47,7 +47,9 @@ def custom_response_error(status_code: int, status: str, response: any) -> JSONR
     Returns:
     - response (JSONResponse): The response.
     """
-    return JSONResponse(
+    raise HTTPException(
         status_code=status_code,
-        content={"status": status, "message": response if response else "Error"},
+        detail=jsonable_encoder(
+            response if isinstance(response, str) else "",
+        ),
     )

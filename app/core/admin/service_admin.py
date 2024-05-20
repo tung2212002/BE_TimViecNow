@@ -1,26 +1,20 @@
 from sqlalchemy.orm import Session
 
-from app.core.security import pwd_context
 from app.crud.manager_base import manager_base as manager_baseCRUD
-from app.crud.business import business as businessCRUD
-from app.crud.province import province as provinceCRUD
-from app.crud.district import district as districtCRUD
 from app.crud.admin import admin as adminCRUD
 from app.core import constant
 from app.schema import (
-    business as schema_business,
     page as schema_page,
     manager_base as schema_manager_base,
-    province as schema_province,
     admin as schema_admin,
 )
 from app.core.auth.service_business_auth import signJWT, signJWTRefreshToken
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role, TypeAccount
+from app.hepler.enum import Role
 from app.core.business.service_business import get_info_user
 
 
-def get_admin_by_email(db: Session, data: dict):
+def get_by_email(db: Session, data: dict):
     try:
         admin_data = schema_admin.AdminGetByEmailRequest(**data)
     except Exception as e:
@@ -34,7 +28,7 @@ def get_admin_by_email(db: Session, data: dict):
     return constant.SUCCESS, 200, admin_response
 
 
-def get_admin_by_id(db: Session, id: int):
+def get_by_id(db: Session, id: int):
     admin = manager_baseCRUD.get_by_admin(db, id)
     if not admin:
         return constant.ERROR, 404, "Admin not found"
@@ -44,19 +38,19 @@ def get_admin_by_id(db: Session, id: int):
     return constant.SUCCESS, 200, admin_response
 
 
-def get_list_admin(db: Session, data: dict):
+def get(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    admins = manager_baseCRUD.get_list_admin(db, **page.dict())
+    admins = manager_baseCRUD.get_list_admin(db, **page.model_dump())
     if not admins:
         return constant.ERROR, 404, "Admin not found"
     admin = [get_info_user(db, admin) for admin in admins]
     return constant.SUCCESS, 200, admin
 
 
-def create_admin(db: Session, data: dict):
+def create(db: Session, data: dict):
     try:
         data["role"] = Role.ADMIN
         manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
@@ -66,14 +60,13 @@ def create_admin(db: Session, data: dict):
     manager_base = manager_baseCRUD.get_by_email(db, manager_base_data.email)
     if manager_base:
         return constant.ERROR, 409, "Email already registered"
-
     manager_base = manager_baseCRUD.create(
         db,
         obj_in=manager_base_data,
     )
 
     admin_input = dict(admin_data)
-    admin_input["manager_base_id"] = manager_base.id
+    admin_input["id"] = manager_base.id
     admin = adminCRUD.create(
         db,
         obj_in=admin_input,
@@ -98,7 +91,7 @@ def create_admin(db: Session, data: dict):
     return response
 
 
-def update_admin(db: Session, data: dict, current_user):
+def update(db: Session, data: dict, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
     if data["id"] != current_user.id:
@@ -121,7 +114,7 @@ def update_admin(db: Session, data: dict, current_user):
     return constant.SUCCESS, 200, admin_response
 
 
-def delete_admin(db: Session, id: int, current_user):
+def delete(db: Session, id: int, current_user):
     if current_user is None:
         return constant.ERROR, 401, "Unauthorized"
     if id != current_user.id and current_user.role != Role.SUPER_USER:

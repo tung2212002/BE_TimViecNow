@@ -12,8 +12,8 @@ from app.db.base_class import Base
 from pydantic import BaseModel
 
 
-ACCESS_TOKEN_EXPIRE = settings.ACCESS_TOKEN_EXPIRE_SECONDS
-REFRESH_TOKEN_EXPIRE = settings.REFRESH_TOKEN_EXPIRE_SECONDS
+ACCESS_TOKEN_EXPIRE = settings.ACCESS_TOKEN_EXPIRE
+REFRESH_TOKEN_EXPIRE = settings.REFRESH_TOKEN_EXPIRE
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.SECURITY_ALGORITHM
 
@@ -25,10 +25,10 @@ def signJWT(payload: Union[Base, Dict[str, Any], BaseModel]):
         payload = payload.__dict__
         payload.update({"iat": iat, "exp": exp, "type": TokenType.ACCESS.value})
     elif isinstance(payload, BaseModel):
-        payload = payload.dict()
+        payload = payload.model_dump()
         payload.update({"iat": iat, "exp": exp, "type": TokenType.ACCESS.value})
     data = TokenPayload(**payload)
-    access_token = jwt.encode(data.dict(), SECRET_KEY, algorithm=ALGORITHM)
+    access_token = jwt.encode(data.model_dump(), SECRET_KEY, algorithm=ALGORITHM)
     return access_token
 
 
@@ -39,10 +39,10 @@ def signJWTRefreshToken(payload: Union[Base, Dict[str, Any], BaseModel]):
         payload = payload.__dict__
         payload.update({"iat": iat, "exp": exp, "type": TokenType.REFRESH.value})
     elif isinstance(payload, BaseModel):
-        payload = payload.dict()
+        payload = payload.model_dump()
         payload.update({"iat": iat, "exp": exp, "type": TokenType.REFRESH.value})
     data = TokenPayload(**payload)
-    refresh_token = jwt.encode(data.dict(), SECRET_KEY, algorithm=ALGORITHM)
+    refresh_token = jwt.encode(data.model_dump(), SECRET_KEY, algorithm=ALGORITHM)
     return refresh_token
 
 

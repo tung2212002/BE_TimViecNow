@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, ForeignKey, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -6,10 +6,24 @@ from app.db.base_class import Base
 
 class WorkLocation(Base):
     job_id = Column(Integer, ForeignKey("job.id", ondelete="CASCADE"), index=True)
-    province_id = Column(Integer, ForeignKey("province.id"), nullable=False)
-    district_id = Column(Integer, ForeignKey("district.id"), nullable=True)
-    description = Column(String(255), nullable=True)
+    province_id = Column(
+        Integer,
+        ForeignKey("province.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    district_id = Column(
+        Integer,
+        ForeignKey("district.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    description = Column(Text, nullable=True)
 
-    job = relationship("Job", back_populates="work_locations")
+    job = relationship(
+        "Job",
+        back_populates="work_locations",
+        single_parent=True,
+    )
     province = relationship("Province", back_populates="work_location", uselist=False)
     district = relationship("District", back_populates="work_location", uselist=False)

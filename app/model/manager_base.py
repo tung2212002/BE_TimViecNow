@@ -8,7 +8,7 @@ from app.db.base_class import Base
 
 class ManagerBase(Base):
     full_name = Column(String(50), nullable=False)
-    email = Column(String(50), primary_key=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     avatar = Column(String(255), nullable=True)
@@ -21,8 +21,16 @@ class ManagerBase(Base):
     last_login = Column(DateTime(timezone=True), default=func.now())
 
     admin = relationship(
-        "Admin", back_populates="manager_base", lazy=True, uselist=False
+        "Admin",
+        back_populates="manager_base",
+        lazy=True,
+        uselist=False,
+        passive_deletes=True,
     )
     business = relationship(
-        "Business", back_populates="manager_base", lazy=True, uselist=False
+        "Business",
+        back_populates="manager_base",
+        lazy=True,
+        uselist=False,
+        passive_deletes=True,
     )

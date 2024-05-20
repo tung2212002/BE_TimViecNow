@@ -1,3 +1,9 @@
+# from os.path import dirname, join
+# from dotenv import load_dotenv
+
+# dotenv_path = join(dirname(dirname(__file__)), ".env")
+# load_dotenv(dotenv_path)
+from app.core.config import settings
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from os.path import dirname, join
@@ -11,10 +17,10 @@ from app.storage.s3 import s3_service
 
 from app.api import api_router
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 init_db(next(get_db()))
 
-app = FastAPI(title="DATN", version="0.0.1")
+app = FastAPI(title="TVNow", version="0.0.1")
 
 app.add_middleware(
     CORSMiddleware,

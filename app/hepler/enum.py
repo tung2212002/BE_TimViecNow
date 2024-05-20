@@ -10,15 +10,31 @@ class Role(str, Enum):
     BUSINESS = "business"
 
 
-class SortType(str, Enum):
+class OrderType(str, Enum):
     ASC = "asc"
     DESC = "desc"
 
 
-class OrderBy(str, Enum):
+class SortBy(str, Enum):
     ID = "id"
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
+
+
+class SortJobBy(str, Enum):
+    ID = "id"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    DEADLINE = "deadline"
+
+
+class SortByJob(str, Enum):
+    ID = "id"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    DEADLINE = "deadline"
+    QUANTITY = "quantity"
+    SALARY = "salary"
 
 
 class Provider(str, Enum):
@@ -37,9 +53,12 @@ class Gender(str, Enum):
 
 class JobStatus(str, Enum):
     PENDING = "pending"
-    APPROVED = "approved"
+    PUBLISHED = "published"
     REJECTED = "rejected"
     EXPIRED = "expired"
+    DRAFT = "draft"
+    BANNED = "banned"
+    STOPPED = "stopped"
 
 
 class JobType(str, Enum):
@@ -52,6 +71,7 @@ class JobApprovalStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    STOPPED = "stopped"
 
 
 class SalaryType(str, Enum):
@@ -83,13 +103,12 @@ class TokenType(str, Enum):
     REFRESH = "refresh_token"
 
 
-class CampaignStatus(int, Enum):
-    STOPPED = 0
-    OPEN = 1
+class CampaignStatus(str, Enum):
+    STOPPED = "stopped"
+    OPEN = "open"
 
 
 class FilterCampaign(str, Enum):
-    ALL = "all"
     ONLY_OPEN = "only_open"
     HAS_NEW_CV = "has_new_cv"
     ACTIVED_CV_COUT = "actived_cv_count"
@@ -124,3 +143,10 @@ class FolderBucket(str, Enum):
     BUSINESS = "business"
     FIELD = "field"
     LABEL_COMPANY = "label_company"
+
+
+class VerifyType(str, Enum):
+    EMAIL = "email"
+    PHONE = "phone"
+    COMPANY = "company"
+    IDENTIFY = "identify"

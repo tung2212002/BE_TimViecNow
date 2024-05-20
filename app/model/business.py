@@ -3,11 +3,19 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
-from app.hepler.enum import Role, Gender
+from app.hepler.enum import Gender
 
 
 class Business(Base):
-    manager_base_id = Column(Integer, ForeignKey("manager_base.id"), primary_key=True)
+    # manager_base_id = Column(
+    #     Integer, ForeignKey("manager_base.id", ondelete="CASCADE"), primary_key=True
+    # )
+    id = Column(
+        Integer,
+        ForeignKey("manager_base.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
     province_id = Column(Integer, ForeignKey("province.id"), nullable=False)
     district_id = Column(Integer, ForeignKey("district.id"), nullable=True)
     phone_number = Column(String(10), nullable=False)
@@ -19,16 +27,23 @@ class Business(Base):
     is_verified_phone = Column(Boolean, default=False)
     is_verified_company = Column(Boolean, default=False)
     is_verified_identity = Column(Boolean, default=False)
-    company_id = Column(Integer, ForeignKey("company.id"), nullable=True)
 
-    manager_base = relationship("ManagerBase", back_populates="business")
+    manager_base = relationship(
+        "ManagerBase",
+        back_populates="business",
+        single_parent=True,
+        passive_deletes=True,
+    )
     province = relationship("Province", back_populates="business", uselist=False)
     district = relationship("District", back_populates="business", uselist=False)
-    job_approval_request = relationship("JobApprovalRequest", back_populates="business")
-    job = relationship("Job", back_populates="business")
+    job = relationship("Job", back_populates="business", passive_deletes=True)
     business_history = relationship("BusinessHistory", back_populates="business")
-    campaign = relationship("Campaign", back_populates="business")
-    # company = relationship(
-    #     "Company", back_populates="businesses", uselist=False, foreign_keys=[company_id]
-    # )
-    # company_create = relationship("Company", back_populates="business", uselist=False)
+    campaign = relationship("Campaign", back_populates="business", passive_deletes=True)
+    company = relationship(
+        "Company",
+        secondary="company_business",
+        overlaps="company_business",
+        lazy="subquery",
+        uselist=False,
+        passive_deletes=True,
+    )

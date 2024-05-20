@@ -15,7 +15,23 @@ class Campaign(Base):
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
-    business_id = Column(Integer, ForeignKey("business.id"), nullable=False)
+    business_id = Column(
+        Integer, ForeignKey("business.id", ondelete="CASCADE"), nullable=False
+    )
+    company_id = Column(
+        Integer,
+        ForeignKey("company.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
-    business = relationship("Business", back_populates="campaign")
-    job = relationship("Job", back_populates="campaign")
+    company = relationship(
+        "Company",
+        back_populates="campaigns",
+    )
+    business = relationship(
+        "Business",
+        back_populates="campaign",
+        single_parent=True,
+    )
+    job = relationship("Job", back_populates="campaign", passive_deletes=True)

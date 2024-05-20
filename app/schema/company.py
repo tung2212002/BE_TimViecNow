@@ -1,12 +1,14 @@
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, validator, ConfigDict
 import re
-from fastapi import File, UploadFile
-from typing import Optional, List
+from fastapi import UploadFile
+from typing import Optional, List, Any
+import json
 
 
 from app.hepler.enum import CompanyType, FolderBucket
 from app.core import constant
 from app.hepler.generate_file_name import generate_file_name
+from app.schema.page import Pagination
 
 
 class CompanyBase(BaseModel):
@@ -19,6 +21,7 @@ class CompanyBase(BaseModel):
     company_short_description: Optional[str] = None
     scale: str
     tax_code: str
+    type: CompanyType
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
@@ -57,11 +60,24 @@ class CompanyItemResponse(BaseModel):
     company_short_description: Optional[str] = None
     scale: str
     is_verified: bool
-    total_active_jobs: int = 0
+    total_active_jobs: int = None
     tax_code: str
+    banner: Optional[str] = None
 
     @validator("logo")
     def validate_logo(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
+    @validator("banner")
+    def validate_banner(cls, v):
         if v is not None:
             if not v.startswith("https://"):
                 v = constant.BUCKET_URL + v
@@ -84,11 +100,24 @@ class CompanyPrivateResponse(BaseModel):
     tax_code: str
     is_verified: bool
     total_active_jobs: int = 0
+    banner: Optional[str] = None
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("logo")
     def validate_logo(cls, v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
+        return v
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
+    @validator("banner")
+    def validate_banner(cls, v):
         if v is not None:
             if not v.startswith("https://"):
                 v = constant.BUCKET_URL + v
@@ -107,9 +136,20 @@ class CompanyJobResponse(CompanyBase):
                 v = constant.BUCKET_URL + v
         return v
 
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.loads(v) if isinstance(v, str) else v
+
 
 class CompanyGetRequest(BaseModel):
     id: int
+
+
+class CompanyPagination(Pagination):
+    fields: Optional[List[int]] = None
+    business_id: Optional[int] = None
+    keyword: Optional[str] = None
 
 
 class CompanyCreateRequest(CompanyBase):
@@ -126,6 +166,18 @@ class CompanyCreateRequest(CompanyBase):
             v.filename = generate_file_name(FolderBucket.LOGO, v.filename)
         return v
 
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.dumps(v)
+        return v
+
+    @validator("fields")
+    def validate_fields(cls, v):
+        if len(v) == 0:
+            raise ValueError("Fields must not be empty")
+        return v
+
 
 class CompanyCreate(CompanyBase):
     logo: Optional[str] = None
@@ -133,7 +185,7 @@ class CompanyCreate(CompanyBase):
 
 
 class CompanyUpdateRequest(BaseModel):
-    id: int
+    company_id: int
     email: Optional[str] = None
     phone_number: Optional[str] = None
     is_premium: Optional[bool] = None
@@ -141,6 +193,7 @@ class CompanyUpdateRequest(BaseModel):
     logo: Optional[UploadFile] = None
     website: Optional[str] = None
     address: Optional[str] = None
+    type: Optional[CompanyType] = None
     company_short_description: Optional[str] = None
     scale: Optional[str] = None
     tax_code: Optional[str] = None
@@ -170,9 +223,15 @@ class CompanyUpdateRequest(BaseModel):
             v.filename = generate_file_name(FolderBucket.LOGO, v.filename)
         return v
 
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        if v is not None:
+            return json.dumps(v)
+        return v
+
 
 class CompanyUpdate(BaseModel):
-    id: int
+    company_id: int
     email: Optional[str] = None
     phone_number: Optional[str] = None
     is_premium: Optional[bool] = None
@@ -180,6 +239,7 @@ class CompanyUpdate(BaseModel):
     logo: Optional[str] = None
     website: Optional[str] = None
     address: Optional[str] = None
+    type: Optional[CompanyType] = None
     company_short_description: Optional[str] = None
     scale: Optional[str] = None
     tax_code: Optional[str] = None

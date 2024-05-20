@@ -12,11 +12,12 @@ class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
     def get_multi_by_province(
         self,
         db: Session,
+        *,
         province_id: int,
         skip: int = 0,
         limit: int = 100,
         sort_by: str = "id",
-        order_by: str = "desc",
+        order_by: str = "asc",
     ):
 
         return (
@@ -24,7 +25,7 @@ class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
             .filter(self.model.province_id == province_id)
             .order_by(
                 getattr(self.model, sort_by).desc()
-                if order_by == "desc"
+                if order_by == "asc"
                 else getattr(self.model, sort_by)
             )
             .offset(skip)

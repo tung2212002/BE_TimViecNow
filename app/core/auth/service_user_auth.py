@@ -1,12 +1,10 @@
 from sqlalchemy.orm import Session
-import jwt
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import HTTPException, Depends
 import requests
 
 from app.core import constant
 from app.core.security import pwd_context
-from app.core.config import settings
 from app import crud
 from app.schema import (
     user as schema_user,
@@ -18,7 +16,6 @@ from app.core.auth.auth_bearer import JWTBearer
 from app.core.auth.auth_handler import signJWT, decodeJWT, signJWTRefreshToken
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
 from app.hepler.enum import Role, TypeAccount, Provider
 
 
@@ -49,7 +46,7 @@ def authenticate_google(db: Session, data: dict):
     token = data.get("access_token")
     if token is None:
         return constant.ERROR, 400, "Token is required"
-    url = f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={token}"
+    url = f"{constant.GOOGLE_GET_USER_INFO_URL}{token}"
     response = requests.get(url)
     if response.status_code != 200:
         return constant.ERROR, 400, "Invalid token"
@@ -146,6 +143,7 @@ def refresh_token(db: Session, request):
     if user is None:
         return constant.ERROR, 404, "User not found"
 
+    user.id
     access_token = signJWT(user)
     user = schema_user.UserItemResponse(**user.__dict__)
 
@@ -161,3 +159,16 @@ def logout(db: Session, request: dict):
 
 def check_blacklist(db: Session, token: str):
     return crud.blacklist.get_by_token(db, token)
+
+
+def change_password(db: Session, data: dict, current_user):
+    try:
+        user_data = schema_auth.AuthChangePassword(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    if user_data.old_password == user_data.new_password:
+        return constant.ERROR, 409, "Old password and new password are the same"
+    if not verify_password(user_data.old_password, current_user.hashed_password):
+        return constant.ERROR, 401, "Incorrect password"
+    crud.user.update(db=db, obj_in=user_data, db_obj=current_user)
+    return constant.SUCCESS, 200, "Change password successfully"

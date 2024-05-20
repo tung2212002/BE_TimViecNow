@@ -2,11 +2,9 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.schema import business as schema_business
-from app.core.security import get_password_hash, verify_password
+from app.core.security import verify_password
 from .base import CRUDBase
 from app.model.business import Business
-from app.model.manager_base import ManagerBase
-from app.schema import manager_base as schema_manager_base
 from app.hepler.enum import Role
 from app.crud.manager_base import manager_base
 
@@ -22,16 +20,7 @@ class CRUDBusiness(
     def get_by_email(self, db: Session, email: str) -> Business:
         user = manager_base.get_by_email(db, email)
         return (
-            db.query(Business).filter(Business.manager_base_id == user.id).first()
-            if user
-            else None
-        )
-
-    def get_by_manager_base_id(self, db: Session, manager_base_id: int) -> Business:
-        return (
-            db.query(Business)
-            .filter(Business.manager_base_id == manager_base_id)
-            .first()
+            db.query(Business).filter(Business.id == user.id).first() if user else None
         )
 
     def create(
@@ -79,31 +68,48 @@ class CRUDBusiness(
         db.refresh(db_obj)
         return db_obj
 
-    def get_businesses_by_company_id(
-        self,
-        db: Session,
-        company_id: int,
-        *,
-        skip: int = 0,
-        limit: int = 10,
-        sort_by: str = "id",
-        order_by: str = "desc"
-    ):
-        return (
-            db.query(self.model)
-            .filter(self.model.company_id == company_id)
-            .order_by(
-                getattr(self.model, sort_by).desc()
-                if order_by == "desc"
-                else getattr(self.model, sort_by)
-            )
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-
     def get_business_by_company_id(self, db: Session, company_id: int):
         return db.query(self.model).filter(self.model.company_id == company_id).first()
+
+    def set_company(
+        self, db: Session, *, db_obj: Business, company_id: int
+    ) -> Business:
+        db_obj.company_id = company_id
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_email(
+        self, db: Session, *, db_obj: Business, is_verified_email: bool
+    ) -> Business:
+        db_obj.is_verified_email = is_verified_email
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_phone(
+        self, db: Session, *, db_obj: Business, is_verified_phone: bool
+    ) -> Business:
+        db_obj.is_verified_phone = is_verified_phone
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_identity(
+        self, db: Session, *, db_obj: Business, is_verified_identity: bool
+    ) -> Business:
+        db_obj.is_verified_identity = is_verified_identity
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def set_is_verified_company(
+        self, db: Session, *, db_obj: Business, is_verified_company: bool
+    ) -> Business:
+        db_obj.is_verified_company = is_verified_company
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
 
 business = CRUDBusiness(Business)

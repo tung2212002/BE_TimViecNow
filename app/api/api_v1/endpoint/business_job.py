@@ -1,12 +1,19 @@
-from fastapi import APIRouter, Depends, Query, Path, Body, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+    Body,
+    Query,
+    Path,
+)
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.db.base import get_db
+from app.core.auth.service_business_auth import get_current_user, get_current_business
 from app.core import constant
 from app.core.job import service_job
-from app.core.auth.service_business_auth import get_current_user, get_current_admin
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import SortBy, OrderType, JobStatus, JobApprovalStatus
 
 router = APIRouter()
 
@@ -14,19 +21,29 @@ router = APIRouter()
 @router.get("", summary="Get list of job.")
 def get_job(
     request: Request,
-    skip: int = Query(0, description="The number of users to skip.", example=0),
-    limit: int = Query(100, description="The number of users to return.", example=100),
-    sort_by: str = Query("id", description="The field to sort by.", example="id"),
-    order_by: str = Query("asc", description="The order to sort by.", example="asc"),
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: OrderType = Query(
+        None, description="The order to sort by.", example=OrderType.DESC
+    ),
     business_id: int = Query(None, description="The business id.", example=1),
     company_id: int = Query(None, description="The company id.", example=1),
+    job_status: JobStatus = Query(
+        None, description="The job status.", example=JobStatus.PUBLISHED
+    ),
+    job_approve_status: JobApprovalStatus = Query(
+        None, description="The job approve status.", example=JobApprovalStatus.PENDING
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """
-    Get list of job.
+    Get list of job by business.
 
-    This endpoint allows getting a list of job.
+    This endpoint allows getting a list of job by business.
 
     Parameters:
     - skip (int): The number of users to skip.
@@ -35,6 +52,9 @@ def get_job(
     - order_by (str): The order to sort by.
     - business_id (int): The business id.
     - company_id (int): The company id.
+    - job_status (str): The job status.
+    - job_approve_status (str): The job approve status.
+    - campaign_id (int): The campaign id.
 
     Returns:
     - status_code (200): The list of job has been found successfully.
@@ -44,7 +64,9 @@ def get_job(
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
 
-    status, status_code, response = service_job.get_list_job(db, {**args}, current_user)
+    status, status_code, response = service_job.get_by_business(
+        db, {**args}, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -54,7 +76,11 @@ def get_job(
 
 @router.get("/{job_id}", summary="Get job by id.")
 def get_job_by_id(
-    job_id: int = Path(description="The job id.", example=1),
+    job_id: int = Path(
+        ...,
+        description="The job id.",
+        example=1,
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -72,200 +98,8 @@ def get_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.get_job_by_id(db, job_id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
-
-
-@router.post("", summary="Create job.")
-def create_job(
-    data: dict = Body(
-        ...,
-        description="The job data.",
-        example={
-            "campaign_id": 1,
-            "categories": [1, 2],
-            "title": "Tuyển dụng nhân viên",
-            "deadline": "2024-04-10",
-            "email_contact": [],
-            "employment_type": "intern",
-            "full_name_contact": "Nguyen Van A",
-            "gender_requirement": "other",
-            "job_benefit": "<p>Benefit</p>",
-            "job_description": "<p>Description</p>",
-            "job_experience": 1,
-            "job_position": "Developer",
-            "job_requirement": "<p>Requirement</p>",
-            "location": [{"province_id": 1, "district": 1, "description": "Address"}],
-            "max_salary": 10000000,
-            "min_salary": 5000000,
-            "must_have_skills": [1, 2],
-            "phone_number_contact": "0123456789",
-            "quantity": 1,
-            "salary_type": "vnd",
-            "should_have_skills": [1, 2],
-            "title": "Tuyển dụng nhân viên",
-            "working_time": [
-                {
-                    "date_from": "1",
-                    "date_to": "5",
-                    "start_time": "08:00",
-                    "end_time": "17:00",
-                }
-            ],
-            "working_time_text": "Chủ động thời gian làm việc",
-        },
-    ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Create job.
-
-    This endpoint allows creating a job.
-
-    Parameters:
-    - campaign_id (int): The campaign id.
-    - categories (List[int]): The list of category id.
-    - title (str): The title of the job.
-    - deadline (str): The deadline of the job.
-    - email_contact (List[str]): The list of email contact.
-    - employment_type (str): The employment type.
-    - full_name_contact (str): The full name contact.
-    - gender_requirement (str): The gender requirement.
-    - job_benefit (str): The job benefit.
-    - job_description (str): The job description.
-    - job_experience (int): The job experience id.
-    - job_position (str): The job position.
-    - job_requirement (str): The job requirement.
-    - location (List[dict]): The list of location.
-    - max_salary (int): The max salary.
-    - min_salary (int): The min salary.
-    - must_have_skills (List[int]): The list of must have skill id.
-    - phone_number_contact (str): The phone number contact.
-    - quantity (int): The quantity.
-    - salary_type (str): The salary type.
-    - should_have_skills (List[int]): The list of should have skill id.
-    - working_time (List[dict]): The list of working time.
-    - working_time_text (str): The working time text.
-
-    Returns:
-    - status_code (201): The job has been created successfully.
-    - status_code (400): The request is invalid.
-    - status_code (403): The permission is denied.
-    - status_code (404): The campaign is not found.
-
-    """
-    status, status_code, response = service_job.create_job(db, data, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
-
-
-@router.put("/{job_id}", summary="Update job.")
-def update_job(
-    job_id: int = Path(description="The job id.", example=1),
-    data: dict = Body(
-        ...,
-        description="The job data.",
-        example={
-            "categories": [1, 2],
-            "title": "Tuyển dụng nhân viên (Update)",
-            "deadline": "2024-04-10",
-            "email_contact": [],
-            "employment_type": "intern",
-            "full_name_contact": "Nguyen Van A",
-            "gender_requirement": "other",
-            "job_benefit": "<p>Benefit (Update)</p>",
-            "job_description": "<p>Description (Update)</p>",
-            "job_experience": 1,
-            "job_position": "Developer",
-            "job_requirement": "<p>Requirement (Update)</p>",
-            "location": [{"province_id": 1, "district": 1, "description": "Address"}],
-            "max_salary": 10000000,
-            "min_salary": 5000000,
-            "must_have_skills": [1, 2],
-            "phone_number_contact": "0123456789",
-            "quantity": 1,
-            "salary_type": "vnd",
-            "should_have_skills": [1, 2],
-            "title": "Tuyển dụng nhân viên (Update)",
-            "working_time": [
-                {
-                    "date_from": "1",
-                    "date_to": "5",
-                    "start_time": "08:00",
-                    "end_time": "17:00",
-                }
-            ],
-            "working_time_text": "Chủ động thời gian làm việc (Update)",
-            "is_featured": True,
-            "is_highlight": True,
-            "is_urgent": True,
-            "is_paid_featured": True,
-            "is_bg_featured": True,
-            "is_vip_employer": True,
-            "is_diamond_employer": True,
-            "is_job_flash": True,
-            "employer_verified": True,
-        },
-    ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Update job.
-
-    This endpoint allows updating a job.
-
-    Parameters:
-    - job_id (int): The job id.
-    - categories (List[int]): The list of category id.
-    - title (str): The title of the job.
-    - deadline (str): The deadline of the job.
-    - email_contact (List[str]): The list of email contact.
-    - employment_type (str): The employment type.
-    - full_name_contact (str): The full name contact.
-    - gender_requirement (str): The gender requirement.
-    - job_benefit (str): The job benefit.
-    - job_description (str): The job description.
-    - job_experience (int): The job experience id.
-    - job_position (str): The job position.
-    - job_requirement (str): The job requirement.
-    - location (List[dict]): The list of location.
-    - max_salary (int): The max salary.
-    - min_salary (int): The min salary.
-    - must_have_skills (List[int]): The list of must have skill id.
-    - phone_number_contact (str): The phone number contact.
-    - quantity (int): The quantity.
-    - salary_type (str): The salary type.
-    - should_have_skills (List[int]): The list of should have skill id.
-    - working_time (List[dict]): The list of working time.
-    - working_time_text (str): The working time text.
-    - is_featured (bool): The is featured.
-    - is_highlight (bool): The is highlight.
-    - is_urgent (bool): The is urgent.
-    - is_paid_featured (bool): The is paid featured.
-    - is_bg_featured (bool): The is bg featured.
-    - is_vip_employer (bool): The is vip employer.
-    - is_diamond_employer (bool): The is diamond employer.
-    - is_job_flash (bool): The is job flash.
-    - employer_verified (bool): The employer verified.
-
-    Returns:
-    - status_code (200): The job has been updated successfully.
-    - status_code (400): The request is invalid.
-    - status_code (403): The permission is denied.
-    - status_code (404): The job is not found.
-
-    """
-    status, status_code, response = service_job.update_job(
-        db, {**data, "id": job_id}, current_user
+    status, status_code, response = service_job.get_by_id_for_business(
+        db, job_id, current_user
     )
 
     if status == constant.ERROR:
@@ -274,27 +108,173 @@ def update_job(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
-@router.delete("/{job_id}", summary="Delete job.")
+@router.post("", summary="Create a new job.")
+def create_job(
+    data: dict = Body(
+        ...,
+        description="The information of the job.",
+        example={
+            "title": "Tuyển thực tập sinh Backend FastAPI ",
+            "min_salary": 5000000,
+            "max_salary": 10000000,
+            "salary_type": "vnd",
+            "locations": [
+                {"province_id": 1, "district_id": 1, "description": "Địa chỉ 1"},
+            ],
+            "gender_requirement": "other",
+            "job_description": "<p>Job description</p>",
+            "job_requirement": "<p>Job requirement</p>",
+            "job_benefit": "<p>Job benefit</p>",
+            "employment_type": "full_time",
+            "deadline": "2024-05-03",
+            "full_name_contact": "Nhà tuyển dụng",
+            "phone_number_contact": "0328493879",
+            "email_contact": ["tung@gmail.com"],
+            "campaign_id": 1,
+            "quantity": 5,
+            "categories": [1, 2, 3],
+            "working_times": [
+                {
+                    "date_from": 1,
+                    "date_to": 5,
+                    "start_time": "08:30",
+                    "end_time": "18:00",
+                }
+            ],
+            "working_time_text": "Thời gian làm việc từ 8h30 đến 18h",
+            "must_have_skills": [2, 3],
+            "should_have_skills": [1, 4],
+            "job_position_id": 1,
+            "job_experience_id": 2,
+            "job_location": "Chuyên viên Nhân sự",
+        },
+    ),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_business),
+):
+    """
+    Create a new job.
+
+    This endpoint allows creating a new job with the provided information.
+
+    Parameters:
+    - data (dict): The information of the job.
+
+    Returns:
+    - status_code (201): The job has been created successfully.
+    - status_code (401): The job is not authorized.
+    - status_code (400): The request is invalid.
+    - status_code (409): The job is already registered.
+
+    """
+    status, status_code, response = service_job.create(db, data, current_user)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.put("/{job_id}", summary="Update a new job.")
+def Update_job(
+    job_id: int = Path(
+        ...,
+        description="The job id.",
+        example=1,
+    ),
+    data: dict = Body(
+        ...,
+        description="The information of the job.",
+        example={
+            "title": "Tuyển thực tập sinh Backend FastAPI ",
+            "min_salary": 5000000,
+            "max_salary": 10000000,
+            "salary_type": "vnd",
+            "locations": [
+                {"province_id": 1, "district_id": 1, "description": "Địa chỉ 1"},
+            ],
+            "gender_requirement": "other",
+            "job_description": "<p>Job description</p>",
+            "job_requirement": "<p>Job requirement</p>",
+            "job_benefit": "<p>Job benefit</p>",
+            "employment_type": "full_time",
+            "deadline": "2024-05-03",
+            "full_name_contact": "Nhà tuyển dụng",
+            "phone_number_contact": "0328493879",
+            "email_contact": ["tung@gmail.com"],
+            "quantity": 5,
+            "categories": [1, 2, 3],
+            "working_times": [
+                {
+                    "date_from": 1,
+                    "date_to": 5,
+                    "start_time": "08:30",
+                    "end_time": "18:00",
+                }
+            ],
+            "working_time_text": "Thời gian làm việc từ 8h30 đến 18h",
+            "must_have_skills": [2, 3],
+            "should_have_skills": [1, 4],
+            "job_position_id": 1,
+            "job_experience_id": 2,
+            "job_location": "Chuyên viên Nhân sự",
+        },
+    ),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_business),
+):
+    """
+    Update a new job.
+
+    This endpoint allows update a new job with the provided information.
+
+    Parameters:
+    - job_id (int): The job id.
+    - data (dict): The information of the job.
+
+    Returns:
+    - status_code (200): The job has been updated successfully.
+    - status_code (401): The job is not authorized.
+    - status_code (400): The request is invalid.
+    - status_code (404): The job is not found.
+
+    """
+    status, status_code, response = service_job.update(
+        db, {**data, "job_id": job_id}, current_user
+    )
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.delete("/{job_id}", summary="Delete a job.")
 def delete_job(
-    job_id: int = Path(description="The job id.", example=1),
+    job_id: int = Path(
+        ...,
+        description="The job id.",
+        example=1,
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """
-    Delete job.
+    Delete a job.
 
-    This endpoint allows deleting a job.
+    This endpoint allows delete a job with the provided information.
 
     Parameters:
     - job_id (int): The job id.
 
     Returns:
     - status_code (200): The job has been deleted successfully.
-    - status_code (403): The permission is denied.
+    - status_code (401): The job is not authorized.
     - status_code (404): The job is not found.
+    - status_code (403): The permission is denied.
 
     """
-    status, status_code, response = service_job.delete_job(db, job_id, current_user)
+    status, status_code, response = service_job.delete(db, job_id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

@@ -1,22 +1,17 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    File,
-    UploadFile,
-    Form,
     Body,
-    Request,
     BackgroundTasks,
 )
 from sqlalchemy.orm import Session
-from pydantic import Field
 
 from app.db.base import get_db
 from app.core import constant
 from app.core.verify import service_verify
-from app.core.auth import service_business_auth
+from app.core.auth.service_business_auth import get_current_user
 from app.hepler.response_custom import custom_response_error, custom_response
+from app.hepler.enum import VerifyType
 
 router = APIRouter()
 
@@ -26,12 +21,12 @@ async def send_verify_code(
     data: dict = Body(
         ...,
         example={
-            "type": "email",
+            "type": VerifyType.EMAIL,
         },
     ),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """
     Send verify code.
@@ -69,7 +64,7 @@ def verify_code(
         },
     ),
     db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """
     Verify code.
