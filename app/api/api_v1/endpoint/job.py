@@ -121,6 +121,75 @@ def get_job(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
+@router.get("/count_job_by_category", summary="Count job by category.")
+def count_job_by_category(
+    db: Session = Depends(get_db),
+):
+    """
+    Count job by category.
+
+    This endpoint allows counting job by category.
+
+    Returns:
+    - status_code (200): The job has been found successfully.
+    - status_code (400): The request is invalid.
+    - status_code (404): The job is not found.
+
+    """
+    status, status_code, response = service_job.count_job_by_category(db)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.get("/count_job_by_salary", summary="Count job by salary.")
+def count_job_by_salary(
+    db: Session = Depends(get_db),
+):
+    """
+    Count job by salary.
+
+    This endpoint allows counting job by salary.
+
+    Returns:
+    - status_code (200): The job has been found successfully.
+    - status_code (400): The request is invalid.
+    - status_code (404): The job is not found.
+
+    """
+    status, status_code, response = service_job.count_job_by_salary(db)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.get("/cruitment_demand", summary="Get information of recruitment demand.")
+def get_cruitment_demand(
+    db: Session = Depends(get_db),
+):
+    """
+    Get information of recruitment demand.
+
+    This endpoint allows getting information of recruitment demand.
+
+    Returns:
+    - status_code (200): The recruitment demand has been found successfully.
+    - status_code (400): The request is invalid.
+    - status_code (404): The recruitment demand is not found.
+
+    """
+    status, status_code, response = service_job.get_cruitment_demand(db)
+
+    if status == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
 @router.get("/{job_id}", summary="Get job by id.")
 def get_job_by_id(
     job_id: int = Path(

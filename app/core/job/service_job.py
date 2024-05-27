@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime, timezone, timedelta
 
 from app.schema import (
     job as job_schema,
@@ -13,7 +15,13 @@ from app.crud import (
 from app.core.auth import service_business_auth
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.enum import Role, JobStatus, CampaignStatus, JobApprovalStatus
+from app.hepler.enum import (
+    Role,
+    JobStatus,
+    SalaryType,
+    JobApprovalStatus,
+    CampaignStatus,
+)
 from app.core.location import service_location
 from app.core.working_times import service_working_times
 from app.core.work_locations import service_work_locations
@@ -163,6 +171,79 @@ def get_by_campaign_id(db: Session, campaign_id: int, current_user):
     job = jobCRUD.get_by_campaign_id(db, campaign_id)
     job_response = get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
+
+
+def count_job_by_category(db: Session):
+    time_scan = db.query(func.now()).first()[0]
+    data = jobCRUD.count_job_by_category(db)
+    response = []
+
+    for id, count in data:
+        category = service_category.get_category_info_by_id(db, id)
+        response.append(
+            {**category.model_dump(), "count": count, "time_scan": time_scan}
+        )
+    return constant.SUCCESS, 200, response
+
+
+def count_job_by_salary(db: Session):
+
+    salary_ranges = [
+        (0, 3, SalaryType.VND),
+        (3, 10, SalaryType.VND),
+        (10, 20, SalaryType.VND),
+        (20, 30, SalaryType.VND),
+        (30, 0, SalaryType.VND),
+        (0, 0, SalaryType.DEAL),
+    ]
+    time_scan = db.query(func.now()).first()[0]
+    data = jobCRUD.count_job_by_salary(db, salary_ranges)
+    data = zip(salary_ranges, data)
+    response = []
+    for (min, max, salary_type), count in data:
+        response.append(
+            {
+                "min_salary": min,
+                "max_salary": max,
+                "salary_type": salary_type,
+                "count": count,
+                "time_scan": time_scan,
+            }
+        )
+    return constant.SUCCESS, 200, response
+
+
+def count_job_by_district(db: Session):
+    response = jobCRUD.count_job_by_district(db)
+    return constant.SUCCESS, 200, response
+
+
+def get_cruitment_demand(db: Session):
+    time_scan = db.query(func.now()).first()[0]
+    # get number of job 24h ago , job is published and approved, company is active job
+    approved_time = time_scan - timedelta(days=1)
+    params = job_schema.JobCount(
+        job_status=JobStatus.PUBLISHED,
+        job_approve_status=JobApprovalStatus.APPROVED,
+    )
+
+    number_of_job_24h = jobCRUD.count(
+        db, **params.model_dump(), approved_time=approved_time
+    )
+    number_of_job_active = jobCRUD.count(
+        db,
+        **params.model_dump(),
+    )
+    number_of_company_active = jobCRUD.count_company_active_job(db)
+
+    response = {
+        "number_of_job_24h": number_of_job_24h,
+        "number_of_job_active": number_of_job_active,
+        "number_of_company_active": number_of_company_active,
+        "time_scan": time_scan,
+    }
+
+    return constant.SUCCESS, 200, response
 
 
 def create(db: Session, data: dict, current_user):
