@@ -32,6 +32,7 @@ class CategoryUpdate(CategoryBase):
 
 class CategoryItemResponse(CategoryBase):
     id: int
+    count: int
 
 
 class CategoryListResponse(CategoryBase):
