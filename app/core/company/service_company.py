@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.crud.company import company as companyCRUD
 from app.crud.business import business as businessCRUD
@@ -37,6 +38,36 @@ def get(db: Session, data: dict, current_user=None):
         companies_response = [get_company_info(db, company) for company in companies]
 
     return constant.SUCCESS, 200, companies_response
+
+
+def search(db: Session, data: dict):
+    try:
+        page = schema_company.CompanyPagination(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    start_time = datetime.now()
+    total, companies = companyCRUD.search_multi(db, **page.model_dump())
+    end_time = datetime.now()
+    # companies_response = []
+    companies_response = [
+        get_company_info(db, company, detail=True) for company in companies
+    ]
+    # if data.get("fields"):
+    #     companies_response = [
+    #         get_company_info(db, company, detail=True) for company in companies
+    #     ]
+    # else:
+    #     companies_response = [get_company_info(db, company) for company in companies]
+
+    return (
+        constant.SUCCESS,
+        200,
+        {
+            "total": total,
+            "companies": companies_response,
+            "time": (end_time - start_time).total_seconds(),
+        },
+    )
 
 
 def get_by_id(db: Session, company_id: int):

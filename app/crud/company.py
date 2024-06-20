@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func, distinct
 
 from .base import CRUDBase
 from app.model import Company
@@ -42,6 +43,36 @@ class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest])
             .limit(limit)
             .all()
         )
+
+    def search_multi(self, db: Session, **kwargs):
+        skip = kwargs.get("skip", 0)
+        limit = kwargs.get("limit", 10)
+        sort_by = kwargs.get("sort_by", "id")
+        order_by = kwargs.get("order_by", "asc")
+
+        query = db.query(self.model)
+        query = self.apply_search_multi(query, **kwargs)
+        total = query.count()
+        query = query.order_by(
+            getattr(self.model, sort_by).desc()
+            if order_by == "desc"
+            else getattr(self.model, sort_by)
+        )
+        query = query.offset(skip).limit(limit)
+        return total, query.all()
+
+    def apply_search_multi(self, query, **kwargs):
+        key_word = kwargs.get("keyword")
+        fields = kwargs.get("fields")
+
+        if fields:
+            query = query.join(CompanyField, CompanyField.company_id == Company.id)
+            query = query.filter(CompanyField.field_id.in_(fields))
+
+        if key_word:
+            query = query.filter(Company.name.ilike(f"%{key_word}%"))
+
+        return query
 
 
 company = CRUDCompany(Company)
