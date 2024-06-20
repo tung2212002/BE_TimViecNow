@@ -380,6 +380,7 @@ def get_jobs_active_by_company(db: Session, company_id: int):
         "company_id": company_id,
         "job_status": JobStatus.PUBLISHED,
         "job_approve_status": JobApprovalStatus.APPROVED,
+        "deadline": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
     }
     return jobCRUD.count(db, **obj_in)
 

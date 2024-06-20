@@ -61,6 +61,51 @@ def get_companies(
         return custom_response(status_code, constant.SUCCESS, response)
 
 
+@router.get("/search", summary="Search list of company.")
+def get_company(
+    skip: int = Query(None, description="The number of users to skip.", example=0),
+    limit: int = Query(None, description="The number of users to return.", example=10),
+    sort_by: SortBy = Query(
+        None, description="The field to sort by.", example=SortBy.ID
+    ),
+    order_by: str = Query(
+        None, description="The order to sort by.", example=OrderType.DESC
+    ),
+    keyword: str = Query(None, description="The keyword.", example="cong ty"),
+    fields: list[int] = Query(
+        None, description="The list of field id.", example=list([int(2)])
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Get list of company.
+
+    This endpoint allows getting a list of company.
+
+    Parameters:
+    - skip (int): The number of users to skip.
+    - limit (int): The number of users to return.
+    - sort_by (str): The field to sort by.
+    - order_by (str): The order to sort by.
+    - keyword (str): The keyword.
+    - fields (list[int]): The list of field id.
+
+    Returns:
+    - status_code (200): The list of company has been found successfully.
+    - status_code (400): The request is invalid.
+    - status_code (403): The permission is denied.
+    - status_code (404): The list of company is not found.
+
+    """
+    args = locals()
+    status_message, status_code, response = service_company.search(db, args)
+
+    if status_message == constant.ERROR:
+        return custom_response_error(status_code, constant.ERROR, response)
+    elif status_message == constant.SUCCESS:
+        return custom_response(status_code, constant.SUCCESS, response)
+
+
 @router.get("/{id}", summary="Get a company by id.")
 def get_company_by_id(
     id: int = Path(..., description="The id of the company.", example=1),
