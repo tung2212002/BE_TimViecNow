@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
+from redis import Redis
 
 from app.schema import (
     job as job_schema,
@@ -30,6 +31,7 @@ from app.core.category import service_category
 from app.core.auth import service_business_auth
 from app.core.skill import service_skill
 from app.core.campaign import service_campaign
+from app.storage.redis import redis_client
 
 
 def get_by_business(db: Session, data: dict, current_user):
@@ -70,37 +72,84 @@ def get_by_user(db: Session, data: dict):
     return constant.SUCCESS, 200, response
 
 
-def search_by_user(db: Session, data: dict):
+async def search_by_user(db: Session, redis, data: dict):
     try:
         page = job_schema.JobSearchByUser(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    jobs, jobs_of_district = jobCRUD.search(db, **page.model_dump())
 
+    jobs = jobCRUD.search(db, **page.model_dump())
     count = 0
     jobs_of_district_response = []
-    if page.province_id or page.district_id:
-        for key, value in jobs_of_district:
-            count += value
-            if value > 0 and key is not None:
-                district = service_location.get_district_info(db, key)
-                jobs_of_district_response.append(
-                    {
-                        "district": district,
-                        "count": value,
-                    }
+
+    if (page.province_id or page.district_id) and page.suggest:
+        pass
+        try:
+            cache_key = f"jobs_of_province_district:{page.model_dump()}"
+            jobs_of_district_response = await redis.get_list(cache_key)
+        except Exception as e:
+            # log
+            print(e)
+            jobs_of_district_response = None
+        if not jobs_of_district_response:
+            jobs_of_district = jobCRUD.get_number_job_of_district(
+                db, **page.model_dump()
+            )
+            jobs_of_district_response = []
+
+            for key, value in jobs_of_district:
+                count += value
+                if value > 0 and key is not None:
+                    district = service_location.get_district_info(db, key)
+                    jobs_of_district_response.append(
+                        {
+                            "district": district,
+                            "count": value,
+                        }
+                    )
+            try:
+                expire_time = 60 * 60
+                await redis.set_list(
+                    cache_key,
+                    [
+                        {
+                            "district": jobs_of_district_data["district"].__dict__,
+                            "count": jobs_of_district_data["count"],
+                        }
+                        for jobs_of_district_data in jobs_of_district_response
+                    ],
+                    expire_time,
                 )
+            except Exception as e:
+                # log
+                print(e)
+                pass
+
     else:
-        params = job_schema.JobCount(**data)
-        count = jobCRUD.count(db, **params.model_dump())
+        cache_key = f"count_job_search_by_user:{page.deadline}"
+        count = None
+        try:
+            count = await redis.get(cache_key)
+        except Exception as e:
+            # log
+            pass
+        if not count:
+            params = job_schema.JobCount(**data)
+            count = jobCRUD.count(db, **params.model_dump())
+            try:
+                expire_time = 60 * 60 * 24
+                await redis.set(cache_key, count, expire_time)
+            except Exception as e:
+                # log
+                pass
 
     jobs_response = []
     for job in jobs:
         job_res = get_job_info(db, job)
         jobs_response.append(job_res) if job_res.company else None
+
     response = {
         "count": count,
         "option": page,
@@ -173,43 +222,68 @@ def get_by_campaign_id(db: Session, campaign_id: int, current_user):
     return constant.SUCCESS, 200, job_response
 
 
-def count_job_by_category(db: Session):
+async def count_job_by_category(redis: Redis, db: Session):
     time_scan = db.query(func.now()).first()[0]
-    data = jobCRUD.count_job_by_category(db)
-    response = []
+    response = None
+    try:
+        response = await redis.get_list("count_job_by_category")
+    except Exception as e:
+        # log
+        response = None
+    if not response:
+        data = jobCRUD.count_job_by_category(db)
+        response = []
 
-    for id, count in data:
-        category = service_category.get_category_info_by_id(db, id)
-        response.append(
-            {**category.model_dump(), "count": count, "time_scan": time_scan}
-        )
+        for id, count in data:
+            category = service_category.get_category_info_by_id(db, id)
+            response.append(
+                {**category.model_dump(), "count": count, "time_scan": str(time_scan)}
+            )
+        try:
+            expire_time = 60 * 60 * 24
+            await redis.set_list("count_job_by_category", response, expire_time)
+        except Exception as e:
+            print(e)
+            # log
+            pass
     return constant.SUCCESS, 200, response
 
 
-def count_job_by_salary(db: Session):
-
-    salary_ranges = [
-        (0, 3, SalaryType.VND),
-        (3, 10, SalaryType.VND),
-        (10, 20, SalaryType.VND),
-        (20, 30, SalaryType.VND),
-        (30, 0, SalaryType.VND),
-        (0, 0, SalaryType.DEAL),
-    ]
-    time_scan = db.query(func.now()).first()[0]
-    data = jobCRUD.count_job_by_salary(db, salary_ranges)
-    data = zip(salary_ranges, data)
-    response = []
-    for (min, max, salary_type), count in data:
-        response.append(
-            {
-                "min_salary": min,
-                "max_salary": max,
-                "salary_type": salary_type,
-                "count": count,
-                "time_scan": time_scan,
-            }
-        )
+async def count_job_by_salary(redis: Redis, db: Session):
+    response = None
+    try:
+        response = await redis.get_list("count_job_by_salary")
+    except Exception as e:
+        # log
+        response = None
+    if not response:
+        salary_ranges = [
+            (0, 3, SalaryType.VND),
+            (3, 10, SalaryType.VND),
+            (10, 20, SalaryType.VND),
+            (20, 30, SalaryType.VND),
+            (30, 0, SalaryType.VND),
+            (0, 0, SalaryType.DEAL),
+        ]
+        time_scan = db.query(func.now()).first()[0]
+        data = jobCRUD.count_job_by_salary(db, salary_ranges)
+        data = zip(salary_ranges, data)
+        response = []
+        for (min, max, salary_type), count in data:
+            response.append(
+                {
+                    "min_salary": min,
+                    "max_salary": max,
+                    "salary_type": salary_type,
+                    "count": count,
+                    "time_scan": str(time_scan),
+                }
+            )
+        try:
+            expire_time = 60 * 60 * 24
+            await redis.set_list("count_job_by_salary", response, expire_time)
+        except Exception as e:
+            pass
     return constant.SUCCESS, 200, response
 
 
@@ -218,30 +292,41 @@ def count_job_by_district(db: Session):
     return constant.SUCCESS, 200, response
 
 
-def get_cruitment_demand(db: Session):
+async def get_cruitment_demand(redis: Redis, db: Session):
     time_scan = db.query(func.now()).first()[0]
-    # get number of job 24h ago , job is published and approved, company is active job
     approved_time = time_scan - timedelta(days=1)
     params = job_schema.JobCount(
         job_status=JobStatus.PUBLISHED,
         job_approve_status=JobApprovalStatus.APPROVED,
     )
 
-    number_of_job_24h = jobCRUD.count(
-        db, **params.model_dump(), approved_time=approved_time
-    )
-    number_of_job_active = jobCRUD.count(
-        db,
-        **params.model_dump(),
-    )
-    number_of_company_active = jobCRUD.count_company_active_job(db)
-
-    response = {
-        "number_of_job_24h": number_of_job_24h,
-        "number_of_job_active": number_of_job_active,
-        "number_of_company_active": number_of_company_active,
-        "time_scan": time_scan,
-    }
+    cache_key = f"cruitment_demand:{params.deadline}"
+    try:
+        response = await redis.get_dict(cache_key)
+    except Exception as e:
+        # log
+        response = None
+    if not response:
+        number_of_job_24h = jobCRUD.count(
+            db, **params.model_dump(), approved_time=approved_time
+        )
+        number_of_job_active = jobCRUD.count(
+            db,
+            **params.model_dump(),
+        )
+        number_of_company_active = jobCRUD.count_company_active_job(db)
+        response = {
+            "number_of_job_24h": number_of_job_24h,
+            "number_of_job_active": number_of_job_active,
+            "number_of_company_active": number_of_company_active,
+            "time_scan": str(time_scan),
+        }
+        try:
+            expire_time = 60 * 60 * 24
+            await redis.set_dict(cache_key, response, expire_time)
+        except Exception as e:
+            # log
+            pass
 
     return constant.SUCCESS, 200, response
 

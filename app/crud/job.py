@@ -97,7 +97,6 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         province_id = kwargs.get("province_id")
         district_id = kwargs.get("district_id")
 
-        number_job_of_district = []
         jobs_query = db.query(self.model)
         if province_id or district_id:
             jobs_query = jobs_query.join(
@@ -116,10 +115,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             .all()
         )
 
-        if province_id:
-            number_job_of_district = self.get_number_job_of_district(db, **kwargs)
-
-        return jobs, number_job_of_district
+        # if province_id:
+        #     number_job_of_district = self.get_number_job_of_district(db, **kwargs)
+        return jobs
 
     def get_number_job_of_district(self, db: Session, **filters):
 
