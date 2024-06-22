@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, Query, Path
 
 from sqlalchemy.orm import Session
+from redis import Redis
 
 from app.db.base import get_db
+from app.storage.redis import redis_dependency
 from app.core import constant
 from app.core.job import service_job
 from app.hepler.response_custom import custom_response_error, custom_response
@@ -12,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/search", summary="Search list of job.")
-def search_job(
+async def search_job(
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortJobBy = Query(
@@ -37,6 +39,8 @@ def search_job(
     ),
     job_position_id: int = Query(None, description="The position id.", example=1),
     keyword: str = Query(None, description="The keyword.", example="developer"),
+    suggest: bool = Query(False, description="The suggest job.", example=False),
+    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
 ):
     """
@@ -70,7 +74,9 @@ def search_job(
     """
     args = locals()
 
-    status, status_code, response = service_job.search_by_user(db, {**args})
+    status, status_code, response = await service_job.search_by_user(
+        db, redis, {**args}
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -122,7 +128,8 @@ def get_job(
 
 
 @router.get("/count_job_by_category", summary="Count job by category.")
-def count_job_by_category(
+async def count_job_by_category(
+    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
 ):
     """
@@ -136,7 +143,7 @@ def count_job_by_category(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.count_job_by_category(db)
+    status, status_code, response = await service_job.count_job_by_category(redis, db)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -145,7 +152,8 @@ def count_job_by_category(
 
 
 @router.get("/count_job_by_salary", summary="Count job by salary.")
-def count_job_by_salary(
+async def count_job_by_salary(
+    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
 ):
     """
@@ -159,7 +167,7 @@ def count_job_by_salary(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.count_job_by_salary(db)
+    status, status_code, response = await service_job.count_job_by_salary(redis, db)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -168,7 +176,8 @@ def count_job_by_salary(
 
 
 @router.get("/cruitment_demand", summary="Get information of recruitment demand.")
-def get_cruitment_demand(
+async def get_cruitment_demand(
+    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
 ):
     """
@@ -182,7 +191,7 @@ def get_cruitment_demand(
     - status_code (404): The recruitment demand is not found.
 
     """
-    status, status_code, response = service_job.get_cruitment_demand(db)
+    status, status_code, response = await service_job.get_cruitment_demand(redis, db)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

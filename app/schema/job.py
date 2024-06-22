@@ -314,6 +314,7 @@ class JobSearchByUser(PaginationJob):
     salary_type: Optional[SalaryType] = None
     deadline: Optional[date] = datetime.now().date()
     keyword: Optional[str] = None
+    suggest: Optional[bool] = False
 
     @validator("job_status")
     def validate_deadline(cls, v):

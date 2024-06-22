@@ -1,5 +1,6 @@
 import boto3
 from typing import List, Optional
+from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
@@ -22,19 +23,33 @@ class S3:
         )
 
     def upload_file(self, file, key):
-        self.client.upload_fileobj(
-            file.file,
-            self.bucket_name,
-            key,
-            ExtraArgs={"ContentType": file.content_type},
-        )
-        return f"{settings.AWS_S3_BUCKET}.s3.amazonaws.com/{key}"
+        try:
+            self.client.upload_fileobj(
+                file.file,
+                self.bucket_name,
+                key,
+                ExtraArgs={"ContentType": file.content_type},
+            )
+            return f"{self.bucket_name}.s3.amazonaws.com/{key}"
+        except ClientError as e:
+            raise e
 
     def delete_file(self, key):
-        self.client.delete_object(Bucket=self.bucket_name, Key=key)
+        try:
+            self.client.delete_object(Bucket=self.bucket_name, Key=key)
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return None
+            raise e
 
     def get_file(self, key):
-        return self.client.get_object(Bucket=self.bucket_name, Key=key)["Body"].read()
+        try:
+            response = self.client.get_object(Bucket=self.bucket_name, Key=key)
+            return response["Body"].read()
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return None
+            raise e
 
     def get_file_url(self, key):
         return f"https://{self.bucket_name}.s3.amazonaws.com/{key}"
