@@ -19,6 +19,7 @@ from app.api.api_v1.endpoint import (
     company,
     job,
 )
+from app.api.api_v1.endpoint.admin import admin_approval_request_job
 
 api_router = APIRouter(prefix="/v1/api")
 api_router.include_router(user_auth.router, prefix="/user", tags=["user_auth"])
@@ -54,4 +55,10 @@ api_router.include_router(
 )
 api_router.include_router(
     business_auth.router, prefix="/business", tags=["business_auth"]
+)
+
+api_router.include_router(
+    admin_approval_request_job.router,
+    prefix="/admin/approval_request_job",
+    tags=["admin_approval_request_job"],
 )

@@ -108,6 +108,8 @@ def check_category_exist(db: Session, category_id: int):
 
 
 def check_categories_exist(db: Session, category_ids: list):
+    if not category_ids:
+        return []
     list_categories = []
     for category_id in category_ids:
         category = check_category_exist(db, category_id)

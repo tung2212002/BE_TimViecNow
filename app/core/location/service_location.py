@@ -183,6 +183,8 @@ def check_match_province_district(db: Session, province_id: int, district_id: in
 
 
 def check_match_list_province_district(db: Session, data: List[dict]):
+    if not data:
+        return True
     for item in data:
         if not check_match_province_district(
             db, item.get("province_id"), item.get("district_id")

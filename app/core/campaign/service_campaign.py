@@ -3,15 +3,42 @@ from typing import Optional
 
 from app.crud.campaign import campaign as campaignCRUD
 from app.crud.company import company as companyCRUD
-from app.core.job import service_job
+from app.core.job import service_job, helper_job
 from app.core.auth import service_business_auth
 from app.schema import (
     campaign as schema_campaign,
 )
-from app.hepler.enum import Role, CampaignStatus
+from app.hepler.enum import Role, CampaignStatus, FilterCampaign
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
+
+from .helper_campaign import (
+    get_campaign_info,
+    get_list_campaign,
+    get_list_campaign_open,
+    get_list_campaign_has_new_application,
+    get_list_campaign_has_published_job,
+    get_list_campaign_has_published_job_expired,
+    get_list_campaign_has_pending_job,
+)
+
+filter_functions = {
+    None: lambda db, page: get_list_campaign(db, page),
+    FilterCampaign.ONLY_OPEN: lambda db, page: get_list_campaign_open(db, page),
+    FilterCampaign.HAS_NEW_CV: lambda db, page: get_list_campaign_has_new_application(
+        db, page
+    ),
+    FilterCampaign.HAS_PUBLIC_JOB: lambda db, page: get_list_campaign_has_published_job(
+        db, page
+    ),
+    FilterCampaign.EXPIRED_JOB: lambda db, page: get_list_campaign_has_published_job_expired(
+        db, page
+    ),
+    FilterCampaign.WAITING_APPROVAL_JOB: lambda db, page: get_list_campaign_has_pending_job(
+        db, page
+    ),
+}
 
 
 def get(db: Session, data: dict, current_user):
@@ -37,17 +64,23 @@ def get(db: Session, data: dict, current_user):
             return constant.ERROR, 403, "Permission denied"
         page.business_id = business_id
         page.company_id = company.id
-        campaigns = campaignCRUD.get_multi(db, **page.model_dump())
-        count_pagination = schema_campaign.CountGetListPagination(**page.model_dump())
-        count = campaignCRUD.count(
-            db,
-            **count_pagination.model_dump(),
-        )
-    else:
-        campaigns = campaignCRUD.get_multi(db, **page.model_dump())
-        count = campaignCRUD.count(
-            db, **schema_campaign.CountGetListPagination(**data).model_dump()
-        )
+        # campaigns = campaignCRUD.get_multi(db, **page.model_dump())
+        # count_pagination = schema_campaign.CountGetListPagination(**page.model_dump())
+        # count = campaignCRUD.count(
+        #     db,
+        #     **count_pagination.model_dump(),
+        # )
+
+        # campaigns = campaignCRUD.get_multi(db, **page.model_dump())
+        # count = campaignCRUD.count(
+        #     db, **schema_campaign.CountGetListPagination(**data).model_dump()
+        # )
+    # count_in = schema_campaign.CountGetListPagination(**data)
+    # count = campaignCRUD.count(
+    #     db,
+    #     **count_in.model_dump(),
+    # )
+    campaigns, count = filter_functions.get(page.filter_by)(db, page)
     campaigns_response = [get_campaign_info(db, campaign) for campaign in campaigns]
     return constant.SUCCESS, 200, {"count": count, "campaigns": campaigns_response}
 
@@ -123,51 +156,3 @@ def delete(db: Session, id: int, current_user):
         return constant.ERROR, 403, "Permission denied"
     campaign = campaignCRUD.remove(db, id=id)
     return constant.SUCCESS, 200, "Campaign has been deleted"
-
-
-def check_campaign_exist(
-    db: Session,
-    business_id: int,
-    campaign_id: Optional[int],
-    status: Optional[CampaignStatus],
-    title: str,
-):
-    if campaign_id:
-        campaign = campaignCRUD.get(db, campaign_id)
-        if not campaign:
-            return custom_response_error(
-                status_code=404, status=constant.ERROR, response="Campaign not found"
-            )
-        if campaign.business_id != business_id:
-            return custom_response_error(
-                status_code=403, status=constant.ERROR, response="Permission denied"
-            )
-        if campaign.status != status:
-            return custom_response_error(
-                status_code=400,
-                status=constant.ERROR,
-                response="Campaign is not active",
-            )
-        return campaign
-    else:
-        company = companyCRUD.get_company_by_business_id(db, business_id)
-        campaign = campaignCRUD.create(
-            db,
-            obj_in={
-                "business_id": business_id,
-                "title": title,
-                "company_id": company.id,
-            },
-        )
-        return campaign
-
-
-def get_campaign_info(db: Session, campaign):
-    job = (
-        service_job.get_job_info_general(db, campaign.job[0]) if campaign.job else None
-    )
-    campaign_response = schema_campaign.CampaignItemResponse(
-        **{k: v for k, v in campaign.__dict__.items() if k not in ["job"]},
-        job=job.model_dump() if job else None,
-    )
-    return campaign_response

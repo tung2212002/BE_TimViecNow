@@ -2,7 +2,7 @@ from pydantic import BaseModel, validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 
-from app.hepler.enum import CampaignStatus
+from app.hepler.enum import CampaignStatus, FilterCampaign
 from app.schema.page import Pagination
 
 
@@ -89,15 +89,65 @@ class CampaignDeleteRequest(BaseModel):
 
 
 class CampaignGetListPagination(Pagination):
+    # business_id: Optional[int] = None
+    # company_id: Optional[int] = None
+    # status: Optional[CampaignStatus] = None
+
+    # @validator("status")
+    # def validate_status(cls, v):
+    #     if v and not v in CampaignStatus.__members__.values():
+    #         raise ValueError("Invalid status")
+    #     return v
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    filter_by: Optional[FilterCampaign] = None
+
+    @validator("filter_by")
+    def validate_filter(cls, v):
+        if v and not v in FilterCampaign.__members__.values():
+            raise ValueError("Invalid filter_by")
+        return v
+
+
+class CampaignFilterListPagination(Pagination):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    filter_by: Optional[FilterCampaign] = None
+
+    @validator("filter_by")
+    def validate_filter(cls, v):
+        if v and not v in FilterCampaign.__members__.values():
+            raise ValueError("Invalid filter_by")
+        return v
+
+
+class CampaignGetOnlyOpenPagination(BaseModel):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    status: Optional[CampaignStatus] = CampaignStatus.OPEN
+
+
+class CampaignGetHasNewApplicationPagination(BaseModel):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+
+
+class CampaignGetHasPublishedJobPagination(CampaignGetOnlyOpenPagination):
+    pass
+
+
+class CampaignGetHasPublishedJobExpiredPagination(CampaignGetOnlyOpenPagination):
+    pass
+
+
+class CampaignGetHasPendingJobPagination(CampaignGetHasNewApplicationPagination):
+    pass
+
+
+class CampaignGetMutilPagination(Pagination):
     business_id: Optional[int] = None
     company_id: Optional[int] = None
     status: Optional[CampaignStatus] = None
-
-    @validator("status")
-    def validate_status(cls, v):
-        if v and not v in CampaignStatus.__members__.values():
-            raise ValueError("Invalid status")
-        return v
 
 
 class CountGetListPagination(BaseModel):

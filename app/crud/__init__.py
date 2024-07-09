@@ -21,3 +21,4 @@ from .skill import skill
 from .working_time import working_time
 from .work_location import work_location
 from .job_approval_request import job_approval_request
+from .job_approval_log import job_approval_log

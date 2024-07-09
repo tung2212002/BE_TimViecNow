@@ -14,7 +14,7 @@ from app.hepler.exception_handler import get_message_validation_error
 from app.storage.s3 import s3_service
 from app.core.auth import service_business_auth
 from app.core.field import service_field
-from app.core.job import service_job
+from app.core.job import service_job, helper_job
 
 
 def get(db: Session, data: dict, current_user=None):
@@ -167,7 +167,7 @@ def get_company_info(db: Session, company, detail=False):
     )
 
     if detail:
-        count_job_published = service_job.get_jobs_active_by_company(db, company.id)
+        count_job_published = helper_job.get_jobs_active_by_company(db, company.id)
         company_response.total_active_jobs = count_job_published
     return {
         **company_response.__dict__,

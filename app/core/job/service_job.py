@@ -5,6 +5,7 @@ from redis import Redis
 
 from app.schema import (
     job as job_schema,
+    job_approval_request as job_approval_request_schema,
 )
 from app.crud import (
     job as jobCRUD,
@@ -12,6 +13,7 @@ from app.crud import (
     experience as experienceCRUD,
     job_position as job_positionCRUD,
     company as companyCRUD,
+    job_approval_request as job_approval_requestCRUD,
 )
 from app.core.auth import service_business_auth
 from app.core import constant
@@ -30,7 +32,8 @@ from app.core.company import service_company
 from app.core.category import service_category
 from app.core.auth import service_business_auth
 from app.core.skill import service_skill
-from app.core.campaign import service_campaign
+from app.core.campaign import service_campaign, helper_campaign
+from app.core.job_approval_requests import helper_job_approval_request
 from app.storage.redis import redis_client
 
 
@@ -79,13 +82,10 @@ async def search_by_user(db: Session, redis, data: dict):
         return constant.ERROR, 400, get_message_validation_error(e)
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-
     jobs = jobCRUD.search(db, **page.model_dump())
     count = 0
     jobs_of_district_response = []
-
     if (page.province_id or page.district_id) and page.suggest:
-        pass
         try:
             cache_key = f"jobs_of_province_district:{page.model_dump()}"
             jobs_of_district_response = await redis.get_list(cache_key)
@@ -98,7 +98,6 @@ async def search_by_user(db: Session, redis, data: dict):
                 db, **page.model_dump()
             )
             jobs_of_district_response = []
-
             for key, value in jobs_of_district:
                 count += value
                 if value > 0 and key is not None:
@@ -144,6 +143,38 @@ async def search_by_user(db: Session, redis, data: dict):
             except Exception as e:
                 # log
                 pass
+    jobs_response = []
+    for job in jobs:
+        job_res = get_job_info(db, job)
+        jobs_response.append(job_res) if job_res.company else None
+    response = {
+        "count": count,
+        "option": page,
+        "jobs": jobs_response,
+        "jobs_of_district": jobs_of_district_response,
+    }
+    return constant.SUCCESS, 200, response
+
+
+async def search_by_business(db: Session, current_user, data: dict):
+    try:
+        page = job_schema.JobSearchByUser(**data)
+    except Exception as e:
+        return constant.ERROR, 400, get_message_validation_error(e)
+    if current_user.role == Role.BUSINESS:
+        if page.business_id and page.business_id != current_user.id:
+            return constant.ERROR, 403, "Permission denied"
+        page.business_id = current_user.id
+        company = companyCRUD.get_company_by_business_id(db, current_user.id)
+        if not company:
+            return constant.ERROR, 404, "Business not join company"
+        if page.company_id and page.company_id != company.id:
+            return constant.ERROR, 403, "Permission denied"
+        page.company_id = company.id
+
+    jobs = jobCRUD.search(db, **page.model_dump())
+    params = job_schema.JobCount(**page.model_dump())
+    count = jobCRUD.count(db, **params.model_dump())
 
     jobs_response = []
     for job in jobs:
@@ -154,7 +185,6 @@ async def search_by_user(db: Session, redis, data: dict):
         "count": count,
         "option": page,
         "jobs": jobs_response,
-        "jobs_of_district": jobs_of_district_response,
     }
     return constant.SUCCESS, 200, response
 
@@ -294,7 +324,7 @@ def count_job_by_district(db: Session):
 
 async def get_cruitment_demand(redis: Redis, db: Session):
     time_scan = db.query(func.now()).first()[0]
-    approved_time = time_scan - timedelta(days=1)
+    approved_time = time_scan.date() - timedelta(days=1)
     params = job_schema.JobCount(
         job_status=JobStatus.PUBLISHED,
         job_approve_status=JobApprovalStatus.APPROVED,
@@ -353,7 +383,7 @@ def create(db: Session, data: dict, current_user):
         return constant.ERROR, 404, "Experience not found"
     if not job_positionCRUD.get(db, job_data.job_position_id):
         return constant.ERROR, 404, "Job position not found"
-    campaign = service_campaign.check_campaign_exist(
+    campaign = helper_campaign.check_campaign_exist(
         db,
         business_id=current_user.id,
         campaign_id=job_data.campaign_id,
@@ -410,7 +440,6 @@ def update(db: Session, data: dict, current_user):
     locations_data = job_data.locations
     categories_data = job_data.categories
     working_times_data = job_data.working_times
-
     service_skill.check_skills_exist(db, must_have_skills_data)
     service_skill.check_skills_exist(db, should_have_skills_data)
     service_location.check_match_list_province_district(db, locations_data)
@@ -422,27 +451,53 @@ def update(db: Session, data: dict, current_user):
     if not job_positionCRUD.get(db, job_data.job_position_id):
         return constant.ERROR, 404, "Job position not found"
 
-    job_data_in = job_schema.JobUpdate(**job_data.model_dump())
-    job = jobCRUD.update(db=db, db_obj=job, obj_in=job_data_in)
-
-    working_times = job.working_times
-    work_locations = job.work_locations
-    job_categories = job.job_category_secondary
-    job_skills = job.job_skill_secondary
-
-    service_working_times.update_working_time_job(
-        db, job.id, working_times_data, working_times
+    job_approval_request_data = {
+        "work_locations": job_data.locations,
+        **job_data.model_dump(),
+    }
+    job_approval_request = job_approval_request_schema.JobApprovalRequestCreate(
+        **job_approval_request_data
     )
-    service_work_locations.update_work_location_job(
-        db, job.id, locations_data, work_locations
+    job_approval_requests_pending_before = (
+        job_approval_requestCRUD.get_pending_by_job_id(db, job.id)
     )
-    service_skill.update_skill_job(
-        db, must_have_skills_data + should_have_skills_data, job_skills
+    if job_approval_requests_pending_before:
+        for job_approval_request_pending_before in job_approval_requests_pending_before:
+            job_approval_requestCRUD.remove(
+                db, id=job_approval_request_pending_before.id
+            )
+    job_approval_request = (
+        helper_job_approval_request.create_job_update_approval_request(
+            db, job_approval_request
+        )
     )
-    service_category.update_category_job(db, categories_data, job_categories)
+    job_approval_request_response = (
+        job_approval_request_schema.JobApprovalRequestResponse(
+            **job_approval_request.__dict__
+        )
+    )
+    return constant.SUCCESS, 201, job_approval_request_response
+    # job_data_in = job_schema.JobUpdate(**job_data.model_dump())
+    # job = jobCRUD.update(db=db, db_obj=job, obj_in=job_data_in)
 
-    job_response = get_job_info(db, job)
-    return constant.SUCCESS, 200, job_response
+    # working_times = job.working_times
+    # work_locations = job.work_locations
+    # job_categories = job.job_category_secondary
+    # job_skills = job.job_skill_secondary
+
+    # service_working_times.update_working_time_job(
+    #     db, job.id, working_times_data, working_times
+    # )
+    # service_work_locations.update_work_location_job(
+    #     db, job.id, locations_data, work_locations
+    # )
+    # service_skill.update_skill_job(
+    #     db, must_have_skills_data + should_have_skills_data, job_skills
+    # )
+    # service_category.update_category_job(db, categories_data, job_categories)
+
+    # job_response = get_job_info(db, job)
+    # return constant.SUCCESS, 200, job_response
 
 
 def delete(db: Session, job_id: int, current_user):
@@ -507,34 +562,5 @@ def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
         categories=categories_response,
         must_have_skills=must_have_skills_response,
         should_have_skills=should_have_skills_response,
-    )
-    return job_response
-
-
-def get_job_info_general(db: Session, job):
-    job_response = job_schema.JobItemResponseGeneral(
-        **job.__dict__,
-    )
-    return job_response
-
-
-def search_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
-    work_locations_response = service_work_locations.get_work_locations_by_job_id(
-        db, job.id
-    )
-    company = companyCRUD.get_company_by_business_id(db, job.business_id)
-    company_response = service_company.get_company_info(db, company)
-
-    job_response = Schema(
-        **{
-            k: v
-            for k, v in job.__dict__.items()
-            if k
-            not in [
-                "locations",
-            ]
-        },
-        locations=work_locations_response,
-        company=company_response,
     )
     return job_response

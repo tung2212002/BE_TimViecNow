@@ -74,6 +74,11 @@ class JobApprovalStatus(str, Enum):
     STOPPED = "stopped"
 
 
+class AdminJobApprovalStatus(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class SalaryType(str, Enum):
     VND = "vnd"
     USD = "usd"
@@ -150,3 +155,11 @@ class VerifyType(str, Enum):
     PHONE = "phone"
     COMPANY = "company"
     IDENTIFY = "identify"
+
+
+class CVApplicationStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    STOPPED = "stopped"
+    INTERVIEW = "interview"

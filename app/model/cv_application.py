@@ -1,8 +1,9 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
+from app.hepler.enum import CVApplicationStatus
 
 
 class CVApplication(Base):
@@ -20,6 +21,9 @@ class CVApplication(Base):
     email = Column(String(50), nullable=False)
     phone_number = Column(String(10), nullable=False)
     letter_cover = Column(String(500), nullable=True)
+    status = Column(
+        Enum(CVApplicationStatus), default=CVApplicationStatus.PENDING, nullable=False
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     job = relationship(

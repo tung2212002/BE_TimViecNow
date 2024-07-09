@@ -44,6 +44,9 @@ def get_working_times_by_ids(db: Session, working_time_ids: list):
 
 
 def check_working_times(db: Session, woking_times: list):
+    if woking_times is None:
+        return True
+
     for working_time in woking_times:
         try:
             working_time_data = working_time_schema.WorkingTimeCreateRequest(
