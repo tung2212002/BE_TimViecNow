@@ -23,11 +23,6 @@ def get_campaign(
     ),
     business_id: int = Query(None, description="The business id.", example=1),
     company_id: int = Query(None, description="The company id.", example=1),
-    # status: CampaignStatus = Query(
-    #     None,
-    #     description="The status of campaign.",
-    #     example=CampaignStatus.OPEN,
-    # ),
     filter_by: FilterCampaign = Query(
         None, description="The filter by.", example=FilterCampaign.ONLY_OPEN
     ),

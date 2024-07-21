@@ -136,8 +136,9 @@ class CampaignGetHasPublishedJobPagination(CampaignGetOnlyOpenPagination):
     pass
 
 
-class CampaignGetHasPublishedJobExpiredPagination(CampaignGetOnlyOpenPagination):
-    pass
+class CampaignGetHasPublishedJobExpiredPagination(BaseModel):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
 
 
 class CampaignGetHasPendingJobPagination(CampaignGetHasNewApplicationPagination):

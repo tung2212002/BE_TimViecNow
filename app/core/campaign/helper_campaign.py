@@ -64,9 +64,7 @@ def get_campaign_info(db: Session, campaign):
 
 def get_list_campaign(db: Session, page: Union[dict, BaseModel]):
     multi_paigination = schema_campaign.CampaignGetMutilPagination(**page.model_dump())
-    # multi_paigination = schema_campaign.CampaignGetMutilPagination(**page.model_dump())
     count_pagination = schema_campaign.CountGetListPagination(**page.model_dump())
-    print(multi_paigination)
     return campaignCRUD.get_multi(
         db, **multi_paigination.model_dump()
     ), campaignCRUD.count(db, **count_pagination.model_dump())

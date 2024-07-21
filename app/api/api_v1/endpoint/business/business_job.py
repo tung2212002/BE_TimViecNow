@@ -71,7 +71,7 @@ def get_job(
 
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
-    print(current_user.id)
+
     status, status_code, response = service_job.get_by_business(
         db, {**args}, current_user
     )

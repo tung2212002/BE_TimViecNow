@@ -31,7 +31,7 @@ from app.core.category import service_category
 from app.core.auth import service_business_auth
 from app.core.skill import service_skill
 from app.core.campaign import service_campaign, helper_campaign
-from app.storage.redis import redis_client
+from app.storage.redis import redis_dependency
 
 
 def get_list_job(db: Session, data: dict):

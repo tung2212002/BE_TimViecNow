@@ -377,7 +377,6 @@ class JobCreateRequest(JobBase):
                 raise ValueError("Invalid email")
         if isinstance(v, list):
             v = json.dumps(list(set(v)))
-            print(type(v))
         return v
 
     @validator("job_description")

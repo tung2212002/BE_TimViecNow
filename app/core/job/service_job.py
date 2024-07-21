@@ -24,6 +24,7 @@ from app.hepler.enum import (
     SalaryType,
     JobApprovalStatus,
     CampaignStatus,
+    RequestApproval,
 )
 from app.core.location import service_location
 from app.core.working_times import service_working_times
@@ -33,8 +34,10 @@ from app.core.category import service_category
 from app.core.auth import service_business_auth
 from app.core.skill import service_skill
 from app.core.campaign import service_campaign, helper_campaign
+from app.core.job import helper_job
 from app.core.job_approval_requests import helper_job_approval_request
-from app.storage.redis import redis_client
+from app.storage.redis import redis_dependency
+from app.storage.cache.job_cache_service import job_cache_service
 
 
 def get_by_business(db: Session, data: dict, current_user):
@@ -87,12 +90,13 @@ async def search_by_user(db: Session, redis, data: dict):
     jobs_of_district_response = []
     if (page.province_id or page.district_id) and page.suggest:
         try:
-            cache_key = f"jobs_of_province_district:{page.model_dump()}"
-            jobs_of_district_response = await redis.get_list(cache_key)
+            cache_key = f"province_district:{page.model_dump()}"
+            jobs_of_district_response = await job_cache_service.get_list(cache_key)
         except Exception as e:
             # log
             print(e)
             jobs_of_district_response = None
+
         if not jobs_of_district_response:
             jobs_of_district = jobCRUD.get_number_job_of_district(
                 db, **page.model_dump()
@@ -109,8 +113,8 @@ async def search_by_user(db: Session, redis, data: dict):
                         }
                     )
             try:
-                expire_time = 60 * 60
-                await redis.set_list(
+                expire_time = 60 * 10
+                await job_cache_service.set_list(
                     cache_key,
                     [
                         {
@@ -127,32 +131,39 @@ async def search_by_user(db: Session, redis, data: dict):
                 pass
 
     else:
-        cache_key = f"count_job_search_by_user:{page.deadline}"
+        cache_key = f"count_search_by_user:{page.model_dump()}"
         count = None
         try:
-            count = await redis.get(cache_key)
+            count = await job_cache_service.get(cache_key)
         except Exception as e:
             # log
+            print(e)
             pass
+
         if not count:
             params = job_schema.JobCount(**data)
             count = jobCRUD.count(db, **params.model_dump())
             try:
                 expire_time = 60 * 60 * 24
-                await redis.set(cache_key, count, expire_time)
+                await job_cache_service.set(cache_key, count, expire_time)
             except Exception as e:
                 # log
+                print(e)
                 pass
-    jobs_response = []
-    for job in jobs:
-        job_res = get_job_info(db, job)
-        jobs_response.append(job_res) if job_res.company else None
+
+    jobs_response = [
+        helper_job.get_job_info(db, job)
+        for job in jobs
+        if helper_job.get_job_info(db, job).company
+    ]
+
     response = {
         "count": count,
         "option": page,
         "jobs": jobs_response,
         "jobs_of_district": jobs_of_district_response,
     }
+
     return constant.SUCCESS, 200, response
 
 
@@ -178,7 +189,7 @@ async def search_by_business(db: Session, current_user, data: dict):
 
     jobs_response = []
     for job in jobs:
-        job_res = get_job_info(db, job)
+        job_res = helper_job.get_job_info(db, job)
         jobs_response.append(job_res) if job_res.company else None
 
     response = {
@@ -193,7 +204,7 @@ def get_list_job(db: Session, data: dict):
     jobs = jobCRUD.get_multi(db, **data)
     jobs_response = []
     for job in jobs:
-        job_res = get_job_info(db, job)
+        job_res = helper_job.get_job_info(db, job)
         jobs_response.append(job_res) if job_res.company else None
 
     return jobs_response
@@ -214,7 +225,7 @@ def get_by_id_for_business(db: Session, job_id: int, current_user):
         or not company
     ):
         return constant.ERROR, 403, "Permission denied"
-    job_response = get_job_info(db, job)
+    job_response = helper_job.get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
 
 
@@ -227,7 +238,7 @@ def get_by_id_for_user(db: Session, job_id: int):
         or job.job_approval_request.status != JobApprovalStatus.APPROVED
     ):
         return constant.ERROR, 404, "Job not found"
-    job_response = get_job_info(db, job)
+    job_response = helper_job.get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
 
 
@@ -248,7 +259,7 @@ def get_by_campaign_id(db: Session, campaign_id: int, current_user):
         return constant.ERROR, 403, "Permission denied"
 
     job = jobCRUD.get_by_campaign_id(db, campaign_id)
-    job_response = get_job_info(db, job)
+    job_response = helper_job.get_job_info(db, job)
     return constant.SUCCESS, 200, job_response
 
 
@@ -414,7 +425,7 @@ def create(db: Session, data: dict, current_user):
     service_skill.create_skill_job(db, job.id, job_skills)
     service_category.create_category_job(db, job.id, job_categories)
 
-    job_response = get_job_info(db, job)
+    job_response = helper_job.get_job_info(db, job)
     return constant.SUCCESS, 201, job_response
 
 
@@ -468,7 +479,11 @@ def update(db: Session, data: dict, current_user):
             )
     job_approval_request = (
         helper_job_approval_request.create_job_update_approval_request(
-            db, job_approval_request
+            db,
+            {
+                **job_approval_request_data,
+                "request": RequestApproval.UPDATE,
+            },
         )
     )
     job_approval_request_response = (
@@ -477,27 +492,6 @@ def update(db: Session, data: dict, current_user):
         )
     )
     return constant.SUCCESS, 201, job_approval_request_response
-    # job_data_in = job_schema.JobUpdate(**job_data.model_dump())
-    # job = jobCRUD.update(db=db, db_obj=job, obj_in=job_data_in)
-
-    # working_times = job.working_times
-    # work_locations = job.work_locations
-    # job_categories = job.job_category_secondary
-    # job_skills = job.job_skill_secondary
-
-    # service_working_times.update_working_time_job(
-    #     db, job.id, working_times_data, working_times
-    # )
-    # service_work_locations.update_work_location_job(
-    #     db, job.id, locations_data, work_locations
-    # )
-    # service_skill.update_skill_job(
-    #     db, must_have_skills_data + should_have_skills_data, job_skills
-    # )
-    # service_category.update_category_job(db, categories_data, job_categories)
-
-    # job_response = get_job_info(db, job)
-    # return constant.SUCCESS, 200, job_response
 
 
 def delete(db: Session, job_id: int, current_user):
@@ -513,54 +507,3 @@ def delete(db: Session, job_id: int, current_user):
         return constant.ERROR, 403, "Permission denied"
     job = jobCRUD.remove(db, id=job_id)
     return constant.SUCCESS, 200, "Job has been deleted"
-
-
-def get_jobs_active_by_company(db: Session, company_id: int):
-    obj_in = {
-        "company_id": company_id,
-        "job_status": JobStatus.PUBLISHED,
-        "job_approve_status": JobApprovalStatus.APPROVED,
-        "deadline": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    return jobCRUD.count(db, **obj_in)
-
-
-def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
-    working_times_response = service_working_times.get_working_times_by_job_id(
-        db, job.id
-    )
-    work_locations_response = service_work_locations.get_work_locations_by_job_id(
-        db, job.id
-    )
-    company = companyCRUD.get_company_by_business_id(db, job.business_id)
-    company_response = service_company.get_company_info(db, company)
-    categories_response = service_category.get_list_category_by_model(
-        db, job.job_categories
-    )
-    must_have_skills_response = service_skill.get_list_skill_by_model(
-        db, job.must_have_skills
-    )
-    should_have_skills_response = service_skill.get_list_skill_by_model(
-        db, job.should_have_skills
-    )
-    job_response = Schema(
-        **{
-            k: v
-            for k, v in job.__dict__.items()
-            if k
-            not in [
-                "working_times",
-                "must_have_skills",
-                "should_have_skills",
-                "locations",
-                "job_categories",
-            ]
-        },
-        working_times=working_times_response,
-        locations=work_locations_response,
-        company=company_response,
-        categories=categories_response,
-        must_have_skills=must_have_skills_response,
-        should_have_skills=should_have_skills_response,
-    )
-    return job_response

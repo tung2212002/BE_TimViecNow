@@ -14,7 +14,13 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
-from app.hepler.enum import JobApprovalStatus, JobStatus, SalaryType, Gender, JobType
+from app.hepler.enum import (
+    JobApprovalStatus,
+    SalaryType,
+    Gender,
+    JobType,
+    RequestApproval,
+)
 
 
 class JobApprovalRequest(Base):
@@ -24,6 +30,12 @@ class JobApprovalRequest(Base):
         nullable=False,
         index=True,
         default=JobApprovalStatus.PENDING,
+    )
+    request = Column(
+        Enum(RequestApproval),
+        nullable=False,
+        index=True,
+        default=RequestApproval.CREATE,
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), index=True)

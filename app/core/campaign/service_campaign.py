@@ -29,7 +29,7 @@ filter_functions = {
     FilterCampaign.HAS_NEW_CV: lambda db, page: get_list_campaign_has_new_application(
         db, page
     ),
-    FilterCampaign.HAS_PUBLIC_JOB: lambda db, page: get_list_campaign_has_published_job(
+    FilterCampaign.HAS_PUBLISHING_JOB: lambda db, page: get_list_campaign_has_published_job(
         db, page
     ),
     FilterCampaign.EXPIRED_JOB: lambda db, page: get_list_campaign_has_published_job_expired(
