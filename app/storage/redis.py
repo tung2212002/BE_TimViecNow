@@ -80,16 +80,7 @@ class RedisDependency:
 
     async def close(self):
         if self.redis:
-            await self.redis.redis_connection.close()
+            await self.redis.connection.close()
 
 
 redis_dependency = RedisDependency()
-
-
-redis_client: Redis = RedisBackend(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    password=settings.REDIS_PASSWORD,
-    db=settings.REDIS_DB,
-    expire=settings.REDIS_EXPIRE,
-)

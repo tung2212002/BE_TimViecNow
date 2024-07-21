@@ -74,7 +74,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         db: Session,
         **kwargs,
     ):
-        query = db.query(self.model)
+        query = db.query(func.count(self.model.id))
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
                 self.work_location, self.model.id == self.work_location.job_id
@@ -83,7 +83,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             query,
             **kwargs,
         )
-        return query.distinct().count()
+        return query.scalar()
 
     def search(
         self,
@@ -115,12 +115,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             .all()
         )
 
-        # if province_id:
-        #     number_job_of_district = self.get_number_job_of_district(db, **kwargs)
         return jobs
 
     def get_number_job_of_district(self, db: Session, **filters):
-
         query = db.query(
             self.work_location.district_id,
             func.count(distinct(self.model.id)),
@@ -185,9 +182,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
                 query = query.filter(
                     self.job_approval_request.status == job_approve_status
                 )
-
         if province_id or district_id:
-
             if province_id:
                 query = query.filter(self.work_location.province_id == province_id)
             if district_id:
@@ -197,13 +192,10 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
                 self.job_category, self.model.id == self.job_category.job_id
             ).filter(self.job_category.category_id == category_id)
         if employment_type:
-
             query = query.filter(self.model.employment_type == employment_type)
         if job_experience_id:
-
             query = query.filter(self.model.job_experience_id == job_experience_id)
         if job_position_id:
-
             query = query.filter(self.model.job_position_id == job_position_id)
         if salary_type:
             query = query.filter(self.model.salary_type == salary_type)
@@ -215,7 +207,6 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             query = query.filter(self.model.salary_type == salary_type)
         if min_salary or max_salary and not salary_type:
             query = query.filter(self.model.salary_type != SalaryType.DEAL)
-
         if deadline:
             query = query.filter(self.model.deadline >= deadline)
         if keyword:

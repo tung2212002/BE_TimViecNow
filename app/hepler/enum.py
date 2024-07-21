@@ -74,6 +74,16 @@ class JobApprovalStatus(str, Enum):
     STOPPED = "stopped"
 
 
+class RequestApproval(str, Enum):
+    CREATE = "create"
+    UPDATE = "update"
+
+
+class AdminJobApprovalStatus(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class SalaryType(str, Enum):
     VND = "vnd"
     USD = "usd"
@@ -112,7 +122,7 @@ class FilterCampaign(str, Enum):
     ONLY_OPEN = "only_open"
     HAS_NEW_CV = "has_new_cv"
     ACTIVED_CV_COUT = "actived_cv_count"
-    HAS_PUBLIC_JOB = "has_public_job"
+    HAS_PUBLISHING_JOB = "has_publishing_job"
     HAS_RUNNING_SERVICE = "has_running_service"
     EXPIRED_JOB = "expired_job"
     WAITING_APPROVAL_JOB = "waiting_approval_job"
@@ -150,3 +160,11 @@ class VerifyType(str, Enum):
     PHONE = "phone"
     COMPANY = "company"
     IDENTIFY = "identify"
+
+
+class CVApplicationStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    STOPPED = "stopped"
+    INTERVIEW = "interview"

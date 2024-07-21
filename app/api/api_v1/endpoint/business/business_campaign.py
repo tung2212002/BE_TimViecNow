@@ -6,7 +6,7 @@ from app.core import constant
 from app.core.campaign import service_campaign
 from app.core.auth.service_business_auth import get_current_user, get_current_business
 from app.hepler.response_custom import custom_response_error, custom_response
-from app.hepler.enum import CampaignStatus, OrderType, SortBy
+from app.hepler.enum import FilterCampaign, OrderType, SortBy
 
 router = APIRouter()
 
@@ -23,10 +23,8 @@ def get_campaign(
     ),
     business_id: int = Query(None, description="The business id.", example=1),
     company_id: int = Query(None, description="The company id.", example=1),
-    status: CampaignStatus = Query(
-        None,
-        description="The status of campaign.",
-        example=CampaignStatus.OPEN,
+    filter_by: FilterCampaign = Query(
+        None, description="The filter by.", example=FilterCampaign.ONLY_OPEN
     ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -43,7 +41,7 @@ def get_campaign(
     - order_by (str): The order to sort by.
     - business_id (int): The business id.
     - company_id (int): The company id.
-    - status (int): The status of campaign.
+    - filter_by (str): The filter to filter by.
 
     Returns:
     - status_code (200): The list of campaign has been found successfully.

@@ -12,6 +12,7 @@ from app.schema import (
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
+from app.storage.cache.location_cache_service import location_cache_service
 
 
 async def get_province(db: Session, redis: Redis, data: dict):
@@ -26,14 +27,13 @@ async def get_province(db: Session, redis: Redis, data: dict):
     except Exception as e:
         print(e)
         pass
+
     if not provinces_response:
         provinces_response = get_list_province_info(db, page.model_dump())
         try:
-            expire_time = 60 * 60 * 24 * 7
             await redis.set_list(
                 cache_key,
                 [province.__dict__ for province in provinces_response],
-                expire_time,
             )
         except Exception as e:
             print(e)
@@ -183,6 +183,8 @@ def check_match_province_district(db: Session, province_id: int, district_id: in
 
 
 def check_match_list_province_district(db: Session, data: List[dict]):
+    if not data:
+        return True
     for item in data:
         if not check_match_province_district(
             db, item.get("province_id"), item.get("district_id")

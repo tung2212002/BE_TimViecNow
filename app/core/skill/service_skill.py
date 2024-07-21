@@ -87,6 +87,8 @@ def check_skill_exist(db: Session, skill_id: int):
 
 
 def check_skills_exist(db: Session, skill_ids: list):
+    if not skill_ids:
+        return []
     list_skills = []
     for skill_id in skill_ids:
         skill = check_skill_exist(db, skill_id)

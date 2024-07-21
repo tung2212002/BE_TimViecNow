@@ -6,8 +6,6 @@ from app.core import constant
 
 engine = create_engine(
     constant.DATABASE_URL,
-    # settings.DATABASE_URL,
-    # f"mysql+pymysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}@{settings.MYSQL_SERVER}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}",
     pool_pre_ping=True,
     pool_size=20,
     max_overflow=100,

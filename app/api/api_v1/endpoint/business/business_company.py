@@ -253,7 +253,6 @@ def update_company(
 
     """
     data = locals()
-
     status, status_code, response = service_company.update(
         db,
         {**data},

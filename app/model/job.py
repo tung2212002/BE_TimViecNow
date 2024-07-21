@@ -104,52 +104,61 @@ class Job(Base):
 @event.listens_for(Job, "after_insert")
 def receive_after_insert(mapper, connection, target):
     session = Session(bind=connection)
-    job_approval_request = JobApprovalRequest(job_id=target.id)
-    session.add(job_approval_request)
-    session.commit()
-    session.close()
+    if target.status != JobStatus.DRAFT:
+        job_approval_request = JobApprovalRequest(job_id=target.id)
+        session.add(job_approval_request)
+        session.commit()
+        session.close()
 
 
 @event.listens_for(Job.status, "set")
 def receive_after_update(target, value, oldvalue, initiator):
     session = Session.object_session(target)
-    if oldvalue == JobStatus.PUBLISHED and value != JobStatus.PUBLISHED:
-        try:
+
+    if session is None:
+        return
+
+    try:
+        if oldvalue == JobStatus.PUBLISHED and value != JobStatus.PUBLISHED:
             job_position = (
                 session.query(JobPosition).filter_by(id=target.job_position_id).first()
             )
-            job_position.count -= 1
-        except:
-            pass
-        job_category = session.query(JobCategory).filter_by(job_id=target.id).all()
-        for item in job_category:
-            try:
+            if job_position.count is not None:
+                job_position.count -= 1
+
+            job_categories = (
+                session.query(JobCategory).filter_by(job_id=target.id).all()
+            )
+            for item in job_categories:
                 category = (
                     session.query(Category).filter_by(id=item.category_id).first()
                 )
-                category.count -= 1
-            except:
-                pass
-        session.commit()
-    elif value == JobStatus.PUBLISHED and oldvalue != JobStatus.PUBLISHED:
-        try:
+                if category:
+                    category.count -= 1
+
+        elif value == JobStatus.PUBLISHED and oldvalue != JobStatus.PUBLISHED:
             job_position = (
                 session.query(JobPosition).filter_by(id=target.job_position_id).first()
             )
-            job_position.count += 1
-        except:
-            pass
-        job_category = session.query(JobCategory).filter_by(job_id=target.id).all()
-        for item in job_category:
-            try:
+
+            if job_position.count is not None:
+                job_position.count += 1
+
+            job_categories = (
+                session.query(JobCategory).filter_by(job_id=target.id).all()
+            )
+            for item in job_categories:
                 category = (
                     session.query(Category).filter_by(id=item.category_id).first()
                 )
-                category.count += 1
-            except:
-                pass
+                if category:
+                    category.count += 1
+
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
         session.commit()
-    session.close()
 
 
 @event.listens_for(Job, "before_delete")

@@ -52,13 +52,15 @@ class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest])
 
         query = db.query(self.model)
         query = self.apply_search_multi(query, **kwargs)
-        total = query.count()
+        total_query = db.query(func.count(distinct(self.model.id)))
+        total_query = self.apply_search_multi(total_query, **kwargs)
         query = query.order_by(
             getattr(self.model, sort_by).desc()
             if order_by == "desc"
             else getattr(self.model, sort_by)
         )
         query = query.offset(skip).limit(limit)
+        total = total_query.scalar()
         return total, query.all()
 
     def apply_search_multi(self, query, **kwargs):

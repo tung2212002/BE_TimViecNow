@@ -12,6 +12,7 @@ from app.hepler.enum import (
     JobApprovalStatus,
     SortByJob,
     OrderType,
+    AdminJobApprovalStatus,
 )
 from app.core import constant
 
@@ -316,6 +317,37 @@ class JobSearchByUser(PaginationJob):
     keyword: Optional[str] = None
     suggest: Optional[bool] = False
 
+    @validator("deadline")
+    def validate_deadline(cls, v):
+        return v or datetime.now().date()
+
+    @validator("job_status")
+    def validate_job_status(cls, v):
+        return v or JobStatus.PUBLISHED
+
+    @validator("job_approve_status")
+    def validate_job_approve_status(cls, v):
+        return v or JobApprovalStatus.APPROVED
+
+
+class JobSearchByBusiness(PaginationJob):
+    job_status: Optional[JobStatus] = JobStatus.PUBLISHED
+    job_approve_status: Optional[JobApprovalStatus] = JobApprovalStatus.APPROVED
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+    province_id: Optional[int] = None
+    district_id: Optional[int] = None
+    category_id: Optional[int] = None
+    field_id: Optional[int] = None
+    employment_type: Optional[JobType] = None
+    job_experience_id: Optional[int] = None
+    job_position_id: Optional[int] = None
+    min_salary: Optional[int] = None
+    max_salary: Optional[int] = None
+    salary_type: Optional[SalaryType] = None
+    deadline: Optional[date] = datetime.now().date()
+    keyword: Optional[str] = None
+
     @validator("job_status")
     def validate_deadline(cls, v):
         return v or datetime.now().date()
@@ -345,7 +377,6 @@ class JobCreateRequest(JobBase):
                 raise ValueError("Invalid email")
         if isinstance(v, list):
             v = json.dumps(list(set(v)))
-            print(type(v))
         return v
 
     @validator("job_description")
@@ -364,6 +395,13 @@ class JobCreateRequest(JobBase):
     def validate_working_times(cls, v):
         return v or []
 
+    @validator("deadline")
+    def validate_deadline(cls, v):
+        if v:
+            if v < datetime.now().date():
+                raise ValueError("Invalid deadline")
+        return v
+
 
 class JobCreate(JobBase):
     email_contact: str
@@ -381,7 +419,7 @@ class JobUpdateRequest(BaseModel):
     job_requirement: Optional[str] = None
     job_benefit: Optional[str] = None
     phone_number_contact: Optional[str] = None
-    email_contact: Optional[List[str]] = None
+    email_contact: Optional[Any] = None
     full_name_contact: Optional[str] = None
     employment_type: JobType = None
     gender_requirement: Gender = None
@@ -397,11 +435,11 @@ class JobUpdateRequest(BaseModel):
     employer_verified: Optional[bool] = None
     working_time_text: Optional[str] = None
     quantity: Optional[int] = None
-    working_times: Optional[List[object]] = None
-    categories: Optional[List[int]] = None
-    locations: Optional[List[object]] = None
-    must_have_skills: Optional[List[int]] = None
-    should_have_skills: Optional[List[int]] = None
+    working_times: Optional[Any] = None
+    categories: Optional[Any] = None
+    locations: Optional[Any] = None
+    must_have_skills: Optional[Any] = None
+    should_have_skills: Optional[Any] = None
     job_experience_id: Optional[int] = None
     job_position_id: Optional[int] = None
     job_id: Optional[int] = None
@@ -409,6 +447,8 @@ class JobUpdateRequest(BaseModel):
     @validator("email_contact")
     def validate_email_contact(cls, v):
         if v:
+            if not isinstance(v, list):
+                raise ValueError("Require list email")
             for email in v:
                 if not re.match(constant.REGEX_EMAIL, email):
                     raise ValueError("Invalid email")
@@ -432,6 +472,51 @@ class JobUpdateRequest(BaseModel):
     def validate_job_benefit(cls, v):
         if v:
             return json.dumps(v) if isinstance(v, str) else v
+        return v
+
+    @validator("working_times")
+    def validate_working_times(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Require list working times")
+        for item in v:
+            if not isinstance(item, dict):
+                raise ValueError("Require object working times")
+        return v
+
+    @validator("categories")
+    def validate_categories(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Require list categories")
+        for item in v:
+            if not isinstance(item, int):
+                raise ValueError("Require int categories")
+        return v
+
+    @validator("locations")
+    def validate_locations(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Require list locations")
+        for item in v:
+            if not isinstance(item, dict):
+                raise ValueError("Require object locations")
+        return v or []
+
+    @validator("must_have_skills")
+    def validate_must_have_skills(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Require list must have skills")
+        for item in v:
+            if not isinstance(item, int):
+                raise ValueError("Require int must have skills")
+        return v
+
+    @validator("should_have_skills")
+    def validate_should_have_skills(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Require list should have skills")
+        for item in v:
+            if not isinstance(item, int):
+                raise ValueError("Require int should have skills")
         return v
 
 
@@ -461,3 +546,27 @@ class JobUpdate(BaseModel):
     working_time_text: Optional[str] = None
     quantity: Optional[int] = None
     locations: Optional[List[object]] = None
+
+
+class JobApproveRequest(BaseModel):
+    job_approval_request_id: int
+    status: AdminJobApprovalStatus
+    reason: Optional[str] = None
+
+    @validator("status")
+    def validate_status(cls, v):
+        if v not in [AdminJobApprovalStatus.APPROVED, AdminJobApprovalStatus.REJECTED]:
+            raise ValueError("Invalid status")
+        return v
+
+
+class JobApproveUpdateJobRequest(BaseModel):
+    job_approval_request_id: int
+    status: AdminJobApprovalStatus
+    reason: Optional[str] = None
+
+    @validator("status")
+    def validate_status(cls, v):
+        if v not in [AdminJobApprovalStatus.APPROVED, AdminJobApprovalStatus.REJECTED]:
+            raise ValueError("Invalid status")
+        return v
