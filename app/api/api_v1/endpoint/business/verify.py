@@ -89,3 +89,23 @@ def verify_code(
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
         return custom_response(status_code, constant.SUCCESS, response)
+
+
+@router.get("/test", summary="Test verify.")
+def test_verify(
+    db: Session = Depends(get_db),
+):
+    from time import sleep
+
+    sleep(5)
+    return custom_response(200, constant.SUCCESS, "Success test verify")
+
+
+@router.get("/test2", summary="Test verify.")
+def test_verify(
+    db: Session = Depends(get_db),
+):
+    from time import sleep
+
+    # sleep(5)
+    return custom_response(200, constant.SUCCESS, "Success test verify2")

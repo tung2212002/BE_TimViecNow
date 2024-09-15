@@ -282,12 +282,20 @@ class JobCount(BaseModel):
     salary_type: Optional[SalaryType] = None
     deadline: Optional[date] = datetime.now().date()
     keyword: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
     @validator("job_status")
     def validate_job_status(cls, v):
         return v or JobStatus.PUBLISHED
+
+    @validator("updated_at")
+    def validate_updated_at(cls, v):
+        if v:
+            if not isinstance(v, date):
+                raise ValueError("Invalid updated at")
+            return datetime.combine(v, datetime.min.time())
 
     @validator("job_approve_status")
     def validate_job_approve_status(cls, v):
@@ -316,10 +324,18 @@ class JobSearchByUser(PaginationJob):
     deadline: Optional[date] = datetime.now().date()
     keyword: Optional[str] = None
     suggest: Optional[bool] = False
+    updated_at: Optional[Any] = None
 
     @validator("deadline")
     def validate_deadline(cls, v):
         return v or datetime.now().date()
+
+    @validator("updated_at")
+    def validate_updated_at(cls, v):
+        if v:
+            if not isinstance(v, date):
+                raise ValueError("Invalid updated at")
+            return datetime.combine(v, datetime.min.time())
 
     @validator("job_status")
     def validate_job_status(cls, v):
@@ -345,7 +361,7 @@ class JobSearchByBusiness(PaginationJob):
     min_salary: Optional[int] = None
     max_salary: Optional[int] = None
     salary_type: Optional[SalaryType] = None
-    deadline: Optional[date] = datetime.now().date()
+    deadline: Optional[Any] = datetime.now().date()
     keyword: Optional[str] = None
 
     @validator("job_status")

@@ -10,6 +10,7 @@ from sqlalchemy import (
     JSON,
     Text,
     event,
+    Index,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Session
@@ -98,6 +99,19 @@ class Job(Base):
         back_populates="job",
         uselist=True,
         overlaps="must_have_skills,should_have_skills",
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_job_min_salary_max_salary_salary_type_deadline",
+            min_salary,
+            max_salary,
+            salary_type,
+            deadline,
+        ),
+        Index(
+            "idx_job_salary_status_dealine", min_salary, max_salary, status, deadline
+        ),
     )
 
 

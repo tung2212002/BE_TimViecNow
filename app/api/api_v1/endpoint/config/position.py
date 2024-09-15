@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get("/job_position", summary="Get list of job positions.")
-def get_list_job_position(
+async def get_list_job_position(
     skip: int = Query(
         None, description="The number of job positions to skip.", example=0
     ),
@@ -41,7 +41,7 @@ def get_list_job_position(
     """
     args = locals()
 
-    status, status_code, response = service_position.get_position(db, args)
+    status, status_code, response = await service_position.get_position(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

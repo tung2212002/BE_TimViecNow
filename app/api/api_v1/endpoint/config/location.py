@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Request, Query, Path
 from sqlalchemy.orm import Session
-from redis import Redis
+from redis.asyncio import Redis
 
 from app.db.base import get_db
 from app.core import constant
 from app.core.location import service_location
 from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType
-from app.storage.redis import redis_dependency
+from app.storage.redis import get_redis
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def get_list_province(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -50,7 +50,7 @@ async def get_list_province(
 @router.get("/province/{id}", summary="Get province by id.")
 async def get_province_by_id(
     id: int = Path(..., description="The province id.", example=1),
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -86,7 +86,7 @@ async def get_list_district(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -118,7 +118,7 @@ async def get_list_district(
 @router.get("/district/{id}", summary="Get district by id.")
 async def get_district_by_id(
     id: int = Path(..., description="The district id.", example=1),
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """

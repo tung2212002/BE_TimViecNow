@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app.crud.skill import skill as skillCRUD
 from app.crud.job_skill import job_skill as job_skillCRUD
@@ -9,15 +10,20 @@ from app.schema import (
 from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.response_custom import custom_response_error
+from app.storage.cache.config_cache_service import config_cache_service
 
 
-def get(db: Session, data: dict):
+async def get(db: Session, redis: Redis, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-
-    skills_response = get_list_skill_info(db, page.dict())
+    try:
+        skills_response = await config_cache_service.get_cache_skill(redis)
+    except Exception as e:
+        print(e)
+    if not skills_response:
+        skills_response = get_list_skill_info(db, page.model_dump())
     return constant.SUCCESS, 200, skills_response
 
 

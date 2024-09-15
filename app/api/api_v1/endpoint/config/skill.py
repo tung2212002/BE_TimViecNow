@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Request, Query, Path, Body
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app.db.base import get_db
+from app.storage.redis import get_redis
 from app.core import constant
 from app.core.skill import service_skill
 from app.core.auth.service_business_auth import get_current_superuser
@@ -12,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("", summary="Get list of skills.")
-def get_list_skill(
+async def get_list_skill(
     request: Request,
     skip: int = Query(None, description="The number of skill to skip.", example=0),
     limit: int = Query(
@@ -21,6 +23,7 @@ def get_list_skill(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -40,7 +43,7 @@ def get_list_skill(
     """
     args = locals()
 
-    status, status_code, response = service_skill.get(db, args)
+    status, status_code, response = await service_skill.get(db, redis, args)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:

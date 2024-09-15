@@ -4,6 +4,10 @@ from typing import Any, Optional
 
 from app.core.config import settings
 from typing import Set, Any, Optional
+from app.core.loggers import get_logger, setup_logging
+from app.core import loggers
+
+logger = get_logger(__name__)
 
 
 class RedisBackend:
@@ -70,17 +74,31 @@ class RedisDependency:
         return self.redis
 
     async def init(self):
-        self.redis = RedisBackend(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
-            expire=settings.REDIS_EXPIRE,
-        )
+        try:
+            self.redis = RedisBackend(
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                password=settings.REDIS_PASSWORD,
+                db=settings.REDIS_DB,
+                expire=settings.REDIS_EXPIRE,
+            )
+
+            await self.redis.connection.ping()
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
 
     async def close(self):
         if self.redis:
             await self.redis.connection.close()
 
+    async def get_redis(self):
+        return self.redis.connection
+
 
 redis_dependency = RedisDependency()
+
+
+async def get_redis():
+    if redis_dependency.redis is None:
+        await redis_dependency.init()
+    return await redis_dependency.get_redis()

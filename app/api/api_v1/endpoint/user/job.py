@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Path
 
 from sqlalchemy.orm import Session
-from redis import Redis
+from redis.asyncio import Redis
+from datetime import date
 
 from app.db.base import get_db
-from app.storage.redis import redis_dependency
+from app.storage.redis import get_redis
 from app.core import constant
 from app.core.job import service_job
 from app.hepler.response_custom import custom_response_error, custom_response
@@ -39,8 +40,9 @@ async def search_job(
     ),
     job_position_id: int = Query(None, description="The position id.", example=1),
     keyword: str = Query(None, description="The keyword.", example="developer"),
+    updated_at: date = Query(None, description="The updated at.", example=date.today()),
     suggest: bool = Query(False, description="The suggest job.", example=False),
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -65,6 +67,7 @@ async def search_job(
     - max_salary (int): The max salary.
     - salary_type (str): The type salary.
     - keyword (str): The keyword.
+    - updated_at (date): The updated at.
 
     Returns:
     - status_code (200): The list of job has been found successfully.
@@ -85,7 +88,7 @@ async def search_job(
 
 
 @router.get("", summary="Get list of job.")
-def get_job(
+async def get_job(
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortJobBy = Query(
@@ -96,6 +99,7 @@ def get_job(
     ),
     company_id: int = Query(None, description="The company id.", example=1),
     province_id: int = Query(None, description="The province id.", example=1),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -119,7 +123,7 @@ def get_job(
     """
     args = locals()
 
-    status, status_code, response = service_job.get_by_user(db, {**args})
+    status, status_code, response = await service_job.get_by_user(db, redis, {**args})
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -129,7 +133,7 @@ def get_job(
 
 @router.get("/count_job_by_category", summary="Count job by category.")
 async def count_job_by_category(
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -153,7 +157,7 @@ async def count_job_by_category(
 
 @router.get("/count_job_by_salary", summary="Count job by salary.")
 async def count_job_by_salary(
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -177,7 +181,7 @@ async def count_job_by_salary(
 
 @router.get("/cruitment_demand", summary="Get information of recruitment demand.")
 async def get_cruitment_demand(
-    redis: Redis = Depends(redis_dependency),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -200,12 +204,13 @@ async def get_cruitment_demand(
 
 
 @router.get("/{job_id}", summary="Get job by id.")
-def get_job_by_id(
+async def get_job_by_id(
     job_id: int = Path(
         ...,
         description="The job id.",
         example=1,
     ),
+    redis: Redis = Depends(get_redis),
     db: Session = Depends(get_db),
 ):
     """
@@ -222,7 +227,9 @@ def get_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.get_by_id_for_user(db, job_id)
+    status, status_code, response = await service_job.get_by_id_for_user(
+        db, redis, job_id
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

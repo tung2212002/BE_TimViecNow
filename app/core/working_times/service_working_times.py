@@ -10,7 +10,7 @@ from app.hepler.response_custom import custom_response_error
 def get_working_times_by_job_id(db: Session, job_id: int):
     working_times = working_timeCRUD.get_working_times_by_job_id(db, job_id=job_id)
     return [
-        working_time_schema.WorkingTimeResponse(**working_time.__dict__)
+        working_time_schema.WorkingTimeResponse(**working_time.__dict__).model_dump()
         for working_time in working_times
     ]
 
@@ -22,7 +22,7 @@ def get_working_time(db: Session, working_time_id: int):
             status_code=404, status=constant.ERROR, response="Working time not found"
         )
 
-    return working_time_schema.WorkingTimeResponse(**working_time.__dict__)
+    return working_time_schema.WorkingTimeResponse(**working_time.__dict__).model_dump()
 
 
 def get_working_time_by_id(db: Session, working_time_id: int):
@@ -51,7 +51,7 @@ def check_working_times(db: Session, woking_times: list):
         try:
             working_time_data = working_time_schema.WorkingTimeCreateRequest(
                 **working_time
-            )
+            ).model_dump()
         except Exception as e:
             return custom_response_error(
                 status=400, response=get_message_validation_error(e)

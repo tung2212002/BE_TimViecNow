@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
-from redis import Redis
+from redis.asyncio import Redis
 
 from app.schema import (
     job as job_schema,
     job_approval_request as job_approval_request_schema,
+    job_statistics as job_statistics_schema,
 )
 from app.crud import (
     job as jobCRUD,
@@ -40,7 +41,7 @@ from app.storage.redis import redis_dependency
 from app.storage.cache.job_cache_service import job_cache_service
 
 
-def get_by_business(db: Session, data: dict, current_user):
+async def get_by_business(db: Session, redis: Redis, data: dict, current_user):
     try:
         page = job_schema.JobFilterByBusiness(**data)
     except Exception as e:
@@ -55,18 +56,18 @@ def get_by_business(db: Session, data: dict, current_user):
         if page.company_id and page.company_id != company.id:
             return constant.ERROR, 403, "Permission denied"
         page.company_id = company.id
-    response = get_list_job(db, page.model_dump())
+    response = await get_list_job(db, redis, page.model_dump())
     return constant.SUCCESS, 200, response
 
 
-def get_by_user(db: Session, data: dict):
+async def get_by_user(db: Session, redis: Redis, data: dict):
     try:
         page = job_schema.JobFilterByUser(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    jobs = get_list_job(db, page.model_dump())
+    jobs = await get_list_job(db, redis, page.model_dump())
 
     params = job_schema.JobCount(**data)
     number_of_all_jobs = jobCRUD.count(db, **params.model_dump())
@@ -78,24 +79,35 @@ def get_by_user(db: Session, data: dict):
     return constant.SUCCESS, 200, response
 
 
-async def search_by_user(db: Session, redis, data: dict):
+async def search_by_user(db: Session, redis: Redis, data: dict):
     try:
         page = job_schema.JobSearchByUser(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
+
     page.job_status = JobStatus.PUBLISHED
     page.job_approve_status = JobApprovalStatus.APPROVED
-    jobs = jobCRUD.search(db, **page.model_dump())
+    try:
+        jobs_response = await job_cache_service.get_cache_user_search(
+            redis, helper_job.get_count_job_user_search_key(page)
+        )
+        if jobs_response:
+            return constant.SUCCESS, 200, jobs_response
+    except Exception as e:
+        print(e)
+
+    jobs = jobCRUD.user_search(db, **page.model_dump())
     count = 0
     jobs_of_district_response = []
+
     if (page.province_id or page.district_id) and page.suggest:
         try:
-            cache_key = f"province_district:{page.model_dump()}"
-            jobs_of_district_response = await job_cache_service.get_list(cache_key)
+            cache_key = page.model_dump().__str__()
+            jobs_of_district_response = await job_cache_service.get_list(
+                redis, cache_key
+            )
         except Exception as e:
-            # log
             print(e)
-            jobs_of_district_response = None
 
         if not jobs_of_district_response:
             jobs_of_district = jobCRUD.get_number_job_of_district(
@@ -113,8 +125,8 @@ async def search_by_user(db: Session, redis, data: dict):
                         }
                     )
             try:
-                expire_time = 60 * 10
-                await job_cache_service.set_list(
+                await job_cache_service.cache_province_district_search_by_user(
+                    redis,
                     cache_key,
                     [
                         {
@@ -123,39 +135,38 @@ async def search_by_user(db: Session, redis, data: dict):
                         }
                         for jobs_of_district_data in jobs_of_district_response
                     ],
-                    expire_time,
                 )
             except Exception as e:
-                # log
                 print(e)
-                pass
 
     else:
-        cache_key = f"count_search_by_user:{page.model_dump()}"
+        cache_key = helper_job.get_count_job_user_search_key(page)
         count = None
         try:
-            count = await job_cache_service.get(cache_key)
+            count = await job_cache_service.get_cache_count_search_by_user(
+                redis, cache_key
+            )
         except Exception as e:
-            # log
             print(e)
-            pass
 
         if not count:
             params = job_schema.JobCount(**data)
-            count = jobCRUD.count(db, **params.model_dump())
+            count = jobCRUD.user_count(db, **params.model_dump())
             try:
-                expire_time = 60 * 60 * 24
-                await job_cache_service.set(cache_key, count, expire_time)
+                await job_cache_service.cache_count_search_by_user(
+                    redis, cache_key, count
+                )
             except Exception as e:
-                # log
                 print(e)
-                pass
 
-    jobs_response = [
-        helper_job.get_job_info(db, job)
-        for job in jobs
-        if helper_job.get_job_info(db, job).company
-    ]
+    jobs_response = []
+    for job in jobs:
+        job_res = await helper_job.get_job_info(db, redis, job)
+        (
+            jobs_response.append(job_res)
+            if (isinstance(job_res, dict) and job_res.get("company") or job_res.company)
+            else None
+        )
 
     response = {
         "count": count,
@@ -164,10 +175,15 @@ async def search_by_user(db: Session, redis, data: dict):
         "jobs_of_district": jobs_of_district_response,
     }
 
+    try:
+        await job_cache_service.cache_user_search(redis, cache_key, response)
+    except Exception as e:
+        print(e)
+
     return constant.SUCCESS, 200, response
 
 
-async def search_by_business(db: Session, current_user, data: dict):
+async def search_by_business(db: Session, redis: Redis, current_user, data: dict):
     try:
         page = job_schema.JobSearchByUser(**data)
     except Exception as e:
@@ -189,7 +205,7 @@ async def search_by_business(db: Session, current_user, data: dict):
 
     jobs_response = []
     for job in jobs:
-        job_res = helper_job.get_job_info(db, job)
+        job_res = await helper_job.get_job_info(db, redis, job)
         jobs_response.append(job_res) if job_res.company else None
 
     response = {
@@ -200,17 +216,17 @@ async def search_by_business(db: Session, current_user, data: dict):
     return constant.SUCCESS, 200, response
 
 
-def get_list_job(db: Session, data: dict):
+async def get_list_job(db: Session, redis: Redis, data: dict):
     jobs = jobCRUD.get_multi(db, **data)
     jobs_response = []
     for job in jobs:
-        job_res = helper_job.get_job_info(db, job)
+        job_res = await helper_job.get_job_info(db, redis, job)
         jobs_response.append(job_res) if job_res.company else None
 
     return jobs_response
 
 
-def get_by_id_for_business(db: Session, job_id: int, current_user):
+async def get_by_id_for_business(db: Session, redis: Redis, job_id: int, current_user):
     job = jobCRUD.get(db, job_id)
     company = companyCRUD.get_company_by_business_id(db, current_user.id)
     if not job:
@@ -225,11 +241,11 @@ def get_by_id_for_business(db: Session, job_id: int, current_user):
         or not company
     ):
         return constant.ERROR, 403, "Permission denied"
-    job_response = helper_job.get_job_info(db, job)
+    job_response = await helper_job.get_job_info(db, redis, job)
     return constant.SUCCESS, 200, job_response
 
 
-def get_by_id_for_user(db: Session, job_id: int):
+async def get_by_id_for_user(db: Session, redis: Redis, job_id: int):
     job = jobCRUD.get(db, job_id)
     if not job:
         return constant.ERROR, 404, "Job not found"
@@ -238,11 +254,11 @@ def get_by_id_for_user(db: Session, job_id: int):
         or job.job_approval_request.status != JobApprovalStatus.APPROVED
     ):
         return constant.ERROR, 404, "Job not found"
-    job_response = helper_job.get_job_info(db, job)
+    job_response = await helper_job.get_job_info(db, redis, job)
     return constant.SUCCESS, 200, job_response
 
 
-def get_by_campaign_id(db: Session, campaign_id: int, current_user):
+async def get_by_campaign_id(db: Session, redis: Redis, campaign_id: int, current_user):
     campaign = campaignCRUD.get(db, campaign_id)
     company = companyCRUD.get_company_by_business_id(db, current_user.id)
     if not campaign:
@@ -259,7 +275,7 @@ def get_by_campaign_id(db: Session, campaign_id: int, current_user):
         return constant.ERROR, 403, "Permission denied"
 
     job = jobCRUD.get_by_campaign_id(db, campaign_id)
-    job_response = helper_job.get_job_info(db, job)
+    job_response = await helper_job.get_job_info(db, redis, job)
     return constant.SUCCESS, 200, job_response
 
 
@@ -267,10 +283,10 @@ async def count_job_by_category(redis: Redis, db: Session):
     time_scan = db.query(func.now()).first()[0]
     response = None
     try:
-        response = await redis.get_list("count_job_by_category")
+        response = await job_cache_service.get_cache_count_job_by_category(redis)
     except Exception as e:
-        # log
-        response = None
+        print(e)
+
     if not response:
         data = jobCRUD.count_job_by_category(db)
         response = []
@@ -281,50 +297,65 @@ async def count_job_by_category(redis: Redis, db: Session):
                 {**category.model_dump(), "count": count, "time_scan": str(time_scan)}
             )
         try:
-            expire_time = 60 * 60 * 24
-            await redis.set_list("count_job_by_category", response, expire_time)
+            await job_cache_service.cache_count_job_by_category(redis, response)
         except Exception as e:
             print(e)
-            # log
-            pass
+
     return constant.SUCCESS, 200, response
 
 
 async def count_job_by_salary(redis: Redis, db: Session):
-    response = None
+    data = None
+    salary_ranges = [
+        (0, 3, SalaryType.VND),
+        (3, 10, SalaryType.VND),
+        (10, 20, SalaryType.VND),
+        (20, 30, SalaryType.VND),
+        (30, 999, SalaryType.VND),
+    ]
+    other_salary = [
+        SalaryType.DEAL,
+        SalaryType.USD,
+        "other",
+    ]
     try:
-        response = await redis.get_list("count_job_by_salary")
+        data = await job_cache_service.get_cache_count_job_by_salary(redis)
     except Exception as e:
-        # log
-        response = None
-    if not response:
-        salary_ranges = [
-            (0, 3, SalaryType.VND),
-            (3, 10, SalaryType.VND),
-            (10, 20, SalaryType.VND),
-            (20, 30, SalaryType.VND),
-            (30, 0, SalaryType.VND),
-            (0, 0, SalaryType.DEAL),
-        ]
-        time_scan = db.query(func.now()).first()[0]
+        print(e)
+
+    time_scan = db.query(func.now()).first()[0]
+    if not data:
         data = jobCRUD.count_job_by_salary(db, salary_ranges)
-        data = zip(salary_ranges, data)
-        response = []
-        for (min, max, salary_type), count in data:
-            response.append(
-                {
-                    "min_salary": min,
-                    "max_salary": max,
-                    "salary_type": salary_type,
-                    "count": count,
-                    "time_scan": str(time_scan),
-                }
-            )
         try:
-            expire_time = 60 * 60 * 24
-            await redis.set_list("count_job_by_salary", response, expire_time)
+            await job_cache_service.cache_count_job_by_salary(redis, data)
         except Exception as e:
-            pass
+            print(e)
+
+    response = []
+    for index, (idx, count) in enumerate(data[:-3]):
+        min, max, salary_type = salary_ranges[idx]
+        response.append(
+            job_statistics_schema.JobCountBySalary(
+                min_salary=min,
+                max_salary=max if max != 999 else 0,
+                salary_type=salary_type,
+                count=count,
+                time_scan=time_scan,
+            )
+        )
+
+    for index, (idx, count) in enumerate(data[-3:]):
+        salary_type = other_salary[index]
+        response.append(
+            job_statistics_schema.JobCountBySalary(
+                min_salary=0,
+                max_salary=0,
+                salary_type=salary_type,
+                count=count,
+                time_scan=time_scan,
+            )
+        )
+
     return constant.SUCCESS, 200, response
 
 
@@ -336,26 +367,51 @@ def count_job_by_district(db: Session):
 async def get_cruitment_demand(redis: Redis, db: Session):
     time_scan = db.query(func.now()).first()[0]
     approved_time = time_scan.date() - timedelta(days=1)
+    response = None
     params = job_schema.JobCount(
         job_status=JobStatus.PUBLISHED,
         job_approve_status=JobApprovalStatus.APPROVED,
     )
 
-    cache_key = f"cruitment_demand:{params.deadline}"
     try:
-        response = await redis.get_dict(cache_key)
+        response = await job_cache_service.get_cache_job_cruiment_demand(redis)
     except Exception as e:
-        # log
-        response = None
+        print(e)
+
     if not response:
-        number_of_job_24h = jobCRUD.count(
-            db, **params.model_dump(), approved_time=approved_time
+        number_of_job_24h = await job_cache_service.get_cache_count_job_24h(redis)
+        if not number_of_job_24h:
+            number_of_job_24h = jobCRUD.count(
+                db, **params.model_dump(), approved_time=approved_time
+            )
+            try:
+                await job_cache_service.cache_count_job_24h(redis, number_of_job_24h)
+            except Exception as e:
+                print(e)
+
+        number_of_job_active = await job_cache_service.get_cache_count_job_active(redis)
+        if not number_of_job_active:
+            number_of_job_active = jobCRUD.count(
+                db,
+                **params.model_dump(),
+            )
+            try:
+                await job_cache_service.cache_count_job_active(
+                    redis, number_of_job_active
+                )
+            except Exception as e:
+                print(e)
+        number_of_company_active = await job_cache_service.get_cache_count_job_active(
+            redis
         )
-        number_of_job_active = jobCRUD.count(
-            db,
-            **params.model_dump(),
-        )
-        number_of_company_active = jobCRUD.count_company_active_job(db)
+        if not number_of_company_active:
+            number_of_company_active = jobCRUD.count_company_active_job(db)
+            try:
+                await job_cache_service.cache_count_job_active(
+                    redis, number_of_company_active
+                )
+            except Exception as e:
+                print(e)
         response = {
             "number_of_job_24h": number_of_job_24h,
             "number_of_job_active": number_of_job_active,
@@ -363,16 +419,14 @@ async def get_cruitment_demand(redis: Redis, db: Session):
             "time_scan": str(time_scan),
         }
         try:
-            expire_time = 60 * 60 * 24
-            await redis.set_dict(cache_key, response, expire_time)
+            await job_cache_service.cache_job_cruiment_demand(redis, response)
         except Exception as e:
-            # log
-            pass
+            print(e)
 
     return constant.SUCCESS, 200, response
 
 
-def create(db: Session, data: dict, current_user):
+async def create(db: Session, redis: Redis, data: dict, current_user):
     business = current_user.business
     service_business_auth.verified_level(business, 2)
     try:
@@ -425,7 +479,7 @@ def create(db: Session, data: dict, current_user):
     service_skill.create_skill_job(db, job.id, job_skills)
     service_category.create_category_job(db, job.id, job_categories)
 
-    job_response = helper_job.get_job_info(db, job)
+    job_response = await helper_job.get_job_info(db, redis, job)
     return constant.SUCCESS, 201, job_response
 
 

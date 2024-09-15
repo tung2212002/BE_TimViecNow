@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List
-from redis import Redis
+from redis.asyncio import Redis
 
 from app.crud.province import province as provinceCRUD
 from app.crud.district import district as districtCRUD
@@ -20,24 +20,23 @@ async def get_province(db: Session, redis: Redis, data: dict):
         page = schema_page.Pagination(**data)
     except Exception as e:
         return constant.ERROR, 400, get_message_validation_error(e)
-    cache_key = f"provinces:{page.model_dump()}"
+
     provinces_response = None
     try:
-        provinces_response = await redis.get_list(cache_key)
+        provinces_response = await location_cache_service.get_cache_list_province(redis)
     except Exception as e:
         print(e)
-        pass
 
     if not provinces_response:
         provinces_response = get_list_province_info(db, page.model_dump())
         try:
-            await redis.set_list(
-                cache_key,
+            await location_cache_service.cache_list_province(
+                redis,
                 [province.__dict__ for province in provinces_response],
             )
         except Exception as e:
             print(e)
-            pass
+
     return constant.SUCCESS, 200, provinces_response
 
 
@@ -51,37 +50,38 @@ async def get_district(db: Session, redis: Redis, data: dict):
     if not province_id:
         return constant.ERROR, 400, "Province id is required"
 
-    cache_key = f"districts:{province_id}:{page.model_dump()}"
     districts_response = None
     try:
-        districts_response = await redis.get_list(cache_key)
+        districts_response = (
+            await location_cache_service.get_cache_district_of_province(
+                redis, province_id
+            )
+        )
     except Exception as e:
         print(e)
-        pass
+
     if not districts_response:
         districts_response = get_list_district_info(
             db, {**page.model_dump(), "province_id": province_id}
         )
         try:
-            expire_time = 60 * 60 * 24 * 7
-            await redis.set_list(
-                cache_key,
+            await location_cache_service.cache_district_of_province(
+                redis,
+                province_id,
                 [district.__dict__ for district in districts_response],
-                expire_time,
             )
         except Exception as e:
             print(e)
-            pass
+
     return constant.SUCCESS, 200, districts_response
 
 
 async def get_province_by_id(db: Session, redis: Redis, id: int):
     province_response = None
-    cache_key = f"provinces:{id}"
     try:
-        await redis.set_dict(cache_key, province_response.__dict__)
+        await location_cache_service.get_cache_province(redis, id)
     except Exception as e:
-        pass
+        print(e)
 
     if not province_response:
         province_response = get_province_info(db, id)
@@ -89,53 +89,32 @@ async def get_province_by_id(db: Session, redis: Redis, id: int):
             return constant.ERROR, 404, "Province not found"
         dict_province = province_response.__dict__
         try:
-            expire_time = 60 * 60 * 24 * 7
-            await redis.set_dict(cache_key, dict_province, expire_time)
+            await location_cache_service.set_dict(redis, id, dict_province)
         except Exception as e:
-            pass
+            print(e)
 
     return constant.SUCCESS, 200, province_response
 
 
 async def get_district_by_id(db: Session, redis: Redis, id: int):
     district_response = None
-    cache_key = f"districts:{id}"
     try:
-        district_response = await redis.get_dict(cache_key)
+        district_response = await location_cache_service.get_dict(redis, id)
     except Exception as e:
-        # log
-        pass
+        print(e)
+
     if not district_response:
         district_response = get_district_info(db, id)
 
         if not district_response:
             return constant.ERROR, 404, "District not found"
         try:
-            expire_time = 60 * 60 * 24 * 7
-            await redis.set_dict(cache_key, district_response.__dict__, expire_time)
+            await location_cache_service.cache_district(
+                redis, id, district_response.__dict__
+            )
         except Exception as e:
-            # log
-            pass
+            print(e)
 
-    return constant.SUCCESS, 200, district_response
-
-
-async def get_district_by_id(db: Session, redis: Redis, id: int):
-    district_response = None
-    cache_key = f"districts:{id}"
-    try:
-        district_response = await redis.get_dict(cache_key)
-    except Exception as e:
-        pass
-    if not district_response:
-        district_response = get_district_info(db, id)
-        if not district_response:
-            return constant.ERROR, 404, "District not found"
-        try:
-            expire_time = 60 * 60 * 24 * 7
-            await redis.set_dict(cache_key, district_response.__dict__, expire_time)
-        except Exception as e:
-            pass
     return constant.SUCCESS, 200, district_response
 
 

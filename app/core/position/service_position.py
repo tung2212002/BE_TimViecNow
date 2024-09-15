@@ -11,7 +11,7 @@ from app.core import constant
 from app.hepler.exception_handler import get_message_validation_error
 
 
-def get_position(db: Session, data: dict):
+async def get_position(db: Session, data: dict):
     try:
         page = schema_page.Pagination(**data)
     except Exception as e:

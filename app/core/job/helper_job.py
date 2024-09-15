@@ -1,37 +1,25 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
-from redis import Redis
+from redis.asyncio import Redis
 
 from app.schema import (
     job as job_schema,
 )
 from app.crud import (
     job as jobCRUD,
-    campaign as campaignCRUD,
-    experience as experienceCRUD,
-    job_position as job_positionCRUD,
     company as companyCRUD,
 )
-from app.core.auth import service_business_auth
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import (
-    Role,
     JobStatus,
-    SalaryType,
     JobApprovalStatus,
-    CampaignStatus,
 )
-from app.core.location import service_location
 from app.core.working_times import service_working_times
 from app.core.work_locations import service_work_locations
 from app.core.company import service_company
 from app.core.category import service_category
-from app.core.auth import service_business_auth
 from app.core.skill import service_skill
-from app.core.campaign import service_campaign, helper_campaign
-from app.storage.redis import redis_dependency
+from app.storage.cache.job_cache_service import job_cache_service
 
 
 def get_list_job(db: Session, data: dict):
@@ -54,7 +42,17 @@ def get_jobs_active_by_company(db: Session, company_id: int):
     return jobCRUD.count(db, **obj_in)
 
 
-def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
+async def get_job_info(
+    db: Session, redis: Redis, job, Schema=job_schema.JobItemResponse
+):
+    job_id = job.id
+    try:
+        job_response = await job_cache_service.get_cache_job_info(redis, job_id)
+        if job_response:
+            return job_response
+    except Exception as e:
+        print(e)
+
     working_times_response = service_working_times.get_working_times_by_job_id(
         db, job.id
     )
@@ -92,6 +90,11 @@ def get_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
         must_have_skills=must_have_skills_response,
         should_have_skills=should_have_skills_response,
     )
+
+    try:
+        await job_cache_service.cache_job_info(redis, job_id, job_response.__dict__)
+    except Exception as e:
+        print(e)
     return job_response
 
 
@@ -122,3 +125,7 @@ def search_job_info(db: Session, job, Schema=job_schema.JobItemResponse):
         company=company_response,
     )
     return job_response
+
+
+def get_count_job_user_search_key(data: job_schema.JobSearchByUser) -> str:
+    return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}_{data.sort_by}_{data.order_by}_{data.skip}_{data.limit}"

@@ -6,48 +6,44 @@ from app.storage.redis import redis_dependency
 
 
 class BaseCache:
-    def __init__(self, redis_backend: Redis, key_prefix: str, expire: int):
-        self.expire = expire
-        self.connection = redis_backend
+    def __init__(self, key_prefix: str, expire: int):
         self.key_prefix = key_prefix
+        self.expire = expire
 
-    async def get(self, key: str) -> Any:
+    async def get(self, redis: Redis, key: str) -> Any:
         """Get Value from Key"""
-        response = await self.connection.get(
+        response = await redis.get(
             self.key_prefix + key,
         )
         return response
 
-    async def set(self, key: str, value: str, expire: int = None):
+    async def set(self, redis: Redis, key: str, value: Any, expire: int = None):
         """Set Value to Key"""
-        await self.connection.set(self.key_prefix + key, value, expire or self.expire)
+        await redis.set(self.key_prefix + key, value, expire or self.expire)
 
-    async def keys(self, pattern: str) -> Set[str]:
+    async def keys(self, redis: Redis, pattern: str) -> Set[str]:
         """Get Keys by Pattern"""
-        return await self.connection.keys(self.key_prefix + pattern)
+        return await redis.keys(self.key_prefix + pattern)
 
-    async def set_list(self, key: str, value: list, expire: int = None):
+    async def set_list(self, redis: Redis, key: str, value: list, expire: int = None):
         """Set Value to Key"""
         for v in value:
-            await self.connection.rpush(self.key_prefix + key, json.dumps(v))
-        await self.connection.expire(self.key_prefix + key, expire or self.expire)
+            await redis.rpush(self.key_prefix + key, json.dumps(v))
+        await redis.expire(self.key_prefix + key, expire or self.expire)
 
-    async def get_list(self, key: str) -> list:
+    async def get_list(self, redis: Redis, key: str) -> list:
         """Get Value from Key"""
-        return [
-            json.loads(v)
-            for v in await self.connection.lrange(self.key_prefix + key, 0, -1)
-        ]
+        return [json.loads(v) for v in await redis.lrange(self.key_prefix + key, 0, -1)]
 
-    async def set_dict(self, key: str, value: dict, expire: int = None):
+    async def set_dict(self, redis: Redis, key: str, value: dict, expire: int = None):
         """Set Value to Key"""
-        await self.connection.hmset(self.key_prefix + key, value)
-        await self.connection.expire(self.key_prefix + key, expire or self.expire)
+        await redis.hmset(self.key_prefix + key, value)
+        await redis.expire(self.key_prefix + key, expire or self.expire)
 
-    async def get_dict(self, key: str) -> dict:
+    async def get_dict(self, redis: Redis, key: str) -> dict:
         """Get Value from Key"""
-        return await self.connection.hgetall(self.key_prefix + key)
+        return await redis.hgetall(self.key_prefix + key)
 
-    async def delete(self, key: str):
+    async def delete(self, redis: Redis, key: str):
         """Delete Key"""
-        await self.connection.delete(self.key_prefix + key)
+        await redis.delete(self.key_prefix + key)

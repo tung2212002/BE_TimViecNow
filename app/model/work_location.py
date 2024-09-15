@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, Text
+from sqlalchemy import Column, Integer, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -27,3 +27,7 @@ class WorkLocation(Base):
     )
     province = relationship("Province", back_populates="work_location", uselist=False)
     district = relationship("District", back_populates="work_location", uselist=False)
+
+    __table_args__ = (
+        Index("idx_work_location_job_id_province_id", job_id, province_id),
+    )
