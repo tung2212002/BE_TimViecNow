@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Database information
     MYSQL_USER: str = Field(default="root")
     MYSQL_PASSWORD: str = Field(default="")
-    MYSQL_SERVER: str = Field(default="localhost")
+    MYSQL_HOST: str = Field(default="localhost")
     MYSQL_PORT: str = Field(default="3306")
     MYSQL_DATABASE: str = Field(default="fastapi")
     # Token information

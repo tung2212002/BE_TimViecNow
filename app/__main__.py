@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI):
     await check_async_engine()
     # Startup event
     print("Redis connection opened")
+    init_db(next(get_db()))
     await redis_dependency.init()
     yield
     # Shutdown event
@@ -86,7 +87,6 @@ async def lifespan(app: FastAPI):
 
 
 # Base.metadata.create_all(bind=engine)
-init_db(next(get_db()))
 
 app = FastAPI(
     debug=settings.DEBUG,

@@ -10,12 +10,9 @@ class JobPositionBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+# request
 class JobPositionCreateRequest(JobPositionBase):
     group_postion_id: int
-
-
-class JobPositionCreate(JobPositionBase):
-    pass
 
 
 class JobPositionUpdateRequest(JobPositionBase):
@@ -25,6 +22,11 @@ class JobPositionUpdateRequest(JobPositionBase):
     group_postion_id: Optional[int] = None
 
 
+# schema
+class JobPositionCreate(JobPositionBase):
+    pass
+
+
 class JobPositionUpdate(JobPositionBase):
     name: Optional[str] = None
     slug: Optional[str] = None
@@ -32,29 +34,6 @@ class JobPositionUpdate(JobPositionBase):
     group_postion_id: Optional[int] = None
 
 
+# response
 class JobPositionItemResponse(JobPositionBase):
     id: int
-
-
-class JobPositionListResponse(JobPositionBase):
-    pass
-
-
-class JobPositionGetRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v
-
-
-class JobPositionDeleteRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v

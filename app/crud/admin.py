@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.core.security import verify_password
+from app.core.security import PasswordManager
 from .base import CRUDBase
 from app.model.admin import Admin
 from app.schema import admin as schema_admin
@@ -43,7 +43,7 @@ class CRUDAdmin(
         user = self.get_by_email(db, email)
         if not user:
             return None
-        if not verify_password(password, user.hashed_password):
+        if not PasswordManager.verify_password(password, user.hashed_password):
             return None
         return user
 

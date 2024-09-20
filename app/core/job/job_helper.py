@@ -1,0 +1,153 @@
+from sqlalchemy.orm import Session
+from redis.asyncio import Redis
+from typing import List, Union
+from datetime import datetime, timezone
+
+from app.schema import (
+    job as job_schema,
+)
+from app import crud
+from app.core.working_times.working_times_helper import working_times_helper
+from app.storage.cache.job_cache_service import job_cache_service
+from app.model import Job
+from app.core.working_times.working_times_helper import working_times_helper
+from app.core.expericence.expericence_helper import experience_helper
+from app.core.job_position.job_position_hepler import job_position_helper
+from app.core.skill.skill_helper import skill_helper
+from app.core.category.category_helper import category_helper
+from app.core.work_locations.work_locations_hepler import work_location_helper
+from app.core.company.company_helper import company_helper
+from app.core.helper_base import HelperBase
+from app.hepler.exception_handler import get_message_validation_error
+from app.core import constant
+from app.hepler.enum import JobSkillType
+
+
+class JobHepler(HelperBase):
+    def validate_page_business(self, data: dict):
+        try:
+            return job_schema.JobFilterByBusiness(**data)
+        except Exception as e:
+            return constant.ERROR, 400, get_message_validation_error(e)
+
+    def validate_page_user(self, data: dict):
+        try:
+            return job_schema.JobFilterByUser(**data)
+        except Exception as e:
+            return constant.ERROR, 400, get_message_validation_error(e)
+
+    def validate_page_user_search(self, data: dict):
+        try:
+            return job_schema.JobSearchByUser(**data)
+        except Exception as e:
+            return constant.ERROR, 400, get_message_validation_error(e)
+
+    def validate_page_business_search(self, data: dict):
+        try:
+            return job_schema.JobSearchByUser(**data)
+        except Exception as e:
+            return constant.ERROR, 400, get_message_validation_error(e)
+
+    async def get_list_job(self, db: Session, redis: Redis, data: dict):
+        jobs = crud.job.get_multi(db, **data)
+        jobs_response = []
+        for job in jobs:
+            job_res = await self.get_info(db, redis, job)
+            jobs_response.append(job_res) if job_res.company else None
+
+        return jobs_response
+
+    def check_fields(
+        self,
+        db: Session,
+        *,
+        must_have_skills: list,
+        should_have_skills: list,
+        locations: list,
+        categories: list,
+        working_times: list,
+        experience_id: int,
+        position_id: int,
+    ):
+        skill_helper.check_list_valid(db, must_have_skills)
+        skill_helper.check_list_valid(db, should_have_skills)
+        work_location_helper.check_list_valid(db, locations)
+        category_helper.check_list_valid(db, categories)
+        working_times_helper.check_list_valid(db, working_times)
+        experience_helper.check_valid(db, experience_id)
+        job_position_helper.check_valid(db, position_id)
+
+    async def get_info(
+        self, db: Session, redis: Redis, job: Job, Schema=job_schema.JobItemResponse
+    ) -> Union[job_schema.JobItemResponse, dict]:
+        job_id = job.id
+        try:
+            job_response = await job_cache_service.get_cache_job_info(redis, job_id)
+            if job_response:
+                return job_response
+        except Exception as e:
+            print(e)
+
+        working_times_response = working_times_helper.get_by_job_id(db, job.id)
+        work_locations_response = work_location_helper.get_by_job_id(db, job.id)
+        company = crud.company.get_by_business_id(db, job.business_id)
+        company_response = company_helper.get_info(db, company)
+        categories_response = category_helper.get_list_info(job.job_categories)
+        must_have_skills_response = skill_helper.get_list_info(job.must_have_skills)
+        should_have_skills_response = skill_helper.get_list_info(job.should_have_skills)
+        job_response = Schema(
+            **{
+                k: v
+                for k, v in job.__dict__.items()
+                if k
+                not in [
+                    "working_times",
+                    "must_have_skills",
+                    "should_have_skills",
+                    "locations",
+                    "job_categories",
+                ]
+            },
+            working_times=working_times_response,
+            locations=work_locations_response,
+            company=company_response,
+            categories=categories_response,
+            must_have_skills=must_have_skills_response,
+            should_have_skills=should_have_skills_response,
+        )
+
+        try:
+            await job_cache_service.cache_job_info(redis, job_id, job_response.__dict__)
+        except Exception as e:
+            print(e)
+        return job_response
+
+    def get_count_job_user_search_key(self, data: job_schema.JobSearchByUser) -> str:
+        return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}_{data.sort_by}_{data.order_by}_{data.skip}_{data.limit}"
+
+    def create_fields(
+        self,
+        db: Session,
+        job_id: int,
+        must_have_skills: list,
+        should_have_skills: list,
+        locations: list,
+        categories: list,
+        working_times: list,
+    ):
+        skill_helper.create_with_job_id(
+            db, job_id, must_have_skills, JobSkillType.MUST_HAVE
+        )
+        skill_helper.create_with_job_id(
+            db, job_id, should_have_skills, JobSkillType.SHOULD_HAVE
+        )
+        work_location_helper.create_with_job_id(db, job_id, locations)
+        category_helper.create_with_job_id(db, job_id, categories)
+        working_times_helper.create_with_job_id(db, job_id, working_times)
+
+
+job_helper = JobHepler(
+    None,
+    job_schema.JobCreateRequest,
+    job_schema.JobUpdateRequest,
+)

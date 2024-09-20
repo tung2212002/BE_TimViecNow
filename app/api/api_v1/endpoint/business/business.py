@@ -7,17 +7,11 @@ from fastapi import (
     Query,
     Path,
 )
-from sqlalchemy.orm import Session
-from typing import Annotated
 
-from app.db.base import get_db
-from app.core.auth.service_business_auth import (
-    get_current_user,
-    get_current_admin,
-    get_current_business,
-)
+from app.db.base import CurrentSession
+from app.core.auth.user_manager_service import user_manager_service
 from app.core import constant
-from app.core.business import service_business
+from app.core.business.business_service import business_service
 from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType, SortBy, Gender
 
@@ -25,7 +19,10 @@ router = APIRouter()
 
 
 @router.get("/me", summary="Get the current business.")
-def get_business(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def get_business(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
+):
     """
     Get the current business.
 
@@ -36,7 +33,7 @@ def get_business(db: Session = Depends(get_db), current_user=Depends(get_current
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_business.get_me(db, current_user)
+    status, status_code, response = await business_service.get_me(db, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -45,7 +42,9 @@ def get_business(db: Session = Depends(get_db), current_user=Depends(get_current
 
 
 @router.get("", summary="Get list of business.")
-def get_business(
+async def get_business(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
     sort_by: SortBy = Query(
@@ -54,8 +53,6 @@ def get_business(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Get list of business by admin.
@@ -77,7 +74,7 @@ def get_business(
     """
     args = locals()
 
-    status, status_code, response = service_business.get(db, args)
+    status, status_code, response = await business_service.get(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -86,10 +83,10 @@ def get_business(
 
 
 @router.get("/{id}", summary="Get a business by id.")
-def get_user_bbusiness(
+async def get_user_bbusiness(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The id of the user.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Get a business by id.
@@ -105,7 +102,7 @@ def get_user_bbusiness(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_business.get_by_id(db, id)
+    status, status_code, response = await business_service.get_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -114,79 +111,54 @@ def get_user_bbusiness(
 
 
 @router.post("", summary="Register a new business by admin.")
-def create_business(
-    full_name: Annotated[
-        str,
-        Form(
-            ...,
-            description="The full name of the business.",
-            json_schema_extra={"example": "Tung Ong"},
-        ),
-    ],
-    email: Annotated[
-        str,
-        Form(
-            ...,
-            description="The email of the business.",
-            json_schema_extra={"example": "tungong@email.com"},
-        ),
-    ],
-    password: Annotated[
-        str,
-        Form(
-            ...,
-            description="The password of the business.",
-            json_schema_extra={"example": "@Password1234"},
-        ),
-    ],
-    confirm_password: Annotated[
-        str,
-        Form(
-            ...,
-            description="The confirm password of the business.",
-            json_schema_extra={"example": "@Password1234"},
-        ),
-    ],
-    province_id: Annotated[
-        int,
-        Form(
-            ...,
-            description="The province id of the business.",
-            json_schema_extra={"example": 1},
-        ),
-    ],
-    phone_number: Annotated[
-        str,
-        Form(
-            ...,
-            description="The phone number of the business.",
-            json_schema_extra={"example": "0323456789"},
-        ),
-    ],
-    gender: Annotated[
-        Gender,
-        Form(
-            ...,
-            description="Gender of the business.",
-            json_schema_extra={"example": Gender.OTHER},
-        ),
-    ],
-    company_name: Annotated[
-        str,
-        Form(
-            ...,
-            description="The company of the business.",
-            json_schema_extra={"example": "Tung Ong Company"},
-        ),
-    ],
-    work_position: Annotated[
-        str,
-        Form(
-            ...,
-            description="The work position of the business.",
-            json_schema_extra={"example": "Nhân viên"},
-        ),
-    ],
+async def create_business(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
+    full_name: str = Form(
+        ...,
+        description="The full name of the business.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    email: str = Form(
+        ...,
+        description="The email of the business.",
+        json_schema_extra={"example": "tungong@email.com"},
+    ),
+    password: str = Form(
+        ...,
+        description="The password of the business.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    confirm_password: str = Form(
+        ...,
+        description="The confirm password of the business.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    province_id: int = Form(
+        ...,
+        description="The province id of the business.",
+        json_schema_extra={"example": 1},
+    ),
+    phone_number: str = Form(
+        ...,
+        description="The phone number of the business.",
+        json_schema_extra={"example": "0323456789"},
+    ),
+    gender: Gender = Form(
+        ...,
+        description="Gender of the business.",
+        json_schema_extra={"example": Gender.OTHER},
+    ),
+    company_name: str = Form(
+        ...,
+        description="The company of the business.",
+        json_schema_extra={"example": "Tung Ong Company"},
+    ),
+    work_position: str = Form(
+        ...,
+        description="The work position of the business.",
+        json_schema_extra={"example": "Nhân viên"},
+    ),
     work_location: str = Form(
         None,
         description="The work location of the business.",
@@ -198,8 +170,6 @@ def create_business(
         description="The district id of the business.",
         json_schema_extra={"example": 1},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Register a new business by admin.
@@ -228,7 +198,7 @@ def create_business(
     """
     data = locals()
 
-    status, status_code, response = service_business.create(db, data)
+    status, status_code, response = await business_service.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -237,7 +207,9 @@ def create_business(
 
 
 @router.put("/{id}", summary="Update a business.")
-def update_business(
+async def update_business(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business),
     id: int = Path(..., description="The id of the user.", example=1),
     full_name: str = Form(
         None,
@@ -280,8 +252,6 @@ def update_business(
         description="The district id of the business.",
         json_schema_extra={"example": 1},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_business),
 ):
     """
     Update a business.
@@ -310,7 +280,9 @@ def update_business(
     """
     data = locals()
 
-    status, status_code, response = service_business.update(db, data, current_user)
+    status, status_code, response = await business_service.update(
+        db, data, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -319,10 +291,10 @@ def update_business(
 
 
 @router.delete("/{id}", summary="Delete a business.")
-def delete_business(
+async def delete_business(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(..., description="The id of the user.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Delete a business.
@@ -338,7 +310,7 @@ def delete_business(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_business.delete(db, id, current_user)
+    status, status_code, response = await business_service.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

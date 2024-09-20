@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Path, Body
 from sqlalchemy.orm import Session
 
-from app.db.base import get_db
+from app.db.base import CurrentSession
+from app.core.auth.user_manager_service import user_manager_service
 from app.hepler.response_custom import custom_response, custom_response_error
 from app.core import constant
-from app.core.position import service_position
-from app.core.auth.service_business_auth import get_current_admin
+from app.core.job_position.position_service import job_position_service
 from app.hepler.enum import OrderType
 
 router = APIRouter()
@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.get("/job_position", summary="Get list of job positions.")
 async def get_list_job_position(
+    db: CurrentSession,
     skip: int = Query(
         None, description="The number of job positions to skip.", example=0
     ),
@@ -22,7 +23,6 @@ async def get_list_job_position(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of job positions.
@@ -41,7 +41,7 @@ async def get_list_job_position(
     """
     args = locals()
 
-    status, status_code, response = await service_position.get_position(db, args)
+    status, status_code, response = await job_position_service.get_position(db, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -50,9 +50,9 @@ async def get_list_job_position(
 
 
 @router.get("/job_position/{id}", summary="Get job position by id.")
-def get_job_position_by_id(
+async def get_job_position_by_id(
+    db: CurrentSession,
     id: int = Path(..., description="The job position id.", example=1),
-    db: Session = Depends(get_db),
 ):
     """
     Get job position by id.
@@ -67,7 +67,9 @@ def get_job_position_by_id(
     - status_code (404): The job position is not found.
 
     """
-    status, status_code, response = service_position.get_position_by_id(db, id)
+    status, status_code, response = await job_position_service.get_position_by_id(
+        db, id
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -76,7 +78,9 @@ def get_job_position_by_id(
 
 
 @router.post("/job_position", summary="Create a new job position.")
-def create_job_position(
+async def create_job_position(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     data: dict = Body(
         ...,
         description="The job position data.",
@@ -86,8 +90,6 @@ def create_job_position(
             "id": 0,
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Create a new job position.
@@ -105,7 +107,7 @@ def create_job_position(
     - status_code (409): The job position is already created.
 
     """
-    status, status_code, response = service_position.create_position(db, data)
+    status, status_code, response = await job_position_service.create_position(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -114,7 +116,9 @@ def create_job_position(
 
 
 @router.put("/job_position/{id}", summary="Update job position by id.")
-def update_job_position_by_id(
+async def update_job_position_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The job position id.", example=1),
     data: dict = Body(
         ...,
@@ -125,8 +129,6 @@ def update_job_position_by_id(
             "id": 0,
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Update job position by id.
@@ -145,7 +147,9 @@ def update_job_position_by_id(
     - status_code (404): The job position is not found.
 
     """
-    status, status_code, response = service_position.update_position(db, id, data)
+    status, status_code, response = await job_position_service.update_position(
+        db, id, data
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -154,10 +158,10 @@ def update_job_position_by_id(
 
 
 @router.delete("/job_position/{id}", summary="Delete job position by id.")
-def delete_job_position_by_id(
+async def delete_job_position_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The job position id.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Delete job position by id.
@@ -172,7 +176,7 @@ def delete_job_position_by_id(
     - status_code (404): The job position is not found.
 
     """
-    status, status_code, response = service_position.delete_position(db, id)
+    status, status_code, response = await job_position_service.delete_position(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

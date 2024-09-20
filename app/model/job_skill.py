@@ -2,11 +2,13 @@ from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
+from app.hepler.enum import JobSkillType
 
 
 class JobSkill(Base):
     job_id = Column(Integer, ForeignKey("job.id", ondelete="CASCADE"), index=True)
     skill_id = Column(Integer, ForeignKey("skill.id", ondelete="CASCADE"), index=True)
+    type = Column(Integer, default=JobSkillType.MUST_HAVE)
 
     job = relationship(
         "Job",

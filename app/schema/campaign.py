@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.hepler.enum import CampaignStatus, FilterCampaign
 from app.schema.page import Pagination
+from app.hepler.schema_validator import SchemaValidator
 
 
 class CampaignBase(BaseModel):
@@ -14,42 +15,12 @@ class CampaignBase(BaseModel):
 
     @validator("title")
     def validate_title(cls, v):
-        if len(v) < 1 or len(v) > 255:
-            raise ValueError("Invalid title")
-        return v
+        return SchemaValidator.validate_title(v)
 
 
-class CampaignItemResponse(CampaignBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-    status: Optional[CampaignStatus] = CampaignStatus.OPEN
-    optimal_score: Optional[int] = 0
-    job: Optional[dict] = None
-
-    @validator("status")
-    def validate_status(cls, v):
-        return v or CampaignStatus.OPEN
-
-    @validator("optimal_score")
-    def validate_optimal_score(cls, v):
-        return v or 0
-
-
-class CampaignGetRequest(BaseModel):
-    id: int
-
-
-class CampaignGetByBusinessIdRequest(BaseModel):
-    business_id: int
-
-
+# request
 class CampaignCreateRequest(CampaignBase):
     pass
-
-
-class CampaignCreate(CampaignBase):
-    business_id: int
 
 
 class CampaignUpdateRequest(CampaignBase):
@@ -59,33 +30,11 @@ class CampaignUpdateRequest(CampaignBase):
 
     @validator("status")
     def validate_status(cls, v):
-        if not v in CampaignStatus.__members__.values():
-            raise ValueError("Invalid status")
-        return v or CampaignStatus.OPEN
+        return SchemaValidator.validate_campaign_status(v)
 
     @validator("optimal_score")
     def validate_optimal_score(cls, v):
         return v or 0
-
-
-class CampaignUpdate(CampaignBase):
-    status: Optional[str] = CampaignStatus.OPEN
-    optimal_score: Optional[int] = 0
-    id: int
-
-    @validator("status")
-    def validate_status(cls, v):
-        if not v in CampaignStatus.__members__.values():
-            raise ValueError("Invalid status")
-        return v or CampaignStatus.OPEN
-
-    @validator("optimal_score")
-    def validate_optimal_score(cls, v):
-        return v or 0
-
-
-class CampaignDeleteRequest(BaseModel):
-    id: int
 
 
 class CampaignGetListPagination(Pagination):
@@ -104,9 +53,7 @@ class CampaignGetListPagination(Pagination):
 
     @validator("filter_by")
     def validate_filter(cls, v):
-        if v and not v in FilterCampaign.__members__.values():
-            raise ValueError("Invalid filter_by")
-        return v
+        return SchemaValidator.validate_filter_campaign(v)
 
 
 class CampaignFilterListPagination(Pagination):
@@ -116,9 +63,7 @@ class CampaignFilterListPagination(Pagination):
 
     @validator("filter_by")
     def validate_filter(cls, v):
-        if v and not v in FilterCampaign.__members__.values():
-            raise ValueError("Invalid filter_by")
-        return v
+        return SchemaValidator.validate_filter_campaign(v)
 
 
 class CampaignGetOnlyOpenPagination(BaseModel):
@@ -155,3 +100,40 @@ class CountGetListPagination(BaseModel):
     business_id: Optional[int] = None
     company_id: Optional[int] = None
     status: Optional[CampaignStatus] = None
+
+
+# schema
+class CampaignCreate(CampaignBase):
+    business_id: int
+
+
+class CampaignUpdate(CampaignBase):
+    status: Optional[str] = CampaignStatus.OPEN
+    optimal_score: Optional[int] = 0
+    id: int
+
+    @validator("status")
+    def validate_status(cls, v):
+        return SchemaValidator.validate_campaign_status(v)
+
+    @validator("optimal_score")
+    def validate_optimal_score(cls, v):
+        return v or 0
+
+
+# response
+class CampaignItemResponse(CampaignBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    status: Optional[CampaignStatus] = CampaignStatus.OPEN
+    optimal_score: Optional[int] = 0
+    job: Optional[dict] = None
+
+    @validator("status")
+    def validate_status(cls, v):
+        return v or CampaignStatus.OPEN
+
+    @validator("optimal_score")
+    def validate_optimal_score(cls, v):
+        return v or 0

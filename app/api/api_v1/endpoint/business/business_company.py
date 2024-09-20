@@ -9,10 +9,10 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.db.base import get_db
+from app.db.base import CurrentSession
 from app.core import constant
-from app.core.company import service_company
-from app.core.auth.service_business_auth import get_current_user, get_current_business
+from app.core.company.company_service import company_service
+from app.core.auth.user_manager_service import user_manager_service
 from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType, SortBy, CompanyType
 
@@ -21,7 +21,9 @@ router = APIRouter()
 
 
 @router.get("", summary="Get list of company.")
-def get_company(
+async def get_company(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
     sort_by: SortBy = Query(
@@ -35,8 +37,6 @@ def get_company(
     fields: list[int] = Query(
         None, description="The list of field id.", example=list([int(2)])
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Get list of company.
@@ -59,7 +59,7 @@ def get_company(
 
     """
     args = locals()
-    status_message, status_code, response = service_company.get(db, args, current_user)
+    status_message, status_code, response = company_service.get(db, args, current_user)
 
     if status_message == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -68,10 +68,10 @@ def get_company(
 
 
 @router.get("/{company_id}", summary="Get company by id.")
-def get_company_by_id(
+async def get_company_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     company_id: int = Path(description="The company id.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Get company by id.
@@ -86,7 +86,7 @@ def get_company_by_id(
     - status_code (404): The company is not found.
 
     """
-    status, status_code, response = service_company.get_by_id(db, company_id)
+    status, status_code, response = await company_service.get_by_id(db, company_id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -95,7 +95,9 @@ def get_company_by_id(
 
 
 @router.post("", summary="Create company.")
-def create_company(
+async def create_company(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business),
     name: str = Form(
         ...,
         description="The name of the company.",
@@ -147,8 +149,6 @@ def create_company(
         json_schema_extra={"example": list([int(2)])},
     ),
     logo: UploadFile = File(None, description="The logo of the company."),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_business),
 ):
     """
     Create company.
@@ -166,7 +166,7 @@ def create_company(
     """
     data = locals()
 
-    status, status_code, response = service_company.create(db, data, current_user)
+    status, status_code, response = await company_service.create(db, data, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -175,7 +175,9 @@ def create_company(
 
 
 @router.put("/{company_id}", summary="Update company.")
-def update_company(
+async def update_company(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business),
     company_id: int = Path(description="The company id.", example=1),
     email: str = Form(
         None,
@@ -223,8 +225,6 @@ def update_company(
         json_schema_extra={"example": list([int(2)])},
     ),
     logo: UploadFile = File(None, description="The logo of the company."),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_business),
 ):
     """
     Update company.
@@ -253,7 +253,7 @@ def update_company(
 
     """
     data = locals()
-    status, status_code, response = service_company.update(
+    status, status_code, response = await company_service.update(
         db,
         {**data},
         current_user,
@@ -266,10 +266,10 @@ def update_company(
 
 
 @router.delete("/{id}", summary="Delete a company.")
-def delete_company(
+async def delete_company(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(..., description="The id of the company.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Delete a company.
@@ -286,7 +286,7 @@ def delete_company(
 
     """
 
-    status, status_code, response = service_company.delete(db, id, current_user)
+    status, status_code, response = await company_service.delete(db, id, current_user)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

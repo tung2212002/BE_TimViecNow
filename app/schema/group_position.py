@@ -9,11 +9,8 @@ class GroupPositionBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+# request
 class GroupPositionCreateRequest(GroupPositionBase):
-    pass
-
-
-class GroupPositionCreate(GroupPositionBase):
     pass
 
 
@@ -22,35 +19,17 @@ class GroupPositionUpdateRequest(GroupPositionBase):
     slug: Optional[str] = None
 
 
+# schema
+class GroupPositionCreate(GroupPositionBase):
+    pass
+
+
 class GroupPositionUpdate(GroupPositionBase):
     name: Optional[str] = None
     slug: Optional[str] = None
 
 
+# response
 class GroupPositionItemResponse(GroupPositionBase):
     id: int
     tags: Optional[list] = None
-
-
-class GroupPositionListResponse(GroupPositionBase):
-    pass
-
-
-class GroupPositionGetRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v
-
-
-class GroupPositionDeleteRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v

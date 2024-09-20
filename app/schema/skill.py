@@ -1,6 +1,8 @@
 from pydantic import BaseModel, validator, ConfigDict
 from typing import Optional
 
+from app.hepler.enum import JobSkillType
+
 
 class SkillBase(BaseModel):
     name: str
@@ -9,11 +11,8 @@ class SkillBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+# request
 class SkillCreateRequest(SkillBase):
-    pass
-
-
-class SkillCreate(SkillBase):
     pass
 
 
@@ -22,34 +21,15 @@ class SkillUpdateRequest(BaseModel):
     slug: Optional[str] = None
 
 
-class SkillUpdate(SkillBase):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-
-
-class SkillItemResponse(SkillBase):
-    id: int
-
-
-class SkillListResponse(SkillBase):
+# schema
+class SkillCreate(SkillBase):
     pass
 
 
-class SkillGetRequest(BaseModel):
+class SkillUpdate(SkillBase):
+    pass
+
+
+# response
+class SkillItemResponse(SkillBase):
     id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v
-
-
-class SkillDeleteRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v

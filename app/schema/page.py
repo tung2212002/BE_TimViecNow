@@ -2,6 +2,7 @@ from pydantic import BaseModel, validator, ConfigDict
 from typing import Optional
 
 from app.hepler.enum import SortBy, OrderType
+from app.hepler.schema_validator import SchemaValidator
 
 
 class Pagination(BaseModel):
@@ -14,15 +15,11 @@ class Pagination(BaseModel):
 
     @validator("limit")
     def validate_limit(cls, v):
-        if v is not None and (v < 0 or v > 1000):
-            raise ValueError("Invalid limit")
-        return v or 100
+        return SchemaValidator.validate_limit(v)
 
     @validator("skip")
     def validate_skip(cls, v):
-        if v is not None and v < 0:
-            raise ValueError("Invalid skip")
-        return v or 0
+        return SchemaValidator.validate_skip(v)
 
     @validator("sort_by")
     def validate_sort_by(cls, v):

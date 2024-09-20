@@ -4,12 +4,11 @@ from fastapi import (
     Body,
     BackgroundTasks,
 )
-from sqlalchemy.orm import Session
 
-from app.db.base import get_db
+from app.db.base import CurrentSession
+from app.core.auth.user_manager_service import user_manager_service
 from app.core import constant
-from app.core.verify import service_verify
-from app.core.auth.service_business_auth import get_current_user
+from app.core.verify.verify_service import verify_service
 from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import VerifyType
 
@@ -18,6 +17,8 @@ router = APIRouter()
 
 @router.post("/send_verify_code", summary="Send verify code.")
 async def send_verify_code(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_user),
     data: dict = Body(
         ...,
         example={
@@ -25,8 +26,6 @@ async def send_verify_code(
         },
     ),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Send verify code.
@@ -44,7 +43,7 @@ async def send_verify_code(
 
     """
 
-    status, status_code, response = await service_verify.send_verify_background(
+    status, status_code, response = await verify_service.send_verify_background(
         db, background_tasks, data, current_user
     )
 
@@ -55,7 +54,9 @@ async def send_verify_code(
 
 
 @router.post("/verify_code", summary="Verify code.")
-def verify_code(
+async def verify_code(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_user),
     data: dict = Body(
         ...,
         example={
@@ -63,8 +64,6 @@ def verify_code(
             "session_id": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Verify code.
@@ -83,7 +82,9 @@ def verify_code(
 
     """
 
-    status, status_code, response = service_verify.verify_code(db, data, current_user)
+    status, status_code, response = await verify_service.verify_code(
+        db, data, current_user
+    )
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -92,8 +93,8 @@ def verify_code(
 
 
 @router.get("/test", summary="Test verify.")
-def test_verify(
-    db: Session = Depends(get_db),
+async def test_verify(
+    db: CurrentSession,
 ):
     from time import sleep
 
@@ -102,8 +103,8 @@ def test_verify(
 
 
 @router.get("/test2", summary="Test verify.")
-def test_verify(
-    db: Session = Depends(get_db),
+async def test_verify(
+    db: CurrentSession,
 ):
     from time import sleep
 

@@ -5,13 +5,13 @@ import json
 import re
 
 from app.schema.page import Pagination
-from app.core import constant
 from app.hepler.enum import (
     SalaryType,
     JobType,
     Gender,
     JobApprovalStatus,
 )
+from app.hepler.schema_validator import SchemaValidator
 
 
 class JobApprovalRequestBase(BaseModel):
@@ -21,10 +21,7 @@ class JobApprovalRequestBase(BaseModel):
     status: Optional[JobApprovalStatus] = None
 
 
-class JobApprovalRequestUpdate(JobApprovalRequestBase):
-    pass
-
-
+# request
 class JobApprovalRequestList(Pagination):
     status: Optional[JobApprovalStatus] = None
     company_id: Optional[int] = None
@@ -36,6 +33,7 @@ class JobApprovalFilter(Pagination):
     job_id: Optional[int] = None
 
 
+# schema
 class JobApprovalRequestCreate(BaseModel):
     title: Optional[str] = None
     max_salary: Optional[int] = None
@@ -69,41 +67,34 @@ class JobApprovalRequestCreate(BaseModel):
 
     @validator("working_times")
     def validate_working_times(cls, v):
-        if v:
-            return json.dumps(v) if isinstance(v, list) else v
-        return v
+        return SchemaValidator.validate_json_dumps_list(v)
 
     @validator("categories")
     def validate_categories(cls, v):
-        if v:
-            return json.dumps(v) if isinstance(v, list) else v
-        return v
+        return SchemaValidator.validate_json_dumps_list(v)
 
     @validator("work_locations")
     def validate_work_locations(cls, v):
-        if v:
-            return json.dumps(v) if isinstance(v, list) else v
-        return v
+        return SchemaValidator.validate_json_dumps_list(v)
 
     @validator("must_have_skills")
     def validate_must_have_skills(cls, v):
-        if v:
-            return json.dumps(v) if isinstance(v, list) else v
-        return v
+        return SchemaValidator.validate_json_dumps_list(v)
 
     @validator("should_have_skills")
     def validate_should_have_skills(cls, v):
-        if v:
-            return json.dumps(v) if isinstance(v, list) else v
-        return v
+        return SchemaValidator.validate_json_dumps_list(v)
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
-        if isinstance(v, list):
-            v = json.dumps(list(set(v)))
-        return v
+        return SchemaValidator.validate_email_contact(set(v))
 
 
+class JobApprovalRequestUpdate(JobApprovalRequestBase):
+    pass
+
+
+# response
 class JobApprovalRequestResponse(BaseModel):
     id: Optional[int] = None
     title: Optional[str] = None
@@ -138,52 +129,36 @@ class JobApprovalRequestResponse(BaseModel):
 
     @validator("working_times")
     def validate_working_times(cls, v):
-        if v:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("categories")
     def validate_categories(cls, v):
-        if v:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("work_locations")
     def validate_locations(cls, v):
-        if v:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("must_have_skills")
     def validate_must_have_skills(cls, v):
-        if v:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("should_have_skills")
     def validate_should_have_skills(cls, v):
-        if v:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("email_contact")
     def validate_email_contact(cls, v):
-        return json.loads(v) if isinstance(v, str) else v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("job_description")
     def validate_job_description(cls, v):
-        if v is not None:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("job_requirement")
     def validate_job_requirement(cls, v):
-        if v is not None:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)
 
     @validator("job_benefit")
     def validate_job_benefit(cls, v):
-        if v is not None:
-            return json.loads(v) if isinstance(v, str) else v
-        return v
+        return SchemaValidator.validate_json_loads(v)

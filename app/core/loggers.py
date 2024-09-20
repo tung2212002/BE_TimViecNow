@@ -14,7 +14,7 @@ import datetime
 import functools
 
 from app.core.config import settings
-from app.hepler.common import utc_now
+from app.hepler.common import CommonHelper
 
 LOG_FORMAT_AWS = "%(name)s | %(filename)s:%(lineno)s | %(funcName)s | %(levelname)s | %(message)s | (%(asctime)s)"
 # Example: app.core.logger | logger.py:123 | get_logger | ERROR | This is an error message | (2021-01-01T00:00:00.000000Z)

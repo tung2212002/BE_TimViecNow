@@ -1,7 +1,7 @@
 from pydantic import BaseModel, validator, ConfigDict
-import re
 
 from app.core import constant
+from app.hepler.schema_validator import SchemaValidator
 
 
 class AuthChangePassword(BaseModel):
@@ -11,29 +11,15 @@ class AuthChangePassword(BaseModel):
 
     @validator("old_password")
     def validate_old_password(cls, v):
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters")
-        elif len(v) > 50:
-            raise ValueError("Password must be at most 50 characters")
-        return v
+        return SchemaValidator.validate_old_password(v)
 
     @validator("new_password")
     def validate_new_password(cls, v):
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters")
-        elif len(v) > 50:
-            raise ValueError("Password must be at most 50 characters")
-        elif not re.match(constant.REGEX_PASSWORD, v):
-            raise ValueError(
-                "Password must contain at least one number, one uppercase, and one lowercase letter"
-            )
-        return v
+        return SchemaValidator.validate_password(v)
 
     @validator("confirm_password")
     def validate_confirm_password(cls, v, values):
-        if "new_password" in values and v != values["new_password"]:
-            raise ValueError("Passwords do not match")
-        return v
+        return SchemaValidator.validate_confirm_password(v, values)
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
@@ -44,21 +30,11 @@ class AuthLogin(BaseModel):
 
     @validator("email")
     def validate_email(cls, v):
-        if not re.match(constant.REGEX_EMAIL, v):
-            raise ValueError("Invalid email")
-        return v
+        return SchemaValidator.validate_email(v)
 
     @validator("password")
     def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        elif len(v) > 50:
-            raise ValueError("Password must be at most 50 characters")
-        elif not re.match(constant.REGEX_PASSWORD, v):
-            raise ValueError(
-                "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
-            )
-        return v
+        return SchemaValidator.validate_password(v)
 
     model_config = ConfigDict(from_attribute=True)
 
@@ -68,8 +44,6 @@ class AuthForgotPassword(BaseModel):
 
     @validator("email")
     def validate_email(cls, v):
-        if not re.match(constant.REGEX_EMAIL, v):
-            raise ValueError("Invalid email")
-        return v
+        return SchemaValidator.validate_email(v)
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")

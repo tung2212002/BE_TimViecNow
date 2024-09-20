@@ -1,21 +1,21 @@
-from fastapi import APIRouter, Depends, Request, Query, Path, Body
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Query, Path, Body
 from redis.asyncio import Redis
 
-from app.db.base import get_db
+from app.db.base import CurrentSession
+from app.core.auth.user_manager_service import user_manager_service
 from app.storage.redis import get_redis
 from app.core import constant
-from app.core.skill import service_skill
-from app.core.auth.service_business_auth import get_current_superuser
+from app.core.skill.skill_service import skill_service
 from app.hepler.response_custom import custom_response_error, custom_response
-from app.hepler.enum import OrderType, SortBy
+from app.hepler.enum import OrderType
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of skills.")
 async def get_list_skill(
-    request: Request,
+    db: CurrentSession,
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of skill to skip.", example=0),
     limit: int = Query(
         None, description="The number of skill to return.", example=1000
@@ -23,8 +23,6 @@ async def get_list_skill(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    redis: Redis = Depends(get_redis),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of skills.
@@ -43,7 +41,7 @@ async def get_list_skill(
     """
     args = locals()
 
-    status, status_code, response = await service_skill.get(db, redis, args)
+    status, status_code, response = await skill_service.get(db, redis, args)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
@@ -51,9 +49,9 @@ async def get_list_skill(
 
 
 @router.get("/{id}", summary="Get skill by id.")
-def get_skill_by_id(
+async def get_skill_by_id(
+    db: CurrentSession,
     id: int = Path(..., description="The skill id."),
-    db: Session = Depends(get_db),
 ):
     """
     Get skill by id.
@@ -68,7 +66,7 @@ def get_skill_by_id(
     - status_code (404): The skill is not found.
 
     """
-    status, status_code, response = service_skill.get_by_id(db, id)
+    status, status_code, response = await skill_service.get_by_id(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -77,7 +75,9 @@ def get_skill_by_id(
 
 
 @router.post("", summary="Create a skill.")
-def create_skill(
+async def create_skill(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_superuser),
     data: dict = Body(
         ...,
         description="The data to create a skill.",
@@ -87,8 +87,6 @@ def create_skill(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Create a skill.
@@ -106,7 +104,7 @@ def create_skill(
     - status_code (409): The skill is already created.
 
     """
-    status, status_code, response = service_skill.create(db, data)
+    status, status_code, response = await skill_service.create(db, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -115,7 +113,9 @@ def create_skill(
 
 
 @router.put("/{id}", summary="Update a skill by id.")
-def update_skill(
+async def update_skill(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_superuser),
     id: int = Path(..., description="The skill id."),
     data: dict = Body(
         ...,
@@ -126,8 +126,6 @@ def update_skill(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Update a skill by id.
@@ -146,7 +144,7 @@ def update_skill(
     - status_code (404): The skill is not found.
 
     """
-    status, status_code, response = service_skill.update(db, id, data)
+    status, status_code, response = await skill_service.update(db, id, data)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -155,10 +153,10 @@ def update_skill(
 
 
 @router.delete("/{id}", summary="Delete a skill by id.")
-def delete_skill_by_id(
+async def delete_skill_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_superuser),
     id: int = Path(..., description="The skill id."),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Delete a skill by id.
@@ -173,7 +171,7 @@ def delete_skill_by_id(
     - status_code (404): The skill is not found.
 
     """
-    status, status_code, response = service_skill.delete(db, id)
+    status, status_code, response = await skill_service.delete(db, id)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)

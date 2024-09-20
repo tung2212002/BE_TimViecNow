@@ -41,13 +41,7 @@ class SocialNetworkBase(BaseModel):
         return v
 
 
-class SocialNetworkItemResponse(SocialNetworkBase):
-    id: int
-    avatar: Optional[str] = None
-    is_active: bool = True
-    role: Role = Role.SOCIAL_NETWORK
-    type_account: Optional[TypeAccount] = TypeAccount.NORMAL
-    user_id: Optional[int] = None
+# request
 
 
 class SocialNetworkGetRequest(BaseModel):
@@ -64,10 +58,6 @@ class SocialNetworkCreateRequest(SocialNetworkBase):
     role: Role = Role.SOCIAL_NETWORK
     access_token: str
     user_id: Optional[int] = None
-
-
-class SocialNetworkCreate(SocialNetworkBase):
-    pass
 
 
 class SocialNetworkUpdateRequest(BaseModel):
@@ -107,5 +97,20 @@ class SocialNetworkUpdateRequest(BaseModel):
         return v
 
 
+# schema
+class SocialNetworkCreate(SocialNetworkBase):
+    pass
+
+
 class SocialNetworkUpdate(SocialNetworkUpdateRequest):
     pass
+
+
+# response
+class SocialNetworkItemResponse(SocialNetworkBase):
+    id: int
+    avatar: Optional[str] = None
+    is_active: bool = True
+    role: Role = Role.SOCIAL_NETWORK
+    type_account: Optional[TypeAccount] = TypeAccount.NORMAL
+    user_id: Optional[int] = None

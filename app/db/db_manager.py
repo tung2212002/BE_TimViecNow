@@ -2,11 +2,11 @@
 # from sqlalchemy.ext.asyncio import AsyncEngine
 # from sqlalchemy.ext.asyncio import create_async_engine
 # from sqlalchemy.orm import sessionmaker, scoped_session, Session
-# from sqlalchemy.ext.asyncio import AsyncSession
+# from sqlalchemy.orm import Session
 
 
 # from sqlalchemy.orm import sessionmaker
-# from sqlalchemy.ext.asyncio import AsyncSession
+# from sqlalchemy.orm import Session
 
 
 # from app.core.config import settings

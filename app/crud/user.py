@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.core.security import get_password_hash, verify_password
+from app.core.security import PasswordManager
 from .base import CRUDBase
 from app.model.user import User
 from app.schema import user as schema_user
@@ -18,7 +18,7 @@ class CRUDUser(
     def create(self, db: Session, *, obj_in: schema_user.UserCreateRequest) -> User:
         db_obj = User(
             **obj_in.dict(exclude_unset=True, exclude={"password", "confirm_password"}),
-            hashed_password=get_password_hash(obj_in.password),
+            hashed_password=PasswordManager.get_password_hash(obj_in.password),
         )
         db.add(db_obj)
         db.commit()
@@ -29,11 +29,17 @@ class CRUDUser(
         self, db: Session, *, db_obj: User, obj_in: schema_user.UserUpdateRequest
     ) -> User:
         if isinstance(obj_in, dict) and obj_in.get("password"):
-            obj_in["hashed_password"] = get_password_hash(obj_in["new_password"])
+            obj_in["hashed_password"] = PasswordManager.get_password_hash(
+                obj_in["new_password"]
+            )
         elif hasattr(obj_in, "new_password"):
             obj_in = obj_in.model_dump(exclude_unset=True)
             obj_in.update(
-                {"hashed_password": get_password_hash(obj_in["new_password"])}
+                {
+                    "hashed_password": PasswordManager.get_password_hash(
+                        obj_in["new_password"]
+                    )
+                }
             )
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
@@ -41,7 +47,7 @@ class CRUDUser(
         user = self.get_by_email(db, email)
         if not user:
             return None
-        if not verify_password(password, user.hashed_password):
+        if not PasswordManager.verify_password(password, user.hashed_password):
             return None
         return user
 

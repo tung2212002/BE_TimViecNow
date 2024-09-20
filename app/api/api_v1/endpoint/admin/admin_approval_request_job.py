@@ -1,19 +1,16 @@
-from fastapi import APIRouter, Depends, Request, Body, Query, Path
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Body, Query, Path
 
-from app.db.base import get_db
-from app.core.auth.service_business_auth import get_current_admin, get_current_user
+from app.db.base import CurrentSession
+from app.core.auth.user_manager_service import user_manager_service
 from app.core import constant
-from app.core.job import service_job
-from app.core.job_approval_requests import service_job_approval_request
+from app.core.job_approval_requests.job_approval_request_service import (
+    job_approval_request_service,
+)
 from app.hepler.response_custom import custom_response, custom_response_error
 from app.hepler.enum import (
     SortBy,
     OrderType,
-    JobStatus,
     JobApprovalStatus,
-    JobType,
-    SortJobBy,
     AdminJobApprovalStatus,
 )
 
@@ -21,7 +18,9 @@ router = APIRouter()
 
 
 @router.get("/", summary="Get list of approve request job.")
-def get_list_approve_request_job(
+async def get_list_approve_request_job(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortBy = Query(
@@ -37,8 +36,6 @@ def get_list_approve_request_job(
     ),
     company_id: int = Query(None, description="The company id.", example=1),
     business_id: int = Query(None, description="The business id.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Get list of approve request job.
@@ -62,7 +59,7 @@ def get_list_approve_request_job(
     """
     args = locals()
 
-    status, status_code, response = service_job_approval_request.get(db, {**args})
+    status, status_code, response = await job_approval_request_service.get(db, {**args})
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -71,10 +68,10 @@ def get_list_approve_request_job(
 
 
 @router.get("/{job_approval_request_id}", summary="Get approve request job by id.")
-def get_approve_request_job_by_id(
+async def get_approve_request_job_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Get approve request job by id.
@@ -91,7 +88,7 @@ def get_approve_request_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job_approval_request.get_by_id(
+    status, status_code, response = await job_approval_request_service.get_by_id(
         db, job_approval_request_id, current_user=current_user
     )
 
@@ -102,15 +99,15 @@ def get_approve_request_job_by_id(
 
 
 @router.put("/{job_approval_request_id}/approve", summary="Approve job.")
-def approve_job_request_by_id(
+async def approve_job_request_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
     data: dict = Body(
         ...,
         description="The data to approve job.",
         example={"status": AdminJobApprovalStatus.APPROVED, "reason": ""},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Approve job.
@@ -128,7 +125,7 @@ def approve_job_request_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job_approval_request.approve(
+    status, status_code, response = await job_approval_request_service.approve(
         db,
         current_user=current_user,
         data={"job_approval_request_id": job_approval_request_id, **data},
@@ -141,15 +138,15 @@ def approve_job_request_by_id(
 
 
 @router.put("/{job_approval_request_id}/job", summary="Approve update job.")
-def approve_job_request_by_id(
+async def approve_job_request_by_id(
+    db: CurrentSession,
+    current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
     data: dict = Body(
         ...,
         description="The data to approve update job.",
         example={"status": AdminJobApprovalStatus.APPROVED, "reason": ""},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Approve job.
@@ -167,7 +164,7 @@ def approve_job_request_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job_approval_request.approve_update(
+    status, status_code, response = await job_approval_request_service.approve_update(
         db,
         current_user=current_user,
         data={"job_approval_request_id": job_approval_request_id, **data},

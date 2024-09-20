@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, Request, Query, Path
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Query, Path
 from redis.asyncio import Redis
 
-from app.db.base import get_db
+from app.db.base import CurrentSession
 from app.core import constant
-from app.core.location import service_location
+from app.core.location.location_service import location_service
 from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType
 from app.storage.redis import get_redis
@@ -14,6 +13,8 @@ router = APIRouter()
 
 @router.get("/province", summary="Get list of provinces.")
 async def get_list_province(
+    db: CurrentSession,
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of province to skip.", example=0),
     limit: int = Query(
         None, description="The number of province to return.", example=100
@@ -21,8 +22,6 @@ async def get_list_province(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    redis: Redis = Depends(get_redis),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of provinces.
@@ -40,7 +39,7 @@ async def get_list_province(
     """
     args = locals()
 
-    status, status_code, response = await service_location.get_province(db, redis, args)
+    status, status_code, response = await location_service.get_province(db, redis, args)
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
     elif status == constant.SUCCESS:
@@ -49,9 +48,9 @@ async def get_list_province(
 
 @router.get("/province/{id}", summary="Get province by id.")
 async def get_province_by_id(
-    id: int = Path(..., description="The province id.", example=1),
+    db: CurrentSession,
     redis: Redis = Depends(get_redis),
-    db: Session = Depends(get_db),
+    id: int = Path(..., description="The province id.", example=1),
 ):
     """
     Get province by id.
@@ -66,7 +65,7 @@ async def get_province_by_id(
     - status_code (404): The province is not found.
 
     """
-    status, status_code, response = await service_location.get_province_by_id(
+    status, status_code, response = await location_service.get_province_by_id(
         db, redis, id
     )
 
@@ -78,6 +77,8 @@ async def get_province_by_id(
 
 @router.get("/district", summary="Get list of districts.")
 async def get_list_district(
+    db: CurrentSession,
+    redis: Redis = Depends(get_redis),
     province_id: int = Query(..., description="The province id.", example=1),
     skip: int = Query(None, description="The number of districts to skip.", example=0),
     limit: int = Query(
@@ -86,8 +87,6 @@ async def get_list_district(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    redis: Redis = Depends(get_redis),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of districts.
@@ -107,7 +106,7 @@ async def get_list_district(
     """
     args = locals()
 
-    status, status_code, response = await service_location.get_district(db, redis, args)
+    status, status_code, response = await location_service.get_district(db, redis, args)
 
     if status == constant.ERROR:
         return custom_response_error(status_code, constant.ERROR, response)
@@ -117,9 +116,9 @@ async def get_list_district(
 
 @router.get("/district/{id}", summary="Get district by id.")
 async def get_district_by_id(
-    id: int = Path(..., description="The district id.", example=1),
+    db: CurrentSession,
     redis: Redis = Depends(get_redis),
-    db: Session = Depends(get_db),
+    id: int = Path(..., description="The district id.", example=1),
 ):
     """
     Get district by id.
@@ -134,7 +133,7 @@ async def get_district_by_id(
     - status_code (404): The district is not found.
 
     """
-    status, status_code, response = await service_location.get_district_by_id(
+    status, status_code, response = await location_service.get_district_by_id(
         db, redis, id
     )
 

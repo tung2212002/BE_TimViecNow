@@ -16,15 +16,18 @@ class JobApprovalLogBase(BaseModel):
     reason: Optional[str] = None
 
 
-class JobApprovalLogResponse(JobApprovalLogBase):
-    id: int
-    created_at: datetime
-
-
-class JobApprovalLogList(Pagination):
+# request
+class JobApprovalLogGetListRequest(Pagination):
     job_approval_request_id: Optional[JobApprovalStatus] = None
     admin_id: Optional[int] = None
 
 
+# schema
 class JobApprovalLogCreate(JobApprovalLogBase):
     pass
+
+
+# response
+class JobApprovalLogResponse(JobApprovalLogBase):
+    id: int
+    created_at: datetime

@@ -24,5 +24,13 @@ class CRUDJobCategory(CRUDBase[JobCategory, JobCategoryCreate, JobCategoryUpdate
         ).delete()
         db.commit()
 
+    def get_by_job_id(self, db: Session, job_id: int):
+        return db.query(self.model).filter(self.model.job_id == job_id).all()
+
+    def get_ids_by_job_id(self, db: Session, job_id: int):
+        return (
+            db.query(self.model.category_id).filter(self.model.job_id == job_id).all()
+        )
+
 
 job_category = CRUDJobCategory(JobCategory)

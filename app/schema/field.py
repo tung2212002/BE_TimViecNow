@@ -10,11 +10,8 @@ class FieldBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+# request
 class FieldCreateRequest(FieldBase):
-    pass
-
-
-class FieldCreate(FieldBase):
     pass
 
 
@@ -24,35 +21,17 @@ class FieldUpdateRequest(BaseModel):
     description: Optional[str] = None
 
 
+# schema
+class FieldCreate(FieldBase):
+    pass
+
+
 class FieldUpdate(FieldBase):
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
 
 
+# response
 class FieldItemResponse(FieldBase):
     id: int
-
-
-class FieldListResponse(FieldBase):
-    pass
-
-
-class FieldGetRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v
-
-
-class FieldDeleteRequest(BaseModel):
-    id: int
-
-    @validator("id")
-    def validate_id(cls, v):
-        if not v:
-            raise ValueError("Invalid id")
-        return v
