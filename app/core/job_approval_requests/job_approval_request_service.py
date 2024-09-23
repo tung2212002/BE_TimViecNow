@@ -5,45 +5,58 @@ from app.schema import (
     job_approval_request as schema_job_approval_request,
     job_approval_log as schema_job_approval_log,
 )
-from app.core import constant
-from app.core.job_approval_log.ob_approval_log_helper import job_approval_log_helper
+from app.core.job_approval_log.job_approval_log_helper import job_approval_log_helper
 from app.crud.job import job as jobCRUD
 from app.hepler.enum import JobStatus, JobApprovalStatus
-from app.core.job_approval_requests.job_approval_request_helper import (
-    job_approval_request_helper,
-)
 from app.model import ManagerBase
+from fastapi import status
+from app.common.exception import CustomException
+from app.common.response import CustomResponse
 
 
 class JobApprovalRequestService:
     async def get(self, db: Session, data: dict):
-        job_approval_request_data = job_approval_request_helper.validate_pagination(
-            data
+        job_approval_request_data = schema_job_approval_request.JobApprovalRequestList(
+            **data
         )
 
-        job_approval_requests = crud.job_approval_request.get_multi(
+        response = crud.job_approval_request.get_multi(
             db,
             **job_approval_request_data.model_dump(),
         )
-        return constant.SUCCESS, 200, job_approval_requests
+
+        return CustomResponse(data=response)
 
     async def get_by_id(self, db: Session, id: int):
-        job_approval_request = crud.job_approval_request.get(db, id)
-        if not job_approval_request:
-            return constant.ERROR, 404, "Job approval request not found"
-        return constant.SUCCESS, 200, job_approval_request
+        response = crud.job_approval_request.get(db, id)
+        if not response:
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                msg="Job approval request not found",
+            )
+
+        return CustomResponse(data=response)
 
     async def approve(self, db: Session, current_user: ManagerBase, data: dict):
-        job_approval_request_data = job_approval_request_helper.validate_create(data)
+        job_approval_request_data = (
+            schema_job_approval_request.JobApprovalRequestCreate(**data)
+        )
 
         job_approval_request = crud.job_approval_request.get(
             db, job_approval_request_data.job_approval_request_id
         )
         if not job_approval_request:
-            return constant.ERROR, 404, "Job approval request not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                msg="Job approval request not found",
+            )
+
         job = job_approval_request.job
         if job_approval_request.status == job_approval_request_data.status:
-            return constant.ERROR, 400, "Job already approved"
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Job already approved"
+            )
+
         if job_approval_request_data.status == JobApprovalStatus.APPROVED:
             if job.status != JobStatus.PUBLISHED:
                 jobCRUD.update(db, db_obj=job, obj_in={"status": JobStatus.PUBLISHED})
@@ -66,26 +79,36 @@ class JobApprovalRequestService:
             db,
             job_approval_log,
         )
-        return constant.SUCCESS, 200, job_approval_request
+
+        return CustomResponse(data=job_approval_request)
 
     async def approve_update(self, db: Session, current_user: ManagerBase, data: dict):
-        job_approval_update_data = job_approval_request_helper.validate_update(data)
+        job_approval_update_data = schema_job_approval_request.JobApprovalRequestUpdate(
+            **data
+        )
 
         job_approval_request = crud.job_approval_request.get(
             db, job_approval_update_data.job_approval_request_id
         )
         if not job_approval_request:
-            return constant.ERROR, 404, "Job approval request not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                msg="Job approval request not found",
+            )
 
         job = job_approval_request.job
         if job_approval_request.status == job_approval_update_data.status:
-            return constant.ERROR, 400, "Job already approved"
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Job already approved"
+            )
 
         if (
             job_approval_update_data.status == job_approval_request.status
             or job_approval_request.status != JobApprovalStatus.PENDING
         ):
-            return constant.ERROR, 400, "Invalid status"
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Invalid status"
+            )
 
         job_approval_request.id
         if job_approval_request.status == JobApprovalStatus.APPROVED:
@@ -111,7 +134,8 @@ class JobApprovalRequestService:
             db,
             job_approval_log,
         )
-        return constant.SUCCESS, 200, job_approval_request
+
+        return CustomResponse(data=job_approval_request)
 
 
 job_approval_request_service = JobApprovalRequestService()

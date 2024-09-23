@@ -9,11 +9,9 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
-from app.core import constant
+from app.db.base import get_db
 from app.core.company.company_service import company_service
 from app.core.auth.user_manager_service import user_manager_service
-from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType, SortBy, CompanyType
 
 
@@ -22,7 +20,7 @@ router = APIRouter()
 
 @router.get("", summary="Get list of company.")
 async def get_company(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
@@ -59,17 +57,13 @@ async def get_company(
 
     """
     args = locals()
-    status_message, status_code, response = company_service.get(db, args, current_user)
 
-    if status_message == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status_message == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.get(db, args, current_user)
 
 
 @router.get("/{company_id}", summary="Get company by id.")
 async def get_company_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     company_id: int = Path(description="The company id.", example=1),
 ):
@@ -86,17 +80,12 @@ async def get_company_by_id(
     - status_code (404): The company is not found.
 
     """
-    status, status_code, response = await company_service.get_by_id(db, company_id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.get_by_id(db, company_id)
 
 
 @router.post("", summary="Create company.")
 async def create_company(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business),
     name: str = Form(
         ...,
@@ -166,17 +155,12 @@ async def create_company(
     """
     data = locals()
 
-    status, status_code, response = await company_service.create(db, data, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.create(db, data, current_user)
 
 
 @router.put("/{company_id}", summary="Update company.")
 async def update_company(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business),
     company_id: int = Path(description="The company id.", example=1),
     email: str = Form(
@@ -253,21 +237,16 @@ async def update_company(
 
     """
     data = locals()
-    status, status_code, response = await company_service.update(
+    return await company_service.update(
         db,
         {**data},
         current_user,
     )
 
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
-
 
 @router.delete("/{id}", summary="Delete a company.")
 async def delete_company(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(..., description="The id of the company.", example=1),
 ):
@@ -286,9 +265,4 @@ async def delete_company(
 
     """
 
-    status, status_code, response = await company_service.delete(db, id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.delete(db, id, current_user)

@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, Query, Path, Body
+from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
-from app.core import constant
+from app.db.base import get_db
 from app.core.campaign.campaign_service import campaign_service
 from app.core.auth.user_manager_service import user_manager_service
-from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import FilterCampaign, OrderType, SortBy
 
 router = APIRouter()
@@ -12,7 +11,7 @@ router = APIRouter()
 
 @router.get("", summary="Get list of campaign.")
 async def get_campaign(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
@@ -50,17 +49,12 @@ async def get_campaign(
     """
     args = locals()
 
-    status_message, status_code, response = campaign_service.get(db, args, current_user)
-
-    if status_message == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status_message == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await campaign_service.get(db, args, current_user)
 
 
 @router.get("/{id}", summary="Get campaign by id.")
 async def get_campaign_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(description="The campaign id.", example=1),
 ):
@@ -78,19 +72,12 @@ async def get_campaign_by_id(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = await campaign_service.get_by_id(
-        db, id, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await campaign_service.get_by_id(db, id, current_user)
 
 
 @router.post("", summary="Create campaign.")
 async def create_campaign(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business),
     data: dict = Body(
         ...,
@@ -115,19 +102,12 @@ async def create_campaign(
     - status_code (400): The request is invalid.
 
     """
-    status, status_code, response = await campaign_service.create(
-        db, data, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await campaign_service.create(db, data, current_user)
 
 
 @router.put("/{id}", summary="Update campaign.")
 async def update_campaign(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business),
     id: int = Path(description="The campaign id.", example=1),
     data: dict = Body(
@@ -156,19 +136,12 @@ async def update_campaign(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = await campaign_service.update(
-        db, {**data, "id": id}, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await campaign_service.update(db, {**data, "id": id}, current_user)
 
 
 @router.delete("/{id}", summary="Delete campaign.")
 async def delete_campaign(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(description="The campaign id.", example=1),
 ):
@@ -186,9 +159,4 @@ async def delete_campaign(
     - status_code (404): The campaign is not found.
 
     """
-    status, status_code, response = await campaign_service.delete(db, id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await campaign_service.delete(db, id, current_user)

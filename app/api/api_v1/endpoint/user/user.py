@@ -7,12 +7,11 @@ from fastapi import (
     Query,
     Path,
 )
+from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
+from app.db.base import get_db
 from app.core.auth.user_manager_service import user_manager_service
-from app.core import constant
 from app.core.user.user_service import user_service
-from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType, SortBy
 
 router = APIRouter()
@@ -32,17 +31,12 @@ async def get_me(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = await user_service.get_me(current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.get_me(current_user)
 
 
 @router.get("", summary="Get list of users.")
 async def get_user(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
@@ -73,17 +67,12 @@ async def get_user(
     """
     args = locals()
 
-    status, status_code, response = await user_service.get(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.get(db, args)
 
 
 @router.get("/{id}", summary="Get a user by id.")
 async def get_user_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The id of the user.", example=1),
 ):
@@ -101,17 +90,13 @@ async def get_user_by_id(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = await user_service.get_by_id(db, id)
 
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.get_by_id(db, id)
 
 
 @router.post("", summary="Register a new user by admin.")
 async def create_user(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     full_name: str = Form(
         ...,
@@ -157,19 +142,13 @@ async def create_user(
     """
     data = locals()
 
-    status, status_code, response = await user_service.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.create(db, data)
 
 
-@router.put("/{id}", summary="Update a user.")
+@router.put("", summary="Update a user.")
 async def update_user(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_user),
-    id: int = Path(..., description="The id of the user."),
     full_name: str = Form(
         None,
         description="The full name of the user.",
@@ -183,7 +162,6 @@ async def update_user(
     avatar: UploadFile = File(
         None,
         description="The profile avatar of the user.",
-        json_schema_extra={"example": "avatar.jpg"},
     ),
 ):
     """
@@ -207,18 +185,12 @@ async def update_user(
     """
     data = locals()
 
-    status, status_code, response = await user_service.update(
-        db, id, data, current_user
-    )
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.update(db, data, current_user)
 
 
 @router.delete("/{id}", summary="Delete a user.")
 async def delete_user(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_user),
     id: int = Path(..., description="The id of the user.", example=1),
 ):
@@ -236,9 +208,4 @@ async def delete_user(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = await user_service.delete(db, id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.delete(db, id, current_user)

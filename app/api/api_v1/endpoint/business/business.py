@@ -7,12 +7,11 @@ from fastapi import (
     Query,
     Path,
 )
+from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
+from app.db.base import get_db
 from app.core.auth.user_manager_service import user_manager_service
-from app.core import constant
 from app.core.business.business_service import business_service
-from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType, SortBy, Gender
 
 router = APIRouter()
@@ -20,7 +19,7 @@ router = APIRouter()
 
 @router.get("/me", summary="Get the current business.")
 async def get_business(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
 ):
     """
@@ -33,17 +32,12 @@ async def get_business(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = await business_service.get_me(db, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.get_me(db, current_user)
 
 
 @router.get("", summary="Get list of business.")
 async def get_business(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
@@ -74,17 +68,12 @@ async def get_business(
     """
     args = locals()
 
-    status, status_code, response = await business_service.get(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.get(db, args)
 
 
 @router.get("/{id}", summary="Get a business by id.")
 async def get_user_bbusiness(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The id of the user.", example=1),
 ):
@@ -102,17 +91,12 @@ async def get_user_bbusiness(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = await business_service.get_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.get_by_id(db, id)
 
 
 @router.post("", summary="Register a new business by admin.")
 async def create_business(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     full_name: str = Form(
         ...,
@@ -198,17 +182,12 @@ async def create_business(
     """
     data = locals()
 
-    status, status_code, response = await business_service.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.create(db, data)
 
 
 @router.put("/{id}", summary="Update a business.")
 async def update_business(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business),
     id: int = Path(..., description="The id of the user.", example=1),
     full_name: str = Form(
@@ -280,19 +259,12 @@ async def update_business(
     """
     data = locals()
 
-    status, status_code, response = await business_service.update(
-        db, data, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.update(db, data, current_user)
 
 
 @router.delete("/{id}", summary="Delete a business.")
 async def delete_business(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     id: int = Path(..., description="The id of the user.", example=1),
 ):
@@ -310,9 +282,4 @@ async def delete_business(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = await business_service.delete(db, id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.delete(db, id, current_user)

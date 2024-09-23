@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
-from typing import List, Union
-from datetime import datetime, timezone
+from typing import Union
 
-from app.schema import (
-    job as job_schema,
+from app.schema.job import (
+    JobItemResponse,
+    JobItemResponseGeneral,
+    JobSearchByUser,
 )
 from app import crud
 from app.core.working_times.working_times_helper import working_times_helper
@@ -17,37 +18,10 @@ from app.core.skill.skill_helper import skill_helper
 from app.core.category.category_helper import category_helper
 from app.core.work_locations.work_locations_hepler import work_location_helper
 from app.core.company.company_helper import company_helper
-from app.core.helper_base import HelperBase
-from app.hepler.exception_handler import get_message_validation_error
-from app.core import constant
 from app.hepler.enum import JobSkillType
 
 
-class JobHepler(HelperBase):
-    def validate_page_business(self, data: dict):
-        try:
-            return job_schema.JobFilterByBusiness(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
-
-    def validate_page_user(self, data: dict):
-        try:
-            return job_schema.JobFilterByUser(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
-
-    def validate_page_user_search(self, data: dict):
-        try:
-            return job_schema.JobSearchByUser(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
-
-    def validate_page_business_search(self, data: dict):
-        try:
-            return job_schema.JobSearchByUser(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
-
+class JobHepler:
     async def get_list_job(self, db: Session, redis: Redis, data: dict):
         jobs = crud.job.get_multi(db, **data)
         jobs_response = []
@@ -78,8 +52,8 @@ class JobHepler(HelperBase):
         job_position_helper.check_valid(db, position_id)
 
     async def get_info(
-        self, db: Session, redis: Redis, job: Job, Schema=job_schema.JobItemResponse
-    ) -> Union[job_schema.JobItemResponse, dict]:
+        self, db: Session, redis: Redis, job: Job, Schema=JobItemResponse
+    ) -> Union[JobItemResponse, dict]:
         job_id = job.id
         try:
             job_response = await job_cache_service.get_cache_job_info(redis, job_id)
@@ -122,7 +96,13 @@ class JobHepler(HelperBase):
             print(e)
         return job_response
 
-    def get_count_job_user_search_key(self, data: job_schema.JobSearchByUser) -> str:
+    def get_info_general(self, job: Job) -> JobItemResponseGeneral:
+        job_response = JobItemResponseGeneral(
+            **job.__dict__,
+        )
+        return job_response
+
+    def get_count_job_user_search_key(self, data: JobSearchByUser) -> str:
         return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}_{data.sort_by}_{data.order_by}_{data.skip}_{data.limit}"
 
     def create_fields(
@@ -146,8 +126,4 @@ class JobHepler(HelperBase):
         working_times_helper.create_with_job_id(db, job_id, working_times)
 
 
-job_helper = JobHepler(
-    None,
-    job_schema.JobCreateRequest,
-    job_schema.JobUpdateRequest,
-)
+job_helper = JobHepler()

@@ -1,11 +1,11 @@
 from redis.asyncio import Redis
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Annotated
+from fastapi import Depends
 
 from app.core.config import settings
 from typing import Set, Any, Optional
-from app.core.loggers import get_logger, setup_logging
-from app.core import loggers
+from app.core.loggers import get_logger
 
 logger = get_logger(__name__)
 
@@ -98,7 +98,10 @@ class RedisDependency:
 redis_dependency = RedisDependency()
 
 
-async def get_redis():
+async def get_redis() -> Redis:
     if redis_dependency.redis is None:
         await redis_dependency.init()
     return await redis_dependency.get_redis()
+
+
+CurrentRedis = Annotated[Redis, Depends(get_redis)]

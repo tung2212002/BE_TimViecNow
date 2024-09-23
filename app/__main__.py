@@ -1,23 +1,17 @@
-# from os.path import dirname, join
-# from dotenv import load_dotenv
-
-# dotenv_path = join(dirname(dirname(__file__)), ".env")
-# load_dotenv(dotenv_path)
-from app.core.config import settings
 from fastapi import FastAPI
-from dotenv import load_dotenv
-from os.path import dirname, join
 from starlette.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 
-from app.db.base import engine, get_db
+from app.core.config import settings
+from app.db.base import get_db
 from app.db.base_class import Base
 from app.db.init_db import init_db
 from app.storage.s3 import s3_service
 from app.storage.redis import redis_dependency
 from app.core.loggers import get_logger, setup_logging
 from app.core import loggers
+from app.common.exception_handler import register_exception
+from app.middleware import register_middleware
 
 from app.api import api_router
 
@@ -101,14 +95,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ALLOW_ORIGIN,
-    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
-)
+register_exception(app)
 
+register_middleware(app)
 
 app.include_router(api_router)
 

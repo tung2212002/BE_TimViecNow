@@ -1,8 +1,9 @@
-from fastapi import Request, HTTPException, Depends
-from sqlalchemy.orm import Session
+from fastapi import Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.auth.jwt.auth_handler import token_manager
+from app.common.exception import CustomException
+from fastapi import status
 
 
 class JWTBearer(HTTPBearer):
@@ -15,17 +16,24 @@ class JWTBearer(HTTPBearer):
         ).__call__(request)
         if credentials:
             if not credentials.scheme == "Bearer":
-                raise HTTPException(
-                    status_code=401, detail="Invalid authentication scheme."
+                raise CustomException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    msg="Invalid authentication scheme.",
                 )
+
             payload = self.verify_jwt(credentials.credentials)
             if not payload:
-                raise HTTPException(
-                    status_code=401, detail="Invalid token or expired token."
+                raise CustomException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    msg="Invalid token or expired token.",
                 )
+
             return {"token": credentials.credentials, "payload": payload}
         else:
-            raise HTTPException(status_code=403, detail="Forbidden")
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                msg="Forbidden",
+            )
 
     def verify_jwt(self, jwtoken: str) -> bool:
         try:

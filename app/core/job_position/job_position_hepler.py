@@ -5,36 +5,13 @@ from app import crud
 from app.schema import (
     job_position as job_position_schema,
     group_position as group_position_schema,
-    page as schema_page,
 )
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
 from app.model import JobPosition, GroupPosition
-from app.core.helper_base import HelperBase
+from fastapi import status
+from app.common.exception import CustomException
 
 
-class JobPositionHelper(HelperBase):
-    def validate_position_group_create(self, data: dict):
-        try:
-            return group_position_schema.GroupPositionCreateRequest(**data)
-        except Exception as e:
-            return custom_response_error(
-                status_code=400,
-                status=constant.ERROR,
-                response=get_message_validation_error(e),
-            )
-
-    def validate_position_group_update(self, data: dict):
-        try:
-            return group_position_schema.GroupPositionUpdateRequest(**data)
-        except Exception as e:
-            return custom_response_error(
-                status_code=400,
-                status=constant.ERROR,
-                response=get_message_validation_error(e),
-            )
-
+class JobPositionHelper:
     def check_valid(
         self,
         db: Session,
@@ -42,8 +19,8 @@ class JobPositionHelper(HelperBase):
     ) -> int:
         position = crud.job_position.get(db, id)
         if not position:
-            return custom_response_error(
-                status_code=404, status=constant.ERROR, response="Position not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Position not found"
             )
         return id
 
@@ -60,8 +37,4 @@ class JobPositionHelper(HelperBase):
         return [self.get_group_info(db, group) for group in groups]
 
 
-job_position_helper = JobPositionHelper(
-    schema_page.Pagination,
-    job_position_schema.JobPositionCreateRequest,
-    job_position_schema.JobPositionUpdateRequest,
-)
+job_position_helper = JobPositionHelper()

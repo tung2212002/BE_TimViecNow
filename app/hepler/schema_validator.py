@@ -60,6 +60,12 @@ class SchemaValidator:
     def validate_confirm_password(v, values):
         if "new_password" in values and v != values["new_password"]:
             raise ValueError("Passwords do not match")
+        elif "password" in values and v != values["password"]:
+            raise ValueError("Passwords do not match")
+        elif not re.match(constant.REGEX_PASSWORD, v):
+            raise ValueError(
+                "Password must contain at least one special character, one digit, one alphabet, one uppercase letter"
+            )
         return v
 
     @staticmethod
@@ -167,6 +173,8 @@ class SchemaValidator:
 
     @staticmethod
     def validate_limit(v):
+        if v is not None and not isinstance(v, int):
+            raise ValueError("Limit must be an integer")
         if v is not None and (v < 1 or v > 1000):
             raise ValueError("Invalid limit")
         return v or 10

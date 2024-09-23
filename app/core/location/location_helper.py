@@ -1,32 +1,15 @@
 from sqlalchemy.orm import Session
-from typing import List
 
 from app import crud
 from app.schema import (
     province as schema_province,
     district as schema_district,
-    page as schema_page,
 )
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
+from app.common.exception import CustomException
+from fastapi import status
 
 
 class LocationHelper:
-    def validate_pagination(
-        self,
-        data: dict,
-    ):
-        try:
-            page = schema_page.Pagination(**data)
-        except Exception as e:
-            return custom_response_error(
-                status_code=400,
-                status=constant.ERROR,
-                response=get_message_validation_error(e),
-            )
-        return page
-
     def get_province_info_by_id(self, db: Session, id: int) -> dict:
         province = crud.province.get(db, id)
         return (
@@ -49,6 +32,29 @@ class LocationHelper:
             schema_province.ProvinceItemResponse(**province.__dict__)
             for province in provinces
         ]
+
+    def get_list_district_info(self, db: Session, data: dict) -> list:
+        districts = crud.district.get_multi_by_province(db, **data)
+        return [
+            schema_district.DistrictItemResponse(**district.__dict__)
+            for district in districts
+        ]
+
+    def check_valid_province_district(
+        self, db: Session, province_id: int, district_id: int
+    ) -> None:
+        province = self.get_province_info_by_id(db, province_id)
+        if not province:
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Province not found"
+            )
+
+        if district_id:
+            district = self.get_district_info_by_id(db, district_id)
+            if not district:
+                raise CustomException(
+                    status_code=status.HTTP_400_BAD_REQUEST, msg="District not found"
+                )
 
 
 location_helper = LocationHelper()

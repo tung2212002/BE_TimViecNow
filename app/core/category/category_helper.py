@@ -2,17 +2,15 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app import crud
-from app.core import constant
-from app.hepler.response_custom import custom_response_error
-from app.schema import (
-    category as schema_category,
-    page as schema_page,
+from app.schema.category import (
+    CategoryItemResponse,
 )
 from app.model import Category
-from app.core.helper_base import HelperBase
+from fastapi import status
+from app.common.exception import CustomException
 
 
-class CategoryHelper(HelperBase):
+class CategoryHelper:
     def check_valid(
         self,
         db: Session,
@@ -20,8 +18,8 @@ class CategoryHelper(HelperBase):
     ) -> int:
         category = crud.category.get(db, id)
         if not category:
-            return custom_response_error(
-                status_code=404, status=constant.ERROR, response="Category not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Category not found"
             )
         return int
 
@@ -35,12 +33,10 @@ class CategoryHelper(HelperBase):
 
         return [self.check_valid(db, id) for id in ids]
 
-    def get_info(self, category: Category) -> schema_category.CategoryItemResponse:
-        return schema_category.CategoryItemResponse(**category.__dict__)
+    def get_info(self, category: Category) -> CategoryItemResponse:
+        return CategoryItemResponse(**category.__dict__)
 
-    def get_info_by_id(
-        self, db: Session, id: int
-    ) -> schema_category.CategoryItemResponse:
+    def get_info_by_id(self, db: Session, id: int) -> CategoryItemResponse:
         category = crud.category.get(db, id)
         return self.get_info(category)
 
@@ -85,8 +81,4 @@ class CategoryHelper(HelperBase):
             crud.job_category.create(db, obj_in=job_category_data)
 
 
-category_helper = CategoryHelper(
-    schema_page.Pagination,
-    schema_category.CategoryCreateRequest,
-    schema_category.CategoryUpdateRequest,
-)
+category_helper = CategoryHelper()

@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
-from app.core import constant
-from app.hepler.response_custom import custom_response_error
 from app import crud
+from app.common.exception import CustomException
+from fastapi import status
 
 
 class ExperienceHelper:
@@ -13,8 +13,8 @@ class ExperienceHelper:
     ) -> int:
         experience = crud.experience.get(db, id)
         if not experience:
-            return custom_response_error(
-                status_code=404, status=constant.ERROR, response="Experience not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Experience not found"
             )
         return id
 

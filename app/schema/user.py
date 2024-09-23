@@ -38,7 +38,7 @@ class UserCreateRequest(UserBase):
 
     @validator("confirm_password")
     def validate_password(cls, v, values):
-        return SchemaValidator.validate_password(v, values)
+        return SchemaValidator.validate_confirm_password(v, values)
 
     @validator("avatar")
     def validate_avatar(cls, v):
@@ -79,8 +79,11 @@ class UserCreate(UserBase):
         return v or Role.USER
 
 
-class UserUpdate(UserUpdateRequest):
-    pass
+class UserUpdate(BaseModel):
+    full_name: str
+    phone_number: str
+    avatar: Optional[str] = None
+    role: Role = Role.USER
 
 
 # response

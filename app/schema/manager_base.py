@@ -51,25 +51,23 @@ class ManagerBaseCreateRequest(ManagerBaseBase):
 
 class ManagerBaseUpdateRequest(BaseModel):
     full_name: Optional[str] = None
-    email: Optional[str] = None
     avatar: Optional[UploadFile] = None
     password: Optional[str] = None
 
     @validator("full_name")
     def validate_full_name(cls, v):
-        return SchemaValidator.validate_full_name(v)
-
-    @validator("email")
-    def validate_email(cls, v):
-        return SchemaValidator.validate_email(v)
+        if v:
+            return SchemaValidator.validate_full_name(v)
 
     @validator("avatar")
     def validate_avatar(cls, v):
-        return SchemaValidator.validator_avatar_upload_file(v)
+        if v:
+            return SchemaValidator.validator_avatar_upload_file(v)
 
     @validator("password")
     def validate_password(cls, v):
-        return SchemaValidator.validate_password(v)
+        if v:
+            return SchemaValidator.validate_password(v)
 
 
 # schema

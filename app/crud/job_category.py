@@ -29,7 +29,10 @@ class CRUDJobCategory(CRUDBase[JobCategory, JobCategoryCreate, JobCategoryUpdate
 
     def get_ids_by_job_id(self, db: Session, job_id: int):
         return (
-            db.query(self.model.category_id).filter(self.model.job_id == job_id).all()
+            category_id
+            for (category_id,) in db.query(self.model.category_id)
+            .filter(self.model.job_id == job_id)
+            .all()
         )
 
 

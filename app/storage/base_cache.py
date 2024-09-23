@@ -1,6 +1,6 @@
 from redis.asyncio import Redis
 import json
-from typing import Any, Optional, Set
+from typing import Any, Set
 
 from app.storage.redis import redis_dependency
 

@@ -1,58 +1,85 @@
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app import crud
-from app.schema import (
-    field as schema_field,
-    page as schema_page,
-)
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
 from app.core.field.field_helper import field_helper
+from fastapi import status
+from app.common.exception import CustomException
+from app.common.response import CustomResponse
+from app.schema import field as field_schema, page as schema_page
+from app.storage.cache.config_cache_service import config_cache_service
 
 
 class FieldService:
-    async def get_field(self, db: Session, data: dict):
-        page = field_helper.validate_pagination(data)
+    async def get_field(self, db: Session, redis: Redis, data: dict):
+        page = schema_page.Pagination(**data)
+        key = page.get_key()
 
-        fields = crud.field.get_multi(db, **page.model_dump())
+        response = None
+        try:
+            response = await config_cache_service.get_cache_field(redis, key)
+        except Exception as e:
+            print(e)
 
-        return constant.SUCCESS, 200, field_helper.get_list_info(fields)
+        if not response:
+            fields = crud.field.get_multi(db, **page.model_dump())
+            response = field_helper.get_list_info(fields)
+            try:
+                await config_cache_service.cache_field(
+                    redis, key, [field.__dict__ for field in response]
+                )
+            except Exception as e:
+                print(e)
+
+        return CustomResponse(data=response)
 
     async def get_by_id(self, db: Session, id: int):
         field = crud.field.get(db, id)
         if not field:
-            return constant.ERROR, 404, "Field not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Field not found"
+            )
 
-        return constant.SUCCESS, 200, field_helper.get_info(field)
+        response = field_helper.get_info(field)
+
+        return CustomResponse(data=response)
 
     async def create(self, db: Session, data: dict):
-        field_data = field_helper.validate_create(data)
+        field_data = field_schema.FieldCreateRequest(**data)
 
         field = crud.field.get_by_name(db, field_data.name)
         if field:
-            return constant.ERROR, 409, "Field already registered"
+            raise CustomException(
+                status_code=status.HTTP_409_CONFLICT, msg="Field already registered"
+            )
 
-        field = crud.field.create(db, obj_in=field_data)
-        return constant.SUCCESS, 201, field
+        response = crud.field.create(db, obj_in=field_data)
+
+        return CustomResponse(status_code=status.HTTP_201_CREATED, data=response)
 
     async def update(self, db: Session, id: int, data: dict):
         field = crud.field.get(db, id)
         if not field:
-            return constant.ERROR, 404, "Field not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Field not found"
+            )
 
-        field_data = field_helper.validate_update(data)
+        field_data = field_schema.FieldUpdateRequest(**data)
 
-        field = crud.field.update(db, db_obj=field, obj_in=field_data)
-        return constant.SUCCESS, 200, field
+        response = crud.field.update(db, db_obj=field, obj_in=field_data)
+
+        return CustomResponse(data=response)
 
     async def delete(self, db: Session, id: int):
         field = crud.field.get(db, id)
         if not field:
-            return constant.ERROR, 404, "Field not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Field not found"
+            )
 
-        field = crud.field.remove(db, id=id)
-        return constant.SUCCESS, 200, field
+        response = crud.field.remove(db, id=id)
+
+        return CustomResponse(data=response)
 
 
 field_service = FieldService()

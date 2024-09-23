@@ -26,29 +26,44 @@ from app.core.job.job_helper import job_helper
 from app.core.category.category_helper import category_helper
 from app.core.auth.business_auth_helper import business_auth_helper
 from app.core.campaign.campaign_helper import campaign_helper
+from fastapi import status
+from app.common.exception import CustomException
+from app.common.response import CustomResponse
+from app.schema import job as job_schema
 
 
 class JobService:
     async def get_by_business(
-        self, db: Session, redis: Redis, data: dict, current_user
+        self, db: Session, redis: Redis, data: dict, current_user: ManagerBase
     ):
-        page = job_helper.validate_page_business(data)
+        page = job_schema.JobFilterByBusiness(**data)
 
         if current_user.role == Role.BUSINESS:
             if page.business_id and page.business_id != current_user.id:
-                return constant.ERROR, 403, "Permission denied"
+                raise CustomException(
+                    status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+                )
+
             page.business_id = current_user.id
             company = crud.company.get_by_business_id(db, current_user.id)
             if not company:
-                return constant.ERROR, 404, "Business not join company"
+                raise CustomException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    msg="Business not join company",
+                )
+
             if page.company_id and page.company_id != company.id:
-                return constant.ERROR, 403, "Permission denied"
+                raise CustomException(
+                    status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+                )
+
             page.company_id = company.id
         response = await job_helper.get_list_job(db, redis, page.model_dump())
-        return constant.SUCCESS, 200, response
+
+        return CustomResponse(data=response)
 
     async def get_by_user(self, db: Session, redis: Redis, data: dict):
-        page = job_helper.validate_page_user(data)
+        page = job_schema.JobFilterByUser(**data)
 
         page.job_status = JobStatus.PUBLISHED
         page.job_approve_status = JobApprovalStatus.APPROVED
@@ -61,19 +76,21 @@ class JobService:
             "count": number_of_all_jobs,
             "jobs": jobs,
         }
-        return constant.SUCCESS, 200, response
+
+        return CustomResponse(data=response)
 
     async def search_by_user(self, db: Session, redis: Redis, data: dict):
-        page = job_helper.validate_page_user_search(data)
+        page = job_schema.JobSearchByUser(**data)
 
         page.job_status = JobStatus.PUBLISHED
         page.job_approve_status = JobApprovalStatus.APPROVED
         try:
-            jobs_response = await job_cache_service.get_cache_user_search(
+            response = await job_cache_service.get_cache_user_search(
                 redis, job_helper.get_count_job_user_search_key(page)
             )
-            if jobs_response:
-                return constant.SUCCESS, 200, jobs_response
+            if response:
+                return CustomResponse(data=response)
+
         except Exception as e:
             print(e)
 
@@ -165,22 +182,31 @@ class JobService:
         except Exception as e:
             print(e)
 
-        return constant.SUCCESS, 200, response
+        return CustomResponse(data=response)
 
     async def search_by_business(
-        self, db: Session, redis: Redis, current_user, data: dict
+        self, db: Session, redis: Redis, current_user: ManagerBase, data: dict
     ):
-        page = job_helper.validate_page_business_search(data)
+        page = job_schema.JobSearchByBusiness(**data)
 
         if current_user.role == Role.BUSINESS:
             if page.business_id and page.business_id != current_user.id:
-                return constant.ERROR, 403, "Permission denied"
+                raise CustomException(
+                    status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+                )
+
             page.business_id = current_user.id
             company = crud.company.get_by_business_id(db, current_user.id)
             if not company:
-                return constant.ERROR, 404, "Business not join company"
+                raise CustomException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    msg="Business not join company",
+                )
+
             if page.company_id and page.company_id != company.id:
-                return constant.ERROR, 403, "Permission denied"
+                raise CustomException(
+                    status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+                )
             page.company_id = company.id
 
         jobs = crud.job.search(db, **page.model_dump())
@@ -190,14 +216,15 @@ class JobService:
         jobs_response = []
         for job in jobs:
             job_res = await job_helper.get_info(db, redis, job)
-            jobs_response.append(job_res) if job_res.company else None
+            jobs_response.append(job_res) if job_res.get("company") else None
 
         response = {
             "count": count,
             "option": page,
             "jobs": jobs_response,
         }
-        return constant.SUCCESS, 200, response
+
+        return CustomResponse(data=response)
 
     async def get_by_id_for_business(
         self, db: Session, redis: Redis, job_id: int, current_user: ManagerBase
@@ -205,7 +232,10 @@ class JobService:
         job = crud.job.get(db, job_id)
         company = crud.company.get_by_business_id(db, current_user.id)
         if not job:
-            return constant.ERROR, 404, "Job not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
+            )
+
         if (
             (
                 job.business_id != current_user.id
@@ -218,21 +248,32 @@ class JobService:
             ]
             or not company
         ):
-            return constant.ERROR, 403, "Permission denied"
-        job_response = await job_helper.get_info(db, redis, job)
-        return constant.SUCCESS, 200, job_response
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+            )
+
+        response = await job_helper.get_info(db, redis, job)
+
+        return CustomResponse(data=response)
 
     async def get_by_id_for_user(self, db: Session, redis: Redis, job_id: int):
         job = crud.job.get(db, job_id)
         if not job:
-            return constant.ERROR, 404, "Job not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
+            )
+
         if (
             job.status != JobStatus.PUBLISHED
             or job.job_approval_request.status != JobApprovalStatus.APPROVED
         ):
-            return constant.ERROR, 404, "Job not found"
-        job_response = await job_helper.get_info(db, redis, job)
-        return constant.SUCCESS, 200, job_response
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
+            )
+
+        response = await job_helper.get_info(db, redis, job)
+
+        return CustomResponse(data=response)
 
     async def get_by_campaign_id(
         self, db: Session, redis: Redis, campaign_id: int, current_user: ManagerBase
@@ -240,7 +281,9 @@ class JobService:
         campaign = crud.campaign.get(db, campaign_id)
         company = crud.company.get_by_business_id(db, current_user.id)
         if not campaign:
-            return constant.ERROR, 404, "Campaign not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Campaign not found"
+            )
         if (
             (
                 campaign.business_id != current_user.id
@@ -253,11 +296,14 @@ class JobService:
             ]
             or not company
         ):
-            return constant.ERROR, 403, "Permission denied"
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+            )
 
         job = crud.job.get_by_campaign_id(db, campaign_id)
-        job_response = await job_helper.get_info(db, redis, job)
-        return constant.SUCCESS, 200, job_response
+        response = await job_helper.get_info(db, redis, job)
+
+        return CustomResponse(data=response)
 
     async def count_job_by_category(self, db: Session, redis: Redis):
         time_scan = CommonHelper.get_current_time(db)
@@ -285,7 +331,7 @@ class JobService:
             except Exception as e:
                 print(e)
 
-        return constant.SUCCESS, 200, response
+        return CustomResponse(data=response)
 
     async def count_job_by_salary(self, db: Session, redis: Redis):
         data = None
@@ -339,7 +385,7 @@ class JobService:
                 )
             )
 
-        return constant.SUCCESS, 200, response
+        return CustomResponse(data=response)
 
     async def count_job_by_district(self, db: Session):
         response = crud.job.count_job_by_district(db)
@@ -409,18 +455,20 @@ class JobService:
             except Exception as e:
                 print(e)
 
-        return constant.SUCCESS, 200, response
+        return CustomResponse(data=response)
 
     async def create(
         self, db: Session, redis: Redis, data: dict, current_user: ManagerBase
     ):
         business = current_user.business
         business_auth_helper.verified_level(business, 2)
-        job_data = job_helper.validate_create(data)
+        job_data = job_schema.JobCreateRequest(**data)
 
         company = business.company
         if not company:
-            return constant.ERROR, 404, "Require join company"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Require join company"
+            )
 
         job_helper.check_fields(
             db,
@@ -441,7 +489,10 @@ class JobService:
             title=job_data.title,
         )
         if crud.job.get_by_campaign_id(db, campaign.id):
-            return constant.ERROR, 400, "Campaign already has job"
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Campaign already has job"
+            )
+
         job_data.campaign_id = campaign.id
 
         is_verified_company = company.is_verified
@@ -463,15 +514,18 @@ class JobService:
             working_times=job_data.working_times,
         )
         job_response = await job_helper.get_info(db, redis, job)
-        return constant.SUCCESS, 201, job_response
+
+        return CustomResponse(status_code=status.HTTP_201_CREATED, data=job_response)
 
     async def update(self, db: Session, data: dict, current_user):
-        pass
-        job_data = job_helper.validate_update(data)
+        job_data = job_schema.JobUpdateRequest(**data)
 
         job = crud.job.get(db, job_data.job_id)
         if not job:
-            return constant.ERROR, 404, "Job not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
+            )
+
         company = current_user.business.company
         if (
             job.business_id != current_user.id
@@ -479,7 +533,9 @@ class JobService:
             or job.campaign.business_id != current_user.id
             or job.campaign.company_id != company.id
         ):
-            return constant.ERROR, 403, "Permission denied"
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+            )
 
         must_have_skills_data = job_data.must_have_skills
         should_have_skills_data = job_data.should_have_skills
@@ -529,21 +585,31 @@ class JobService:
                 **job_approval_request.__dict__
             )
         )
-        return constant.SUCCESS, 201, job_approval_request_response
 
-    async def delete(self, db: Session, job_id: int, current_user):
+        return CustomResponse(
+            status_code=status.HTTP_201_CREATED, data=job_approval_request_response
+        )
+
+    async def delete(self, db: Session, job_id: int, current_user: ManagerBase):
         job = crud.job.get(db, job_id)
         company = crud.company.get_by_business_id(db, current_user.id)
         if not job:
-            return constant.ERROR, 404, "Job not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
+            )
+
         if (
             not company
             or job.business_id != current_user.id
             or job.campaign.company_id != company.id
         ):
-            return constant.ERROR, 403, "Permission denied"
-        job = crud.job.remove(db, id=job_id)
-        return constant.SUCCESS, 200, "Job has been deleted"
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
+            )
+
+        response = crud.job.remove(db, id=job_id)
+
+        return CustomResponse(data=response)
 
 
 job_service = JobService()

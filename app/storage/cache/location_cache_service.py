@@ -11,27 +11,27 @@ class LocationCacheService(BaseCache):
         self.district_key = "district"
         self.province_district_key = "province_district"
 
-    async def cache_list_province(self, redis: Redis, value):
+    async def cache_list_province(self, redis: Redis, key: str, value: List):
         expire_time = 60 * 60 * 24
-        await self.set_list(redis, self.province_key, value, expire_time)
+        await self.set_list(redis, self.province_key + key, value, expire_time)
 
-    async def get_cache_list_province(self, redis) -> List:
-        response = await self.get_list(redis, self.province_key)
+    async def get_cache_list_province(self, redis, key: str) -> List:
+        response = await self.get_list(redis, self.province_key + key)
         return response if response else None
 
     async def cache_province(self, redis: Redis, key: int, value: List):
         expire_time = 60 * 60 * 24
-        await self.set_list(redis, self.province_key + key, value, expire_time)
+        await self.set_list(redis, self.province_key + str(key), value, expire_time)
 
     async def get_cache_province(self, redis: Redis, key: int) -> List:
-        response = await self.get_list(redis, self.province_key + key)
+        response = await self.get_list(redis, self.province_key + str(key))
         return response if response else None
 
-    async def cache_district_of_province(self, redis: Redis, key: int, value: List):
+    async def cache_district_of_province(self, redis: Redis, key: str, value: List):
         expire_time = 60 * 60 * 24
         await self.set_list(redis, self.district_key + key, value, expire_time)
 
-    async def get_cache_district_of_province(self, redis: Redis, key: int) -> List:
+    async def get_cache_district_of_province(self, redis: Redis, key: str) -> List:
         response = await self.get_list(redis, self.district_key + key)
         return response if response else None
 
@@ -45,10 +45,10 @@ class LocationCacheService(BaseCache):
 
     async def cache_district(self, redis: Redis, key: int, value: List):
         expire_time = 60 * 60 * 24
-        await self.set_list(redis, self.district_key + key, value, expire_time)
+        await self.set_list(redis, self.district_key + str(key), value, expire_time)
 
     async def get_cache_district(self, redis: Redis, key: int) -> List:
-        response = await self.get_list(redis, self.district_key + key)
+        response = await self.get_list(redis, self.district_key + str(key))
         return response if response else None
 
 

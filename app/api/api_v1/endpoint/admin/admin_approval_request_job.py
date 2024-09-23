@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, Body, Query, Path
+from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
+from app.db.base import get_db
 from app.core.auth.user_manager_service import user_manager_service
-from app.core import constant
 from app.core.job_approval_requests.job_approval_request_service import (
     job_approval_request_service,
 )
-from app.hepler.response_custom import custom_response, custom_response_error
 from app.hepler.enum import (
     SortBy,
     OrderType,
@@ -19,7 +18,7 @@ router = APIRouter()
 
 @router.get("/", summary="Get list of approve request job.")
 async def get_list_approve_request_job(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
@@ -59,17 +58,12 @@ async def get_list_approve_request_job(
     """
     args = locals()
 
-    status, status_code, response = await job_approval_request_service.get(db, {**args})
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_approval_request_service.get(db, {**args})
 
 
 @router.get("/{job_approval_request_id}", summary="Get approve request job by id.")
 async def get_approve_request_job_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
 ):
@@ -88,19 +82,14 @@ async def get_approve_request_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = await job_approval_request_service.get_by_id(
+    return await job_approval_request_service.get_by_id(
         db, job_approval_request_id, current_user=current_user
     )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
 
 
 @router.put("/{job_approval_request_id}/approve", summary="Approve job.")
 async def approve_job_request_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
     data: dict = Body(
@@ -125,21 +114,16 @@ async def approve_job_request_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = await job_approval_request_service.approve(
+    return await job_approval_request_service.approve(
         db,
         current_user=current_user,
         data={"job_approval_request_id": job_approval_request_id, **data},
     )
 
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
-
 
 @router.put("/{job_approval_request_id}/job", summary="Approve update job.")
 async def approve_job_request_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_admin),
     job_approval_request_id: int = Path(..., description="The job id.", example=1),
     data: dict = Body(
@@ -164,13 +148,8 @@ async def approve_job_request_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = await job_approval_request_service.approve_update(
+    return await job_approval_request_service.approve_update(
         db,
         current_user=current_user,
         data={"job_approval_request_id": job_approval_request_id, **data},
     )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)

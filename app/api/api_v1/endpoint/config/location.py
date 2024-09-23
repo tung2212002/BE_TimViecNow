@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, Query, Path
 from redis.asyncio import Redis
+from sqlalchemy.orm import Session
 
-from app.db.base import CurrentSession
-from app.core import constant
+from app.db.base import get_db
 from app.core.location.location_service import location_service
-from app.hepler.response_custom import custom_response_error, custom_response
 from app.hepler.enum import OrderType
 from app.storage.redis import get_redis
 
@@ -13,7 +12,7 @@ router = APIRouter()
 
 @router.get("/province", summary="Get list of provinces.")
 async def get_list_province(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of province to skip.", example=0),
     limit: int = Query(
@@ -39,16 +38,12 @@ async def get_list_province(
     """
     args = locals()
 
-    status, status_code, response = await location_service.get_province(db, redis, args)
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await location_service.get_province(db, redis, args)
 
 
 @router.get("/province/{id}", summary="Get province by id.")
 async def get_province_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
     id: int = Path(..., description="The province id.", example=1),
 ):
@@ -65,19 +60,12 @@ async def get_province_by_id(
     - status_code (404): The province is not found.
 
     """
-    status, status_code, response = await location_service.get_province_by_id(
-        db, redis, id
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await location_service.get_province_by_id(db, redis, id)
 
 
 @router.get("/district", summary="Get list of districts.")
 async def get_list_district(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
     province_id: int = Query(..., description="The province id.", example=1),
     skip: int = Query(None, description="The number of districts to skip.", example=0),
@@ -106,17 +94,12 @@ async def get_list_district(
     """
     args = locals()
 
-    status, status_code, response = await location_service.get_district(db, redis, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await location_service.get_district(db, redis, args)
 
 
 @router.get("/district/{id}", summary="Get district by id.")
 async def get_district_by_id(
-    db: CurrentSession,
+    db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
     id: int = Path(..., description="The district id.", example=1),
 ):
@@ -133,11 +116,4 @@ async def get_district_by_id(
     - status_code (404): The district is not found.
 
     """
-    status, status_code, response = await location_service.get_district_by_id(
-        db, redis, id
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await location_service.get_district_by_id(db, redis, id)

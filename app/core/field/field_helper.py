@@ -2,20 +2,15 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app import crud
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
-from app.schema import (
-    field as schema_field,
-    page as schema_page,
-)
+from app.schema.field import FieldItemResponse
 from app.model import Field
-from app.core.helper_base import HelperBase
+from app.common.exception import CustomException
+from fastapi import status
 
 
-class FieldHelper(HelperBase):
+class FieldHelper:
     def get_info(self, field: Field):
-        return schema_field.FieldItemResponse(**field.__dict__)
+        return FieldItemResponse(**field.__dict__)
 
     def get_list_info(self, fields: List[Field]):
         return [self.get_info(field) for field in fields]
@@ -27,9 +22,10 @@ class FieldHelper(HelperBase):
     ) -> int:
         field = crud.field.get(db, id)
         if not field:
-            return custom_response_error(
-                status_code=404, status=constant.ERROR, response="Field not found"
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Field not found"
             )
+
         return id
 
     def check_list_valid(
@@ -61,18 +57,32 @@ class FieldHelper(HelperBase):
         current_field_ids = crud.company_field.get_field_ids_by_company_id(
             db, company_id
         )
+
+        print("current field ids")
+        print(current_field_ids)
+
         new_field_ids = list(set(new_field_ids))
+
+        print("new field ids")
+        print(new_field_ids)
+
         remove_field_ids = list(set(current_field_ids) - set(new_field_ids))
         add_field_ids = list(set(new_field_ids) - set(current_field_ids))
+
+        print("remove field ids")
+        print(remove_field_ids)
+
+        print("add field ids")
+        print(add_field_ids)
+        for id in remove_field_ids:
+            print(id)
+
         for field_id in remove_field_ids:
+            print(field_id + " " + company_id)
             crud.company_field.remove_by_company_id_and_field_id(
                 db, company_id, field_id
             )
         self.create_with_company_id(db, company_id, add_field_ids)
 
 
-field_helper = FieldHelper(
-    schema_page.Pagination,
-    schema_field.FieldCreateRequest,
-    schema_field.FieldUpdateRequest,
-)
+field_helper = FieldHelper()

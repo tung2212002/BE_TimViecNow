@@ -9,55 +9,55 @@ from app.schema import (
     admin as schema_admin,
 )
 from app.core.auth.jwt.auth_handler import token_manager
-from app.hepler.exception_handler import get_message_validation_error
 from app.hepler.enum import Role
 from app.core.business.business_helper import business_hepler
+from app.common.exception import CustomException
+from app.model import ManagerBase
+from fastapi import status
+from app.common.response import CustomResponse
 
 
 class AdminService:
     async def get_by_email(self, db: Session, data: dict):
-        try:
-            admin_data = schema_admin.AdminGetByEmailRequest(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
+        admin_data = schema_admin.AdminGetByEmailRequest(**data)
+
         admin = manager_baseCRUD.get_by_email(db, admin_data.email)
         if not admin:
-            return constant.ERROR, 404, "Admin not found"
+            raise CustomException(status_code=404, msg="Admin not found")
 
         admin_response = await business_hepler.get_info(db, admin)
 
-        return constant.SUCCESS, 200, admin_response
+        return CustomResponse(data=admin_response)
 
     async def get_by_id(self, db: Session, id: int):
         admin = manager_baseCRUD.get_by_admin(db, id)
         if not admin:
-            return constant.ERROR, 404, "Admin not found"
+            raise CustomException(status_code=404, msg="Admin not found")
 
         admin_response = await business_hepler.get_info(db, admin)
 
-        return constant.SUCCESS, 200, admin_response
+        return CustomResponse(data=admin_response)
 
     async def get(self, db: Session, data: dict):
-        try:
-            page = schema_page.Pagination(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
+        page = schema_page.Pagination(**data)
+
         admins = manager_baseCRUD.get_list_admin(db, **page.model_dump())
         if not admins:
-            return constant.ERROR, 404, "Admin not found"
+            raise CustomException(status_code=404, msg="Admin not found")
+
         admin = await [business_hepler.get_info(db, admin) for admin in admins]
-        return constant.SUCCESS, 200, admin
+
+        return CustomResponse(data=admin)
 
     async def create(self, db: Session, data: dict):
-        try:
-            data["role"] = Role.ADMIN
-            manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
-            admin_data = schema_admin.AdminCreateRequest(**data)
-        except Exception as e:
-            return constant.ERROR, 400, get_message_validation_error(e)
+        data["role"] = Role.ADMIN
+        manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
+        admin_data = schema_admin.AdminCreateRequest(**data)
+
         manager_base = manager_baseCRUD.get_by_email(db, manager_base_data.email)
         if manager_base:
-            return constant.ERROR, 409, "Email already registered"
+            raise CustomException(status_code=409, msg="Email already registered")
+
         manager_base = manager_baseCRUD.create(
             db,
             obj_in=manager_base_data,
@@ -75,30 +75,23 @@ class AdminService:
         access_token = token_manager.signJWT(admin_response)
         refresh_token = token_manager.signJWTRefreshToken(admin_response)
 
-        response = (
-            constant.SUCCESS,
-            201,
-            {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "user": {
-                    **admin_response.__dict__,
-                },
+        response = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {
+                **admin_response.__dict__,
             },
-        )
-        return response
+        }
+        return CustomResponse(status_code=201, data=response)
 
-    async def update(self, db: Session, data: dict, current_user):
+    async def update(self, db: Session, data: dict, current_user: ManagerBase):
         if current_user is None:
             return constant.ERROR, 401, "Unauthorized"
         if data["id"] != current_user.id:
             return constant.ERROR, 401, "Unauthorized"
-        try:
-            admin = schema_admin.AdminUpdateRequest(**data)
-            manager_base = schema_manager_base.ManagerBaseUpdateRequest(**data)
-        except Exception as e:
-            error = [f'{error["loc"][0]}: {error["msg"]}' for error in e.errors()]
-            return constant.ERROR, 400, error
+
+        admin = schema_admin.AdminUpdateRequest(**data)
+        manager_base = schema_manager_base.ManagerBaseUpdateRequest(**data)
 
         manager_base = manager_baseCRUD.update(db, current_user, manager_base)
         admin = adminCRUD.update(
@@ -108,18 +101,24 @@ class AdminService:
         )
         admin_response = business_hepler.get_info(db, manager_base)
 
-        return constant.SUCCESS, 200, admin_response
+        return CustomResponse(data=admin_response)
 
-    async def delete(self, db: Session, id: int, current_user):
-        if current_user is None:
-            return constant.ERROR, 401, "Unauthorized"
-        if id != current_user.id and current_user.role != Role.SUPER_USER:
-            return constant.ERROR, 401, "Unauthorized"
+    async def delete(self, db: Session, id: int, current_user: ManagerBase):
+        if current_user is None or (
+            id != current_user.id and current_user.role != Role.SUPER_USER
+        ):
+            raise CustomException(
+                status_code=status.HTTP_401_UNAUTHORIZED, msg="Unauthorized"
+            )
+
         if id is None:
-            return constant.ERROR, 400, "Id is required"
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST, msg="Id is required"
+            )
+
         manager_baseCRUD.remove(db, id)
-        response = constant.SUCCESS, 200, "Admin has been deleted successfully"
-        return response
+
+        return CustomResponse(msg="Admin has been deleted successfully")
 
 
 admin_service = AdminService()

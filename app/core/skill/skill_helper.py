@@ -1,23 +1,18 @@
 from sqlalchemy.orm import Session
-from redis.asyncio import Redis
-from typing import List, Optional
+from typing import List
 
 from app import crud
 from app.schema import (
     skill as schema_skill,
     job_skill as schema_job_skill,
-    page as schema_page,
 )
-from app.core import constant
-from app.hepler.exception_handler import get_message_validation_error
-from app.hepler.response_custom import custom_response_error
-from app.core.helper_base import HelperBase
 from app.model import Skill
 from app.hepler.enum import JobSkillType
+from app.common.exception import CustomException
+from fastapi import status
 
 
-class SkillHelper(HelperBase):
-
+class SkillHelper:
     def get_info(self, skill: Skill) -> dict:
         return schema_skill.SkillItemResponse(**skill.__dict__)
 
@@ -34,10 +29,8 @@ class SkillHelper(HelperBase):
     def check_valid(self, db: Session, id: int) -> int:
         skill = crud.skill.get(db, id)
         if not skill:
-            return custom_response_error(
-                status_code=404,
-                status=constant.ERROR,
-                response=f"Skill with id {id} not found",
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Skill not found"
             )
 
         return id
@@ -84,8 +77,4 @@ class SkillHelper(HelperBase):
         return new_skill_ids
 
 
-skill_helper = SkillHelper(
-    schema_page.Pagination,
-    schema_skill.SkillCreateRequest,
-    schema_skill.SkillUpdateRequest,
-)
+skill_helper = SkillHelper()

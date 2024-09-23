@@ -1,33 +1,42 @@
-from fastapi import HTTPException
 from typing import List
 
 from app.hepler.enum import VerifyType
 from app.model import Business
+from app.common.exception import CustomException
+from fastapi import status
+from app.hepler.enum import Role
+from app.model import ManagerBase
 
 
 class BusinessAuthHelper:
     def verified_email(self, user: Business) -> bool:
-        try:
-            if not user.is_verified_email:
-                raise HTTPException(status_code=401, detail="Email not verified")
-        except Exception as e:
-            raise HTTPException(status_code=401, detail="Email not verified")
+        if not user.is_verified_email:
+            raise CustomException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                msg="Email not verified",
+            )
 
     def verified_phone(self, user: Business) -> bool:
         return True
         if not user.is_verified_phone:
-            raise HTTPException(status_code=401, detail="Phone not verified")
+            raise CustomException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                msg="Phone not verified",
+            )
 
     def verified_company(self, user: Business) -> bool:
-        try:
-            if not user.is_verified_company:
-                raise HTTPException(status_code=401, detail="Company not verified")
-        except Exception as e:
-            raise HTTPException(status_code=401, detail="Company not verified")
+        if not user.is_verified_company:
+            raise CustomException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                msg="Company not verified",
+            )
 
     def verified_identity(self, user: Business) -> bool:
         if not user.is_verified_identity:
-            raise HTTPException(status_code=401, detail="Indentity not verified")
+            raise CustomException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                msg="Indentity not verified",
+            )
 
     def verified(self, user, verify_types: List[VerifyType]) -> None:
         for verify_type in verify_types:
@@ -59,6 +68,28 @@ class BusinessAuthHelper:
                     VerifyType.IDENTIFY,
                 ],
             )
+
+    def check_permission_business(
+        self, current_user: ManagerBase, roles: List[Role], business_id: int = None
+    ) -> Role:
+        if business_id:
+            if current_user.role not in [Role.SUPER_USER, Role.ADMIN]:
+                if current_user.id != business_id:
+                    raise CustomException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        msg="Permission denied",
+                    )
+                else:
+                    return Role.BUSINESS
+        else:
+            if current_user.role not in roles:
+                raise CustomException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    msg="Permission denied",
+                )
+            elif current_user.role == Role.BUSINESS:
+                return Role.BUSINESS
+        return Role.ADMIN
 
 
 business_auth_helper = BusinessAuthHelper()
