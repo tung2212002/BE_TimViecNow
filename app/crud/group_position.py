@@ -11,7 +11,8 @@ from app.schema.group_position import (
 class CRUDGroupPosition(
     CRUDBase[GroupPosition, GroupPositionCreateRequest, GroupPositionUpdateRequest]
 ):
-    pass
+    def get_by_name(self, db: Session, name: str):
+        return db.query(self.model).filter(self.model.name == name).first()
 
 
 group_position = CRUDGroupPosition(GroupPosition)

@@ -1,18 +1,20 @@
 from fastapi import APIRouter, Depends, Query, Path, Body
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
+from app.storage.redis import get_redis
 from app.db.base import get_db
-from app.hepler.response_custom import custom_response, custom_response_error
-from app.core import constant
-from app.core.position import service_position
-from app.core.auth.service_business_auth import get_current_admin
+from app.core.job_position.position_service import job_position_service
+from app.core.auth.user_manager_service import user_manager_service
 from app.hepler.enum import OrderType
 
 router = APIRouter()
 
 
 @router.get("/group_position", summary="Get list of group positions.")
-def get_list_group_position(
+async def get_list_group_position(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     skip: int = Query(
         None, description="The number of group positions to skip.", example=0
     ),
@@ -22,7 +24,6 @@ def get_list_group_position(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of group positions.
@@ -41,18 +42,13 @@ def get_list_group_position(
     """
     args = locals()
 
-    status, status_code, response = service_position.get_group(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_position_service.get_group(db, redis, args)
 
 
 @router.get("/group_position/{id}", summary="Get group position by id.")
-def get_group_position_by_id(
-    id: int = Path(..., description="The group position id.", example=1),
+async def get_group_position_by_id(
     db: Session = Depends(get_db),
+    id: int = Path(..., description="The group position id.", example=1),
 ):
     """
     Get group position by id.
@@ -67,23 +63,18 @@ def get_group_position_by_id(
     - status_code (404): The group position is not found.
 
     """
-    status, status_code, response = service_position.get_group_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_position_service.get_group_by_id(db, id)
 
 
 @router.post("/group_position", summary="Create a new group position.")
-def create_group_position(
+async def create_group_position(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_admin),
     data: dict = Body(
         ...,
         description="The group position data.",
         example={"name": "Group Position 1", "slug": "group-position-1"},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Create a new group position by admin.
@@ -100,24 +91,19 @@ def create_group_position(
     - status_code (409): The group position is already created.
 
     """
-    status, status_code, response = service_position.create_group(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_position_service.create_group(db, data)
 
 
 @router.put("/group_position/{id}", summary="Update group position by id.")
-def update_group_position_by_id(
+async def update_group_position_by_id(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The group position id.", example=1),
     data: dict = Body(
         ...,
         description="The group position data.",
         example={"name": "Group Position 1", "slug": "group-position-1"},
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Update group position by id.
@@ -135,19 +121,14 @@ def update_group_position_by_id(
     - status_code (404): The group position is not found.
 
     """
-    status, status_code, response = service_position.update_group(db, id, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_position_service.update_group(db, id, data)
 
 
 @router.delete("/group_position/{id}", summary="Delete group position by id.")
-def delete_group_position_by_id(
-    id: int = Path(..., description="The group position id.", example=1),
+async def delete_group_position_by_id(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(user_manager_service.get_current_admin),
+    id: int = Path(..., description="The group position id.", example=1),
 ):
     """
     Delete group position by id.
@@ -162,9 +143,4 @@ def delete_group_position_by_id(
     - status_code (404): The group position is not found.
 
     """
-    status, status_code, response = service_position.delete_group(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_position_service.delete_group(db, id)

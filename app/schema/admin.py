@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.hepler.enum import Role, Gender, TypeAccount
 from app.core import constant
+from app.hepler.schema_validator import SchemaValidator
 
 
 class AdminBase(BaseModel):
@@ -15,19 +16,49 @@ class AdminBase(BaseModel):
 
     @validator("gender")
     def validate_gender(cls, v):
-        if v is not None:
-            if v not in Gender.__members__.values():
-                raise ValueError("Invalid gender")
-            return v
-        return v
+        return SchemaValidator.validate_gender(v)
 
     @validator("phone_number")
     def validate_phone_number(cls, v):
-        if not re.match(constant.REGEX_PHONE_NUMBER, v):
-            raise ValueError("Invalid phone number")
-        return v
+        return SchemaValidator.validate_phone_number(v)
 
 
+# request
+class AdminCreateRequest(AdminBase):
+    pass
+
+
+class AdminGetByEmailRequest(BaseModel):
+    email: str
+
+    @validator("email")
+    def validate_email(cls, v):
+        return SchemaValidator.validate_email(v)
+
+
+class AdminUpdateRequest(BaseModel):
+    phone_number: Optional[str] = None
+    gender: Optional[Gender] = None
+
+    @validator("phone_number")
+    def validate_phone_number(cls, v):
+        return SchemaValidator.validate_phone_number(v)
+
+    @validator("gender")
+    def validate_gender(cls, v):
+        return SchemaValidator.validate_gender(v)
+
+
+# schema
+class AdminCreate(AdminBase):
+    pass
+
+
+class AdminUpdate(AdminUpdateRequest):
+    pass
+
+
+# response
 class AdminItemResponse(AdminBase):
     id: int
     is_active: bool
@@ -41,47 +72,4 @@ class AdminItemResponse(AdminBase):
 
     @validator("avatar")
     def validate_avatar(cls, v):
-        if v is not None:
-            if not v.startswith("https://"):
-                v = constant.BUCKET_URL + v
-        return v
-
-
-class AdminCreateRequest(AdminBase):
-    pass
-
-
-class AdminCreate(AdminBase):
-    pass
-
-
-class AdminGetByEmailRequest(BaseModel):
-    email: str
-
-    @validator("email")
-    def validate_email(cls, v):
-        if not re.match(constant.REGEX_EMAIL, v):
-            raise ValueError("Invalid email")
-        return v
-
-
-class AdminUpdateRequest(BaseModel):
-    phone_number: Optional[str] = None
-    gender: Optional[Gender] = None
-
-    @validator("phone_number")
-    def validate_phone_number(cls, v):
-        if v is not None:
-            if not re.match(constant.REGEX_PHONE_NUMBER, v):
-                raise ValueError("Invalid phone number")
-
-    @validator("gender")
-    def validate_gender(cls, v):
-        if v is not None:
-            if v not in Gender.__members__.values():
-                raise ValueError("Invalid gender")
-            return v
-
-
-class AdminUpdate(AdminUpdateRequest):
-    pass
+        return SchemaValidator.validate_avatar_url(v)

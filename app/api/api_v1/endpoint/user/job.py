@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Path
-
+from redis.asyncio import Redis
+from datetime import date
 from sqlalchemy.orm import Session
-from redis import Redis
 
 from app.db.base import get_db
-from app.storage.redis import redis_dependency
-from app.core import constant
-from app.core.job import service_job
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.storage.redis import get_redis
+from app.core.job.job_service import job_service
 from app.hepler.enum import OrderType, SortJobBy, JobType, SalaryType
 
 router = APIRouter()
@@ -15,6 +13,8 @@ router = APIRouter()
 
 @router.get("/search", summary="Search list of job.")
 async def search_job(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortJobBy = Query(
@@ -39,9 +39,8 @@ async def search_job(
     ),
     job_position_id: int = Query(None, description="The position id.", example=1),
     keyword: str = Query(None, description="The keyword.", example="developer"),
+    updated_at: date = Query(None, description="The updated at.", example=date.today()),
     suggest: bool = Query(False, description="The suggest job.", example=False),
-    redis: Redis = Depends(redis_dependency),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of job by user.
@@ -65,6 +64,7 @@ async def search_job(
     - max_salary (int): The max salary.
     - salary_type (str): The type salary.
     - keyword (str): The keyword.
+    - updated_at (date): The updated at.
 
     Returns:
     - status_code (200): The list of job has been found successfully.
@@ -74,18 +74,13 @@ async def search_job(
     """
     args = locals()
 
-    status, status_code, response = await service_job.search_by_user(
-        db, redis, {**args}
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.search_by_user(db, redis, {**args})
 
 
 @router.get("", summary="Get list of job.")
-def get_job(
+async def get_job(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortJobBy = Query(
@@ -96,7 +91,6 @@ def get_job(
     ),
     company_id: int = Query(None, description="The company id.", example=1),
     province_id: int = Query(None, description="The province id.", example=1),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of job by user.
@@ -119,18 +113,13 @@ def get_job(
     """
     args = locals()
 
-    status, status_code, response = service_job.get_by_user(db, {**args})
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.get_by_user(db, redis, {**args})
 
 
 @router.get("/count_job_by_category", summary="Count job by category.")
 async def count_job_by_category(
-    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
     """
     Count job by category.
@@ -143,18 +132,13 @@ async def count_job_by_category(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = await service_job.count_job_by_category(redis, db)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.count_job_by_category(db, redis)
 
 
 @router.get("/count_job_by_salary", summary="Count job by salary.")
 async def count_job_by_salary(
-    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
     """
     Count job by salary.
@@ -167,18 +151,13 @@ async def count_job_by_salary(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = await service_job.count_job_by_salary(redis, db)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.count_job_by_salary(db, redis)
 
 
 @router.get("/cruitment_demand", summary="Get information of recruitment demand.")
 async def get_cruitment_demand(
-    redis: Redis = Depends(redis_dependency),
     db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
     """
     Get information of recruitment demand.
@@ -191,22 +170,18 @@ async def get_cruitment_demand(
     - status_code (404): The recruitment demand is not found.
 
     """
-    status, status_code, response = await service_job.get_cruitment_demand(redis, db)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.get_cruitment_demand(db, redis)
 
 
 @router.get("/{job_id}", summary="Get job by id.")
-def get_job_by_id(
+async def get_job_by_id(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     job_id: int = Path(
         ...,
         description="The job id.",
         example=1,
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get job by id.
@@ -222,9 +197,4 @@ def get_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.get_by_id_for_user(db, job_id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.get_by_id_for_user(db, redis, job_id)

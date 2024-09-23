@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 
 from app.hepler.enum import Role, TypeAccount, TokenType
-from app.core.constant import REGEX_EMAIL
+from app.hepler.schema_validator import SchemaValidator
 
 
 class TokenPayload(BaseModel):
@@ -20,8 +20,6 @@ class TokenPayload(BaseModel):
 
     @validator("email")
     def validate_email(cls, v):
-        if not re.fullmatch(REGEX_EMAIL, v):
-            raise ValueError("Invalid email")
-        return v
+        return SchemaValidator.validate_email(v)
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")

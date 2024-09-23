@@ -8,11 +8,13 @@ class JobCategorydBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
-class JobCategoryCreate(JobCategorydBase):
+# request
+class JobCategoryCreateRequest(JobCategorydBase):
     pass
 
 
-class JobCategoryCreateRequest(JobCategorydBase):
+# schema
+class JobCategoryCreate(JobCategorydBase):
     pass
 
 

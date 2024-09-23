@@ -1,24 +1,17 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    Query,
-    Path,
-)
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Query, Path, Depends
 from typing import List
-
+from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.core import constant
-from app.core.company import service_company
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.core.company.company_service import company_service
 from app.hepler.enum import OrderType, SortBy
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of companies.")
-def get_companies(
+async def get_companies(
+    db: Session = Depends(get_db),
     skip: int = Query(None, description="The number of companies to skip.", example=0),
     limit: int = Query(
         None, description="The number of companies to return.", example=10
@@ -32,7 +25,6 @@ def get_companies(
     fields: List[int] = Query(
         None, description="The fields of the company.", example=list([1])
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of companies.
@@ -53,16 +45,12 @@ def get_companies(
     """
     args = locals()
 
-    status, status_code, response = service_company.get(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.get(db, args)
 
 
 @router.get("/search", summary="Search list of company.")
-def get_company(
+async def get_company(
+    db: Session = Depends(get_db),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
     sort_by: SortBy = Query(
@@ -75,7 +63,6 @@ def get_company(
     fields: list[int] = Query(
         None, description="The list of field id.", example=list([int(2)])
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of company.
@@ -98,18 +85,14 @@ def get_company(
 
     """
     args = locals()
-    status_message, status_code, response = service_company.search(db, args)
 
-    if status_message == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status_message == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.search(db, args)
 
 
 @router.get("/{id}", summary="Get a company by id.")
-def get_company_by_id(
-    id: int = Path(..., description="The id of the company.", example=1),
+async def get_company_by_id(
     db: Session = Depends(get_db),
+    id: int = Path(..., description="The id of the company.", example=1),
 ):
     """
     Get a company by id.
@@ -125,9 +108,4 @@ def get_company_by_id(
     - status_code (400): The request is invalid.
 
     """
-    status, status_code, response = service_company.get_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await company_service.get_by_id(db, id)

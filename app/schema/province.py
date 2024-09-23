@@ -13,11 +13,22 @@ class ProvinceBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
-class ProvinceCreate(ProvinceBase):
+# request
+class ProvinceCreateRequest(ProvinceBase):
     pass
 
 
-class ProvinceCreateRequest(ProvinceBase):
+class ProvinceUpdateRequest(ProvinceBase):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    name_with_type: Optional[str] = None
+    slug: Optional[str] = None
+    type: Optional[str] = None
+    country: Optional[str] = None
+
+
+# schema
+class ProvinceCreate(ProvinceBase):
     pass
 
 
@@ -30,26 +41,6 @@ class ProvinceUpdate(ProvinceBase):
     country: Optional[str] = None
 
 
-class ProvinceUpdateRequest(ProvinceBase):
-    name: Optional[str] = None
-    code: Optional[str] = None
-    name_with_type: Optional[str] = None
-    slug: Optional[str] = None
-    type: Optional[str] = None
-    country: Optional[str] = None
-
-
+# response
 class ProvinceItemResponse(ProvinceBase):
-    id: int
-
-
-class ProvinceListResponse(ProvinceBase):
-    pass
-
-
-class ProvinceGetRequest(BaseModel):
-    id: int
-
-
-class ProvinceDeleteRequest(BaseModel):
     id: int

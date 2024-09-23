@@ -1,24 +1,48 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+from pydantic import Field
+import logging
 
 
 class Settings(BaseSettings):
+
+    model_config = SettingsConfigDict(
+        extra="allow",
+        env_file=".env",
+        env_file_encoding="UTF-8",
+        env_nested_delimiter="__",
+        env_prefix="",
+    )
+
+    # Backend information
+    DEBUG: bool = Field(default=False)
+    ENABLE_OPENAPI: bool = Field(default=False)
+    HOST: str = Field(default="localhost")
+    PORT: int = Field(default=8000)
+    WORKERS_COUNT: int = Field(default=1)
+    # CORS information
+    CORS_ALLOW_CREDENTIALS: bool = Field(default=True)
+    CORS_ALLOW_METHODS: List[str] = Field(default=["*"])
+    CORS_ALLOW_HEADERS: List[str] = Field(default=["*"])
+    CORS_ALLOW_ORIGIN: List[str] = Field(default=["*"])
     # Project information
-    PROJECT_NAME: str
-    SECRET_KEY: str
-    API_PREFIX: str = ""
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    PROJECT_NAME: str = Field(default="FastAPI Project")
+    API_PREFIX: str = Field(default="")
     # Database information
-    MYSQL_USER: str
-    MYSQL_PASSWORD: str
-    MYSQL_SERVER: str
-    MYSQL_PORT: str
-    MYSQL_DATABASE: str
+    MYSQL_USER: str = Field(default="root")
+    MYSQL_PASSWORD: str = Field(default="")
+    MYSQL_HOST: str = Field(default="localhost")
+    MYSQL_PORT: str = Field(default="3306")
+    MYSQL_DATABASE: str = Field(default="fastapi")
     # Token information
-    ACCESS_TOKEN_EXPIRE: int
-    REFRESH_TOKEN_EXPIRE: int
-    SECURITY_ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE: int = Field(default=36000)
+    REFRESH_TOKEN_EXPIRE: int = Field(default=86400)
+    SECURITY_ALGORITHM: str = Field(default="HS256")
+    TOKENS_SECRET_KEY: str = Field(default="secret")
+    # Logging information
+    LOG_LEVEL: int = Field(logging.WARNING)
+    LOG_FORMAT_EXTENDED: bool = Field(default=False)
     # Superuser information
     FIRST_SUPERUSER: str
     FIRST_SUPERUSER_EMAIL: str
@@ -49,14 +73,13 @@ class Settings(BaseSettings):
     AWS_DEFAULT_REGION: str
     AWS_BUCKET_NAME: str
     # Redis information
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_PASSWORD: str
-    REDIS_DB: int
-    REDIS_EXPIRE: int
-
-    class Config:
-        env_file = ".env"
+    REDIS_HOST: str = Field(default="localhost")
+    REDIS_PORT: int = Field(default=6379)
+    REDIS_PASSWORD: str = Field(default="")
+    REDIS_DB: int = Field(default=0)
+    REDIS_EXPIRE: int = Field(default=3600)
+    # Logging information
+    LOG_LEVEL: int = Field(default=10)
 
 
 settings = Settings()

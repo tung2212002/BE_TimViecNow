@@ -24,5 +24,13 @@ class CRUDCompanyField(CRUDBase[CompanyField, CompanyFieldCreate, CompanyFieldUp
         ).delete()
         db.commit()
 
+    def get_field_ids_by_company_id(self, db: Session, company_id: int):
+        return (
+            field_id
+            for (field_id,) in db.query(self.model.field_id)
+            .filter(self.model.company_id == company_id)
+            .all()
+        )
+
 
 company_field = CRUDCompanyField(CompanyField)

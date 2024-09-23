@@ -15,7 +15,7 @@ class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
         *,
         province_id: int,
         skip: int = 0,
-        limit: int = 100,
+        limit: int = 1000,
         sort_by: str = "id",
         order_by: str = "asc",
     ):

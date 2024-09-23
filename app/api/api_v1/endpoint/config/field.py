@@ -1,24 +1,25 @@
 from fastapi import APIRouter, Depends, Query, Path, Body
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app.db.base import get_db
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.storage.redis import get_redis
+from app.core.auth.user_manager_service import user_manager_service
 from app.hepler.enum import OrderType
-from app.core import constant
-from app.core.field import service_field
-from app.core.auth.service_business_auth import get_current_superuser
+from app.core.field.field_service import field_service
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of categories.")
-def get_list_field(
+async def get_list_field(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of field to skip.", example=0),
     limit: int = Query(None, description="The number of field to return.", example=100),
     order_by: str = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of categories.
@@ -37,18 +38,13 @@ def get_list_field(
     """
     args = locals()
 
-    status, status_code, response = service_field.get_field(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await field_service.get_field(db, redis, args)
 
 
 @router.get("/{id}", summary="Get field by id.")
-def get_field_by_id(
-    id: int = Path(..., description="The field id."),
+async def get_field_by_id(
     db: Session = Depends(get_db),
+    id: int = Path(..., description="The field id."),
 ):
     """
     Get field by id.
@@ -63,16 +59,13 @@ def get_field_by_id(
     - status_code (404): The field is not found.
 
     """
-    status, status_code, response = service_field.get_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await field_service.get_by_id(db, id)
 
 
 @router.post("", summary="Create a field.")
-def create_field(
+async def create_field(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
     data: dict = Body(
         ...,
         example={
@@ -81,8 +74,6 @@ def create_field(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Create a field.
@@ -102,15 +93,13 @@ def create_field(
     """
     data = locals()
 
-    status, status_code, response = service_field.create(db, data)
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await field_service.create(db, data)
 
 
 @router.put("/{id}", summary="Update a field.")
-def update_field(
+async def update_field(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
     id: int = Path(..., description="The field id."),
     data: dict = Body(
         ...,
@@ -120,8 +109,6 @@ def update_field(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Update a field.
@@ -142,18 +129,14 @@ def update_field(
     """
     data = locals()
 
-    status, status_code, response = service_field.update(db, data)
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await field_service.update(db, data)
 
 
 @router.delete("/{id}", summary="Delete a field.")
-def delete_field(
-    id: int = Path(..., description="The field id."),
+async def delete_field(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
+    current_user=Depends(user_manager_service.get_current_superuser),
+    id: int = Path(..., description="The field id."),
 ):
     """
     Delete a field.
@@ -168,8 +151,4 @@ def delete_field(
     - status_code (404): The field is not found.
 
     """
-    status, status_code, response = service_field.delete(db, id)
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await field_service.delete(db, id)

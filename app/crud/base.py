@@ -18,6 +18,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get(self, db: Session, id: int) -> Optional[ModelType]:
         return db.query(self.model).filter(self.model.id == id).first()
 
+    def get_multi_by_ids(self, db: Session, ids: List[int]) -> List[ModelType]:
+        return db.query(self.model).filter(self.model.id.in_(ids)).all()
+
     def get_multi(
         self,
         db: Session,
@@ -59,15 +62,16 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=True)
-        for field in obj_data:
-            if field in update_data and update_data[field] is not None:
-                setattr(db_obj, field, update_data[field])
+        if obj_data:
+            for field in obj_data:
+                if field in update_data and update_data[field] is not None:
+                    setattr(db_obj, field, update_data[field])
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
         return db_obj
 
-    def remove(self, db: Session, *, id: int) -> ModelType:
+    def remove(self, db: Session, id: int) -> ModelType:
         obj = db.query(self.model).filter(self.model.id == id).first()
         db.delete(obj)
         db.commit()

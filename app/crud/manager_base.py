@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.core.security import get_password_hash, verify_password
+from app.core.security import PasswordManager
 from .base import CRUDBase
 from app.model.manager_base import ManagerBase
 from app.schema import manager_base as schema_manager_base
@@ -124,7 +124,7 @@ class CRUDManagerBase(
             **obj_in.model_dump(
                 exclude_unset=True, exclude={"password", "confirm_password"}
             ),
-            hashed_password=get_password_hash(obj_in.password),
+            hashed_password=PasswordManager.get_password_hash(obj_in.password),
         )
         db.add(db_obj)
         db.commit()
@@ -141,11 +141,17 @@ class CRUDManagerBase(
 
         if isinstance(obj_in, dict):
             if obj_in.get("password"):
-                obj_in["hashed_password"] = get_password_hash(obj_in["password"])
+                obj_in["hashed_password"] = PasswordManager.get_password_hash(
+                    obj_in["password"]
+                )
                 obj_in.pop("password")
         elif hasattr(obj_in, "password") and obj_in.password:
             obj_in = obj_in.copy(
-                update={"hashed_password": get_password_hash(obj_in.password)}
+                update={
+                    "hashed_password": PasswordManager.get_password_hash(
+                        obj_in.password
+                    )
+                }
             )
             obj_in.pop("password")
             obj_in.pop("confirm_password")
@@ -155,7 +161,7 @@ class CRUDManagerBase(
         user = self.get_by_email(db, email)
         if not user:
             return None
-        if not verify_password(password, user.hashed_password):
+        if not PasswordManager.verify_password(password, user.hashed_password):
             return None
         return user
 

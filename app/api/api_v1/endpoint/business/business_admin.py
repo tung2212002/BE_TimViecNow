@@ -8,23 +8,19 @@ from fastapi import (
     Path,
 )
 from sqlalchemy.orm import Session
-from typing import Annotated
 
 from app.db.base import get_db
-from app.core.auth.service_business_auth import (
-    get_current_superuser,
-    get_current_admin,
-)
-from app.core import constant
-from app.core.admin import service_admin
+from app.core.auth.user_manager_service import user_manager_service
+from app.core.admin.admin_service import admin_service
 from app.hepler.enum import OrderType, SortBy, Gender
-from app.hepler.response_custom import custom_response_error, custom_response
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of admin by superuser.")
-def get(
+async def get(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
     sort_by: SortBy = Query(
@@ -33,8 +29,6 @@ def get(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Get list of admin by superuser.
@@ -56,19 +50,14 @@ def get(
     """
     args = locals()
 
-    status, status_code, response = service_admin.get(db, args)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await admin_service.get(db, args)
 
 
 @router.get("/{id}", summary="Get a admin by id.")
-def get_by_id(
-    id: int = Path(..., description="The id of the user.", example=1),
+async def get_by_id(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
+    current_user=Depends(user_manager_service.get_current_superuser),
+    id: int = Path(..., description="The id of the user.", example=1),
 ):
     """
     Get a admin by id.
@@ -84,64 +73,44 @@ def get_by_id(
     - status_code (401): The user is not authorized.
 
     """
-    status, status_code, response = service_admin.get_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await admin_service.get_by_id(db, id)
 
 
 @router.post("", summary="Register a new admin by superuser.")
-def create_admin(
-    full_name: Annotated[
-        str,
-        Form(
-            ...,
-            description="The full name of the admin.",
-            json_schema_extra={"example": "Tung Ong"},
-        ),
-    ],
-    email: Annotated[
-        str,
-        Form(
-            ...,
-            description="The email of the admin.",
-            json_schema_extra={"example": "ongtung@gmail.com"},
-        ),
-    ],
-    password: Annotated[
-        str,
-        Form(
-            ...,
-            description="The password of the admin.",
-            json_schema_extra={"example": "@Password1234"},
-        ),
-    ],
-    confirm_password: Annotated[
-        str,
-        Form(
-            ...,
-            description="The confirm password of the admin.",
-            json_schema_extra={"example": "@Password1234"},
-        ),
-    ],
-    phone_number: Annotated[
-        str,
-        Form(
-            ...,
-            description="The phone number of the admin.",
-            json_schema_extra={"example": "0323456789"},
-        ),
-    ],
+async def create_admin(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
+    full_name: str = Form(
+        ...,
+        description="The full name of the admin.",
+        json_schema_extra={"example": "Tung Ong"},
+    ),
+    email: str = Form(
+        ...,
+        description="The email of the admin.",
+        json_schema_extra={"example": "ongtung@gmail.com"},
+    ),
+    password: str = Form(
+        ...,
+        description="The password of the admin.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    confirm_password: str = Form(
+        ...,
+        description="The confirm password of the admin.",
+        json_schema_extra={"example": "@Password1234"},
+    ),
+    phone_number: str = Form(
+        ...,
+        description="The phone number of the admin.",
+        json_schema_extra={"example": "0323456789"},
+    ),
     gender: str = Form(
         None,
         description="Gender of the admin.",
         json_schema_extra={"example": Gender.OTHER},
     ),
     avatar: UploadFile = File(None, description="The profile avatar of the admin."),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Register a new user by admin.
@@ -166,16 +135,13 @@ def create_admin(
     """
     data = locals()
 
-    status, status_code, response = service_admin.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await admin_service.create(db, data)
 
 
 @router.put("/{id}", summary="Update a admin.")
-def update_admin(
+async def update_admin(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_admin),
     id: int = Path(..., description="The id of the user.", example=1),
     full_name: str = Form(
         None,
@@ -198,8 +164,6 @@ def update_admin(
         json_schema_extra={"example": "@Password1234"},
     ),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
 ):
     """
     Update a admin.
@@ -224,19 +188,14 @@ def update_admin(
 
     data = locals()
 
-    status, status_code, response = service_admin.update(db, data, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await admin_service.update(db, data, current_user)
 
 
 @router.delete("/{id}", summary="Delete a admin.")
-def delete_admin(
-    id: int = Path(..., description="The id of the user.", example=1),
+async def delete_admin(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(user_manager_service.get_current_admin),
+    id: int = Path(..., description="The id of the user.", example=1),
 ):
     """
     Delete a admin.
@@ -253,9 +212,4 @@ def delete_admin(
 
     """
 
-    status, status_code, response = service_admin.delete(db, id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await admin_service.delete(db, id, current_user)

@@ -7,19 +7,19 @@ from fastapi import (
     Body,
     Request,
 )
-
 from sqlalchemy.orm import Session
+
 from app.db.base import get_db
-from app.core.auth import service_user_auth
-from app.core import constant
-from app.core.user import service_user
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.core.auth.user_manager_service import user_manager_service
+from app.core.auth.user_auth_service import user_auth_service
+from app.core.user.user_service import user_service
 
 router = APIRouter()
 
 
 @router.post("/register", summary="Register a new user.")
-def register_auth(
+async def register_auth(
+    db: Session = Depends(get_db),
     full_name: str = Form(
         ...,
         description="The full name of the user.",
@@ -41,7 +41,6 @@ def register_auth(
         json_schema_extra={"example": "@Password1234"},
     ),
     avatar: UploadFile = File(None, description="The profile avatar of the user."),
-    db: Session = Depends(get_db),
 ):
     """
     Register a new user.
@@ -63,22 +62,17 @@ def register_auth(
     """
     data = locals()
 
-    status, status_code, response = service_user.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_service.create(db, data)
 
 
 @router.post("/login", summary="Login user.")
-def login_auth(
+async def login_auth(
+    db: Session = Depends(get_db),
     data: dict = Body(
         ...,
         description="The data to login a user.",
         example={"email": "ongtung@gmail.com", "password": "@Password1234"},
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Login user.
@@ -96,18 +90,13 @@ def login_auth(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_user_auth.authenticate(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.authenticate(db, data)
 
 
 @router.post("/login_google", summary="Login user by google.")
 async def login_google(
-    data: dict = Body(..., example={"access_token": "access_token"}),
     db: Session = Depends(get_db),
+    data: dict = Body(..., example={"access_token": "access_token"}),
 ):
     """
     Login user by google.
@@ -125,19 +114,14 @@ async def login_google(
 
     """
 
-    status, status_code, response = service_user_auth.authenticate_google(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.authenticate_google(db, data)
 
 
 @router.post("/refresh_token", summary="Refresh token.")
-def refresh_auth(
+async def refresh_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_user_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_user),
 ):
     """
     Refresh token.
@@ -150,19 +134,14 @@ def refresh_auth(
     - status_code (404): The user is not found.
 
     """
-    status, status_code, response = service_user_auth.refresh_token(db, request)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.refresh_token(db, request)
 
 
 @router.post("/logout", summary="Logout user.")
-def logout_auth(
+async def logout_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_user_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_user),
 ):
     """
     Logout user.
@@ -176,19 +155,14 @@ def logout_auth(
 
     """
 
-    status, status_code, response = service_user_auth.logout(db, request)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.logout(db, request)
 
 
 @router.post("/verify_token", summary="Verify token.")
-def verify_token_auth(
+async def verify_token_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_user_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_user),
 ):
     """
     Verify token.
@@ -202,16 +176,13 @@ def verify_token_auth(
 
     """
     token = request.headers.get("Authorization").split(" ")[1]
-    status, status_code, response = service_user_auth.check_verify_token(db, token)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.check_verify_token(db, token)
 
 
 @router.post("/change_password", summary="Change password.")
-def change_password(
+async def change_password(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_user),
     data: dict = Body(
         ...,
         example={
@@ -220,8 +191,6 @@ def change_password(
             "confirm_password": "@Password12345",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(service_user_auth.get_current_user),
 ):
     """
     Change password.
@@ -241,11 +210,4 @@ def change_password(
     - status_code (409): The new password is the same as the old password.
 
     """
-    status, status_code, response = service_user_auth.change_password(
-        db, data, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await user_auth_service.change_password(db, data, current_user)

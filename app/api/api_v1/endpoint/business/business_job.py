@@ -7,12 +7,12 @@ from fastapi import (
     Path,
 )
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app.db.base import get_db
-from app.core.auth.service_business_auth import get_current_user, get_current_business
-from app.core import constant
-from app.core.job import service_job
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.storage.redis import get_redis
+from app.core.auth.user_manager_service import user_manager_service
+from app.core.job.job_service import job_service
 from app.hepler.enum import (
     SortBy,
     OrderType,
@@ -27,8 +27,10 @@ router = APIRouter()
 
 
 @router.get("", summary="Get list of job.")
-def get_job(
+async def get_job(
     request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=10),
     sort_by: SortBy = Query(
@@ -45,8 +47,6 @@ def get_job(
     job_approve_status: JobApprovalStatus = Query(
         None, description="The job approve status.", example=JobApprovalStatus.PENDING
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Get list of job by business.
@@ -72,18 +72,14 @@ def get_job(
     """
     args = {item[0]: item[1] for item in request.query_params.multi_items()}
 
-    status, status_code, response = service_job.get_by_business(
-        db, {**args}, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.get_by_business(db, {**args}, current_user)
 
 
 @router.get("/search", summary="Search list of job.")
 async def search_job(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     skip: int = Query(None, description="The number of users to skip.", example=0),
     limit: int = Query(None, description="The number of users to return.", example=100),
     sort_by: SortJobBy = Query(
@@ -112,8 +108,6 @@ async def search_job(
     ),
     job_position_id: int = Query(None, description="The position id.", example=1),
     keyword: str = Query(None, description="The keyword.", example="developer"),
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of job by business.
@@ -148,27 +142,23 @@ async def search_job(
     """
     args = locals()
 
-    status, status_code, response = await service_job.search_by_business(
+    return await job_service.search_by_business(
         db,
+        redis,
         current_user,
         {**args},
     )
 
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
-
 
 @router.get("/{job_id}", summary="Get job by id.")
-def get_job_by_id(
+async def get_job_by_id(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     job_id: int = Path(
         ...,
         description="The job id.",
         example=1,
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Get job by id.
@@ -184,18 +174,15 @@ def get_job_by_id(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.get_by_id_for_business(
-        db, job_id, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.get_by_id_for_business(db, job_id, current_user)
 
 
 @router.post("", summary="Create a new job.")
-def create_job(
+async def create_job(
+    # db = CurrentSession,
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    current_user=Depends(user_manager_service.get_current_business),
     data: dict = Body(
         ...,
         description="The information of the job.",
@@ -235,8 +222,6 @@ def create_job(
             "job_location": "Chuyên viên Nhân sự",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_business),
 ):
     """
     Create a new job.
@@ -253,16 +238,13 @@ def create_job(
     - status_code (409): The job is already registered.
 
     """
-    status, status_code, response = service_job.create(db, data, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.create(db, redis, data, current_user)
 
 
 @router.put("/{job_id}", summary="Update a new job.")
-def Update_job(
+async def Update_job(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_business),
     job_id: int = Path(
         ...,
         description="The job id.",
@@ -306,8 +288,6 @@ def Update_job(
             "job_location": "Chuyên viên Nhân sự",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_business),
 ):
     """
     Update a new job.
@@ -325,25 +305,18 @@ def Update_job(
     - status_code (404): The job is not found.
 
     """
-    status, status_code, response = service_job.update(
-        db, {**data, "job_id": job_id}, current_user
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.update(db, {**data, "job_id": job_id}, current_user)
 
 
 @router.delete("/{job_id}", summary="Delete a job.")
-def delete_job(
+async def delete_job(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     job_id: int = Path(
         ...,
         description="The job id.",
         example=1,
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """
     Delete a job.
@@ -360,9 +333,4 @@ def delete_job(
     - status_code (403): The permission is denied.
 
     """
-    status, status_code, response = service_job.delete(db, job_id, current_user)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await job_service.delete(db, job_id, current_user)

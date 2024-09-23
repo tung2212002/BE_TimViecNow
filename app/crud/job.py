@@ -2,6 +2,7 @@ from typing import Type
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import distinct
+from sqlalchemy import case, func, or_, and_, text, exists
 
 from .base import CRUDBase
 from app.model.job import Job
@@ -74,6 +75,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         db: Session,
         **kwargs,
     ):
+        from datetime import datetime
+
+        start_time = datetime.now()
         query = db.query(func.count(self.model.id))
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -83,7 +87,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             query,
             **kwargs,
         )
-        return query.scalar()
+        result = query.scalar()
+        end_time = datetime.now()
+        return result
 
     def search(
         self,
@@ -116,6 +122,136 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         )
 
         return jobs
+
+    def user_count(
+        self,
+        db: Session,
+        **kwargs,
+    ):
+        subquery = (
+            db.query(
+                JobApprovalRequest.job_id,
+                JobApprovalRequest.updated_at,
+                func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
+            )
+            .filter(JobApprovalRequest.status == "APPROVED")
+            .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
+            .subquery()
+        )
+
+        query = (
+            db.query(func.count(self.model.id))
+            .join(subquery, Job.id == subquery.c.job_id)
+            .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
+            .filter(Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now())
+        )
+
+        query = self.user_apply_filters(query, **kwargs)
+
+        return query.scalar()
+
+    def user_search(
+        self,
+        db: Session,
+        **kwargs,
+    ):
+        skip = kwargs.get("skip", 0)
+        limit = kwargs.get("limit", 10)
+        sort_by = kwargs.get("sort_by", "id")
+        order_by = kwargs.get("order_by", "desc")
+
+        subquery = (
+            db.query(
+                JobApprovalRequest.job_id,
+                JobApprovalRequest.updated_at,
+                func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
+            )
+            .filter(JobApprovalRequest.status == "APPROVED")
+            .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
+            .subquery()
+        )
+
+        query = (
+            db.query(Job)
+            .join(subquery, Job.id == subquery.c.job_id)
+            .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
+            .filter(Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now())
+        )
+
+        query = (
+            self.user_apply_filters(query, **kwargs)
+            .order_by(
+                getattr(self.model, sort_by).desc()
+                if order_by == "desc"
+                else getattr(self.model, sort_by)
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        jobs = query.all()
+        return jobs
+
+    def user_apply_filters(self, query, **filters):
+        company_id = filters.get("company_id")
+        field_id = filters.get("field_id")
+        province_id = filters.get("province_id")
+        district_id = filters.get("district_id")
+        category_id = filters.get("category_id")
+        employment_type = filters.get("employment_type")
+        job_experience_id = filters.get("job_experience_id")
+        job_position_id = filters.get("job_position_id")
+        min_salary = filters.get("min_salary")
+        max_salary = filters.get("max_salary")
+        salary_type = filters.get("salary_type")
+        keyword = filters.get("keyword")
+        updated_at = filters.get("updated_at")
+
+        if updated_at:
+            query = query.filter(self.model.updated_at >= updated_at)
+        if company_id or field_id:
+            query = query.join(
+                self.campaign, self.model.campaign_id == self.campaign.id
+            )
+            if company_id:
+                query = query.filter(self.campaign.company_id == company_id)
+            if field_id:
+                query = query.join(
+                    self.company, self.campaign.company_id == self.company.id
+                )
+                query = query.join(
+                    self.company_field, self.company.id == self.company_field.company_id
+                ).filter(self.company_field.field_id == field_id)
+        if province_id or district_id:
+            query = query.join(
+                self.work_location, self.model.id == self.work_location.job_id
+            )
+            if province_id:
+                query = query.filter(self.work_location.province_id == province_id)
+            if district_id:
+                query = query.filter(self.work_location.district_id == district_id)
+        if category_id:
+            query = query.join(
+                self.job_category, self.model.id == self.job_category.job_id
+            ).filter(self.job_category.category_id == category_id)
+        if employment_type:
+            query = query.filter(self.model.employment_type == employment_type)
+        if job_experience_id:
+            query = query.filter(self.model.job_experience_id == job_experience_id)
+        if job_position_id:
+            query = query.filter(self.model.job_position_id == job_position_id)
+        if salary_type:
+            query = query.filter(self.model.salary_type == salary_type)
+        if min_salary:
+            query = query.filter(self.model.min_salary >= min_salary)
+        if max_salary:
+            query = query.filter(self.model.max_salary <= max_salary)
+        if salary_type:
+            query = query.filter(self.model.salary_type == salary_type)
+        if min_salary or max_salary and not salary_type:
+            query = query.filter(self.model.salary_type != SalaryType.DEAL)
+        if keyword:
+            query = query.filter(self.model.title.ilike(f"%{keyword}%"))
+        return query
 
     def get_number_job_of_district(self, db: Session, **filters):
         query = db.query(
@@ -214,56 +350,99 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         return query
 
     def count_job_by_category(self, db: Session):
-        return (
-            db.query(self.job_category.category_id, func.count(distinct(self.model.id)))
-            .join(
-                self.job_category,
-                (
-                    self.model.id == self.job_category.job_id
-                    and self.model.deadline >= func.now()
-                ),
+        query = (
+            db.query(
+                self.job_category.category_id.label("category_id"),
+                func.count(self.model.id).label("job_count"),
             )
-            .group_by(self.job_category.category_id)
-            .order_by(func.count(distinct(self.model.id)).desc())
-            .all()
-        )
-
-    def count_job_by_salary(self, db: Session, salary_ranges):
-        salary_ranges_query = []
-        for salary_range in salary_ranges:
-            min_salary, max_salary, type = salary_range
-            query = db.query(func.count(distinct(self.model.id)))
-            if type == SalaryType.DEAL:
-                query = query.filter(
-                    self.model.salary_type == type,
-                    self.model.deadline >= func.now(),
-                )
-            else:
-                if max_salary > 0:
-                    query = query.filter(
-                        self.model.min_salary >= min_salary * 1000000,
-                        self.model.max_salary < max_salary * 1000000,
-                        self.model.salary_type == type,
-                        self.model.deadline >= func.now(),
-                    )
-                else:
-                    query = query.filter(
-                        self.model.min_salary >= min_salary * 1000000,
-                        self.model.salary_type == type,
-                        self.model.deadline >= func.now(),
-                    )
-
-            salary_ranges_query.append(query.scalar())
-        return salary_ranges_query
-
-    def count_company_active_job(self, db: Session):
-        return (
-            db.query(func.count(distinct(self.company.id)))
-            .join(self.campaign, self.campaign.company_id == self.company.id)
-            .join(self.model, self.model.campaign_id == self.campaign.id)
+            .join(self.job_category, self.model.id == self.job_category.job_id)
             .filter(
                 self.model.deadline >= func.now(),
                 self.model.status == JobStatus.PUBLISHED,
+            )
+            .group_by("category_id")
+            .order_by(func.count(self.model.id).desc())
+        )
+        return query.all()
+
+    def count_job_by_salary(self, db: Session, salary_ranges):
+        # query = text(
+        #     """
+        #     SELECT
+        #         CASE
+        #             WHEN ((job.min_salary >= 0 AND job.max_salary < 3000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 0
+        #             WHEN ((job.min_salary >= 3000000 AND job.max_salary < 10000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 1
+        #             WHEN ((job.min_salary >= 10000000 AND job.max_salary < 20000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 2
+        #             WHEN ((job.min_salary >= 20000000 AND job.max_salary < 30000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 3
+        #             WHEN ((job.min_salary >= 30000000 AND job.max_salary < 0 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 4
+        #             WHEN ((job.salary_type = 'DEAL' AND job.status = 'PUBLISHED')) THEN 5
+        #             WHEN ((job.salary_type = 'USD' AND job.status = 'PUBLISHED')) THEN 6
+        #             ELSE 7
+        #         END AS salary_range,
+        #         MIN(job.min_salary) AS min_salary,
+        #         MAX(job.max_salary) AS max_salary,
+        #         MIN(job.salary_type) AS salary_type,
+        #         COUNT(job.id) AS job_count
+        #     FROM job
+        #     WHERE job.deadline >= NOW()
+        #     GROUP BY salary_range;
+        #     """
+        # )
+        # return db.execute(query).fetchall()
+        unit = 1000000
+
+        query = (
+            db.query(
+                case(
+                    *[
+                        (
+                            and_(
+                                self.model.min_salary >= salary_range[0] * unit,
+                                self.model.max_salary < salary_range[1] * unit,
+                                self.model.salary_type == salary_range[2],
+                                self.model.status == JobStatus.PUBLISHED,
+                            ),
+                            idx,
+                        )
+                        for idx, salary_range in enumerate(salary_ranges)
+                    ],
+                    (
+                        and_(
+                            self.model.salary_type == SalaryType.DEAL,
+                            self.model.status == JobStatus.PUBLISHED,
+                        ),
+                        len(salary_ranges),
+                    ),
+                    (
+                        and_(
+                            self.model.salary_type == SalaryType.USD,
+                            self.model.status == JobStatus.PUBLISHED,
+                        ),
+                        len(salary_ranges) + 1,
+                    ),
+                    else_=len(salary_ranges) + 2,
+                ).label("salary_range"),
+                func.count(self.model.id).label("job_count"),
+            )
+            .filter(self.model.deadline >= func.now())
+            .group_by("salary_range")
+            .order_by("salary_range")
+            .all()
+        )
+        results = query
+        return results
+
+    def count_company_active_job(self, db: Session):
+        return (
+            db.query(func.count(func.distinct(self.company.id)).label("count_1"))
+            .filter(
+                exists()
+                .where(self.campaign.company_id == self.company.id)
+                .where(self.model.campaign_id == self.campaign.id)
+                .where(
+                    self.model.deadline >= func.now(),
+                    self.model.status == JobStatus.PUBLISHED,
+                )
             )
             .scalar()
         )

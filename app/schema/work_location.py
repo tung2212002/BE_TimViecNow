@@ -11,15 +11,26 @@ class WorkLocationBase(BaseModel):
     description: Optional[str] = None
 
 
-class WorkLocatioResponse(BaseModel):
-    province: dict
-    district: Optional[dict] = None
-    description: Optional[str] = None
+# request
+class WorkLocatioCreateRequest(WorkLocationBase):
+    pass
 
 
+class WorkLocatioUpdateRequest(WorkLocationBase):
+    pass
+
+
+# schema
 class WorkLocatioCreate(WorkLocationBase):
     pass
 
 
 class WorkLocatioUpdate(WorkLocationBase):
     pass
+
+
+# response
+class WorkLocatioResponse(BaseModel):
+    province: dict
+    district: Optional[dict] = None
+    description: Optional[str] = None

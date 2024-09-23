@@ -18,7 +18,10 @@ from .job import job
 from .job_category import job_category
 from .job_skill import job_skill
 from .skill import skill
+from .field import field
 from .working_time import working_time
 from .work_location import work_location
 from .job_approval_request import job_approval_request
 from .job_approval_log import job_approval_log
+from .company_business import company_business
+from .company_field import company_field

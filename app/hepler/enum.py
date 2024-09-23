@@ -168,3 +168,8 @@ class CVApplicationStatus(str, Enum):
     REJECTED = "rejected"
     STOPPED = "stopped"
     INTERVIEW = "interview"
+
+
+class JobSkillType(str, Enum):
+    MUST_HAVE = "must_have"
+    SHOULD_HAVE = "should_have"

@@ -8,21 +8,20 @@ from fastapi import (
     Request,
     BackgroundTasks,
 )
-from sqlalchemy.orm import Session
 from typing import Annotated
+from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.core.auth import service_business_auth
-from app.core import constant
-from app.core.business import service_business
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.core.auth.user_manager_service import user_manager_service
+from app.core.auth.business_auth_service import business_auth_service
+from app.core.business.business_service import business_service
 from app.hepler.enum import Gender
 
 router = APIRouter()
 
 
 @router.post("/register", summary="Register a new business.")
-def register_business(
+async def register_business(
     full_name: Annotated[
         str,
         Form(
@@ -135,20 +134,15 @@ def register_business(
     """
     data = locals()
 
-    status, status_code, response = service_business.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_service.create(db, data)
 
 
 @router.post("/login", summary="Login business.")
-def login_auth(
+async def login_auth(
+    db: Session = Depends(get_db),
     data: dict = Body(
         ..., example={"email": "ongtung2212002@gmail.com", "password": "@Amin1234"}
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Login business.
@@ -166,19 +160,14 @@ def login_auth(
     - status_code (404): The business is not found.
 
     """
-    status, status_code, response = service_business_auth.authenticate(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_auth_service.authenticate(db, data)
 
 
 @router.post("/refresh_token", summary="Refresh token.")
-def refresh_auth(
+async def refresh_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
 ):
     """
     Refresh token.
@@ -191,19 +180,14 @@ def refresh_auth(
     - status_code (404): The business is not found.
 
     """
-    status, status_code, response = service_business_auth.refresh_token(db, request)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_auth_service.refresh_token(db, request)
 
 
 @router.post("/logout", summary="Logout business.")
-def logout_auth(
+async def logout_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
 ):
     """
     Logout business.
@@ -216,19 +200,14 @@ def logout_auth(
     - status_code (404): The business is not found.
 
     """
-    status, status_code, response = service_business_auth.logout(db, request)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_auth_service.logout(db, request)
 
 
 @router.post("/verify_token", summary="Verify token.")
-def verify_token_auth(
+async def verify_token_auth(
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
 ):
     """
     Verify token.
@@ -242,16 +221,13 @@ def verify_token_auth(
 
     """
     token = request.headers.get("Authorization").split(" ")[1]
-    status, status_code, response = service_business_auth.check_verify_token(db, token)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await business_auth_service.check_verify_token(db, token)
 
 
 @router.post("/change_password", summary="Change password.")
-def change_password(
+async def change_password(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_business_admin_superuser),
     data: dict = Body(
         ...,
         example={
@@ -260,8 +236,6 @@ def change_password(
             "confirm_password": "@Password12345",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(service_business_auth.get_current_user),
 ):
     """
     Change password.
@@ -281,26 +255,45 @@ def change_password(
     - status_code (409): The new password is the same as the old password.
 
     """
-    status, status_code, response = service_business_auth.change_password(
-        db, data, current_user
-    )
+    return await business_auth_service.change_password(db, data, current_user)
 
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+
+@router.post("/change_password_for_test", summary="Change password.")
+async def change_password(
+    db: Session = Depends(get_db),
+    data: dict = Body(
+        ...,
+        example={
+            "password": "@Password1234",
+            "user_id": "2",
+        },
+    ),
+):
+    """
+    Change password.
+
+    This endpoint allows changing the password for test.
+
+    Parameters:
+    - password (str): The password of the business.
+    - user_id (int): The user id of the business.
+
+    Returns:
+
+    """
+    return await business_auth_service.change_password_for_test(db, data)
 
 
 @router.post("/send_forgot_password", summary="Forgot password.")
-def forgot_password(
+async def forgot_password(
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     data: dict = Body(
         ...,
         example={
             "email": "clone46191@gmail.com",
         },
     ),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_db),
 ):
     """
     Send code forgot password to email.
@@ -316,12 +309,5 @@ def forgot_password(
     - status_code (404): The business is not found.
 
     """
-    return custom_response(200, constant.SUCCESS, {"Feature": "Coming soon"})
-    status, status_code, response = service_business_auth.send_forgot_password(
-        db, background_tasks, data
-    )
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return "Coming soon"
+    return await business_auth_service.send_forgot_password(db, background_tasks, data)

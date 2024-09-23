@@ -1,19 +1,21 @@
 from fastapi import APIRouter, Depends, Request, Query, Path, Body
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 
 from app.db.base import get_db
-from app.hepler.response_custom import custom_response_error, custom_response
+from app.core.auth.user_manager_service import user_manager_service
 from app.hepler.enum import OrderType
-from app.core import constant
-from app.core.category import service_category
-from app.core.auth.service_business_auth import get_current_superuser
+from app.core.category.category_service import category_service
+from app.storage.redis import get_redis
 
 router = APIRouter()
 
 
 @router.get("", summary="Get list of categories.")
-def get_list_category(
+async def get_list_category(
     request: Request,
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     skip: int = Query(None, description="The number of category to skip.", example=0),
     limit: int = Query(
         None, description="The number of category to return.", example=100
@@ -21,7 +23,6 @@ def get_list_category(
     order_by: OrderType = Query(
         None, description="The order to sort by.", example=OrderType.ASC
     ),
-    db: Session = Depends(get_db),
 ):
     """
     Get list of categories.
@@ -40,17 +41,13 @@ def get_list_category(
     """
     args = locals()
 
-    status, status_code, response = service_category.get(db, args)
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await category_service.get(db, redis, args)
 
 
 @router.get("/{id}", summary="Get category by id.")
-def get_category_by_id(
-    id: int = Path(..., description="The category id."),
+async def get_category_by_id(
     db: Session = Depends(get_db),
+    id: int = Path(..., description="The category id."),
 ):
     """
     Get category by id.
@@ -65,16 +62,13 @@ def get_category_by_id(
     - status_code (404): The category is not found.
 
     """
-    status, status_code, response = service_category.get_by_id(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await category_service.get_by_id(db, id)
 
 
 @router.post("", summary="Create a category.")
-def create_category(
+async def create_category(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
     data: dict = Body(
         ...,
         example={
@@ -83,8 +77,6 @@ def create_category(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Create a category.
@@ -104,16 +96,13 @@ def create_category(
     """
     data = locals()
 
-    status, status_code, response = service_category.create(db, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await category_service.create(db, data)
 
 
 @router.put("/{id}", summary="Update a category by id.")
-def update_category_by_id(
+async def update_category_by_id(
+    db: Session = Depends(get_db),
+    current_user=Depends(user_manager_service.get_current_superuser),
     id: int = Path(..., description="The category id."),
     data: dict = Body(
         ...,
@@ -123,8 +112,6 @@ def update_category_by_id(
             "description": "",
         },
     ),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
 ):
     """
     Update a category by id.
@@ -145,19 +132,14 @@ def update_category_by_id(
     """
     data = locals()
 
-    status, status_code, response = service_category.update(db, id, data)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await category_service.update(db, id, data)
 
 
 @router.delete("/{id}", summary="Delete a category by id.")
-def delete_category_by_id(
-    id: int = Path(..., description="The category id."),
+async def delete_category_by_id(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_superuser),
+    current_user=Depends(user_manager_service.get_current_superuser),
+    id: int = Path(..., description="The category id."),
 ):
     """
     Delete a category by id.
@@ -172,9 +154,4 @@ def delete_category_by_id(
     - status_code (404): The category is not found.
 
     """
-    status, status_code, response = service_category.delete(db, id)
-
-    if status == constant.ERROR:
-        return custom_response_error(status_code, constant.ERROR, response)
-    elif status == constant.SUCCESS:
-        return custom_response(status_code, constant.SUCCESS, response)
+    return await category_service.delete(db, id)

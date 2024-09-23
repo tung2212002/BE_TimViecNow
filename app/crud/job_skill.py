@@ -24,5 +24,13 @@ class CRUDJobSkill(CRUDBase[JobSkill, JobSkillCreate, JobSkillUpdate]):
         ).delete()
         db.commit()
 
+    def get_ids_by_job_id(self, db: Session, job_id: int):
+        return (
+            skill_id
+            for (skill_id,) in db.query(self.model.skill_id)
+            .filter(self.model.job_id == job_id)
+            .all()
+        )
+
 
 job_skill = CRUDJobSkill(JobSkill)
