@@ -86,7 +86,7 @@ class JobService:
         page.job_approve_status = JobApprovalStatus.APPROVED
         try:
             response = await job_cache_service.get_cache_user_search(
-                redis, job_helper.get_count_job_user_search_key(page)
+                redis, job_helper.search_job_user_search_key(page)
             )
             if response:
                 return CustomResponse(data=response)
@@ -178,7 +178,9 @@ class JobService:
         }
 
         try:
-            await job_cache_service.cache_user_search(redis, cache_key, response)
+            await job_cache_service.cache_user_search(
+                redis, job_helper.search_job_user_search_key(page), response
+            )
         except Exception as e:
             print(e)
 

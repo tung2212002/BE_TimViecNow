@@ -103,7 +103,10 @@ class JobHepler:
         return job_response
 
     def get_count_job_user_search_key(self, data: JobSearchByUser) -> str:
-        return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}_{data.sort_by}_{data.order_by}_{data.skip}_{data.limit}"
+        return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}"
+
+    def search_job_user_search_key(self, data: JobSearchByUser) -> str:
+        return f"{data.province_id}_{data.district_id}_{data.province_id}_{data.category_id}_{data.field_id}_{data.employment_type}_{data.job_experience_id}_{data.job_position_id}_{data.min_salary}_{data.max_salary}_{data.salary_type}_{data.deadline}_{data.keyword}_{data.suggest}_{data.updated_at}_{data.skip}_{data.limit}_{data.sort_by}_{data.order_by}"
 
     def create_fields(
         self,
