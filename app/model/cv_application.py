@@ -7,8 +7,11 @@ from app.hepler.enum import CVApplicationStatus
 
 
 class CVApplication(Base):
-    job_id = Column(
-        Integer, ForeignKey("job.id", ondelete="CASCADE"), nullable=False, index=True
+    campaign_id = Column(
+        Integer,
+        ForeignKey("campaign.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id = Column(
         Integer,
@@ -21,13 +24,14 @@ class CVApplication(Base):
     email = Column(String(50), nullable=False)
     phone_number = Column(String(10), nullable=False)
     letter_cover = Column(String(500), nullable=True)
+    count_view = Column(Integer, default=0, nullable=False)
     status = Column(
         Enum(CVApplicationStatus), default=CVApplicationStatus.PENDING, nullable=False
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    job = relationship(
-        "Job",
+    campaign = relationship(
+        "Campaign",
         back_populates="cv_applications",
         uselist=False,
         single_parent=True,

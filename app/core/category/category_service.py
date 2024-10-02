@@ -21,11 +21,14 @@ class CategoryService:
         except Exception as e:
             print(e)
         if not response:
+            print("get category from db")
             categories = crud.category.get_multi(db, **page.model_dump())
             response = category_helper.get_list_info(categories)
             try:
                 await config_cache_service.cache_category(
-                    redis, key, [category.__dict__ for category in response]
+                    redis,
+                    key,
+                    response,
                 )
             except Exception as e:
                 print(e)

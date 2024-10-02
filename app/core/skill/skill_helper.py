@@ -47,9 +47,9 @@ class SkillHelper:
     ) -> list:
         ids = list(set(ids))
         for skill in ids:
-            skill = crud.skill.create(
+            skill = crud.job_skill.create(
                 db,
-                schema_job_skill.JobSkillCreate(
+                obj_in=schema_job_skill.JobSkillCreate(
                     job_id=job_id, skill_id=skill, type=type
                 ),
             )

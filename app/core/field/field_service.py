@@ -26,7 +26,9 @@ class FieldService:
             response = field_helper.get_list_info(fields)
             try:
                 await config_cache_service.cache_field(
-                    redis, key, [field.__dict__ for field in response]
+                    redis,
+                    key,
+                    response,
                 )
             except Exception as e:
                 print(e)

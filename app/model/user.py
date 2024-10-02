@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Enum, Boolean, DateTime
+from sqlalchemy import Column, String, Enum, Boolean, DateTime, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -17,6 +17,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     avatar = Column(String(255), nullable=True)
     type_account = Column(Enum(TypeAccount), default=TypeAccount.NORMAL)
+    count_job_apply = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()

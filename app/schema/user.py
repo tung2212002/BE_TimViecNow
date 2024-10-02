@@ -1,6 +1,7 @@
 from pydantic import BaseModel, validator, ConfigDict
 from fastapi import UploadFile
 from typing import Optional
+from datetime import datetime
 
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.schema_validator import SchemaValidator
@@ -94,6 +95,10 @@ class UserItemResponse(UserBase):
     role: Role = Role.USER
     phone_number: Optional[str] = None
     type_account: Optional[TypeAccount] = TypeAccount.NORMAL
+    is_verified: bool = False
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
 
     @validator("avatar")
     def validate_avatar(cls, v):

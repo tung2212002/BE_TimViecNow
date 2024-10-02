@@ -25,3 +25,4 @@ from .job_approval_request import job_approval_request
 from .job_approval_log import job_approval_log
 from .company_business import company_business
 from .company_field import company_field
+from .cv_applications import cv_applications

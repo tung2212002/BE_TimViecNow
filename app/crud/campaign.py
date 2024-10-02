@@ -21,8 +21,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-        skip=0,
-        limit=10,
+        skip: int = 0,
+        limit: int = 10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
         status: CampaignStatus = None,
@@ -31,7 +31,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         query = self.apply_filter(
             query, business_id=business_id, company_id=company_id, status=status
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count(
         self,
@@ -45,7 +46,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         query = self.apply_filter(
             query, business_id=business_id, company_id=company_id, status=status
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_has_published_job(
         self,
@@ -63,10 +65,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
+            # status=CampaignStatus.OPEN,
+            job_status=JobStatus.PUBLISHED,
             job_deadline=True,
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count_has_published_job(
         self,
@@ -80,11 +84,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
+            # status=CampaignStatus.OPEN,
             job_status=JobStatus.PUBLISHED,
             job_deadline=True,
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_open(
         self,
@@ -104,7 +109,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             company_id=company_id,
             status=CampaignStatus.OPEN,
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count_open(
         self,
@@ -120,7 +126,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             company_id=company_id,
             status=CampaignStatus.OPEN,
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_has_new_application(
         self,
@@ -145,7 +152,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             CVApplication.status == CVApplicationStatus.PENDING
             and CVApplication.created_at >= func.now() - text("INTERVAL 1 DAY")
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count_has_new_application(
         self, db: Session, *, business_id: int = None, Company_id: int = None
@@ -159,7 +167,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             CVApplication.status == CVApplicationStatus.PENDING
             and CVApplication.created_at >= func.now() == date.timedelta(days=1)
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_has_published(
         self,
@@ -176,7 +185,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             status=CampaignStatus.OPEN,
         )
         query = query.join(Job).filter(Job.status == JobStatus.PUBLISHED)
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def count_has_published(
         self,
@@ -190,10 +200,10 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
             job_status=JobStatus.PUBLISHED,
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_has_published_job_expired(
         self,
@@ -216,7 +226,8 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         query = query.join(Job).filter(
             Job.status == JobStatus.PUBLISHED, Job.deadline < func.now()
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count_has_published_job_expired(
         self,
@@ -230,12 +241,12 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
         )
         query = query.join(Job).filter(
             Job.status == JobStatus.PUBLISHED, Job.deadline < func.now()
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def get_has_pending_job(
         self,
@@ -253,10 +264,10 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
             job_status=JobStatus.PENDING,
         )
-        return self.return_campaign(query, skip, limit, sort_by, order_by)
+        result = self.return_campaign(query, skip, limit, sort_by, order_by)
+        return result
 
     def count_has_pending_job(
         self,
@@ -270,10 +281,10 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             query,
             business_id=business_id,
             company_id=company_id,
-            status=CampaignStatus.OPEN,
             job_status=JobStatus.PENDING,
         )
-        return query.scalar()
+        result = query.scalar()
+        return result
 
     def apply_filter(
         self,
@@ -301,7 +312,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         return query
 
     def return_campaign(self, query, skip, limit, sort_by, order_by):
-        return (
+        query = (
             query.order_by(
                 getattr(self.model, sort_by).desc()
                 if order_by == "desc"
@@ -311,6 +322,14 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
             .limit(limit)
             .all()
         )
+
+        return query
+
+    def increase_count_apply(self, db: Session, campaign: Campaign) -> Campaign:
+        campaign.count_apply += 1
+        db.commit()
+        db.refresh(campaign)
+        return campaign
 
 
 campaign = CRUDCampaign(Campaign)

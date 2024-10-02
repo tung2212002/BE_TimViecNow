@@ -64,9 +64,9 @@ class JobService:
 
     async def get_by_user(self, db: Session, redis: Redis, data: dict):
         page = job_schema.JobFilterByUser(**data)
-
         page.job_status = JobStatus.PUBLISHED
         page.job_approve_status = JobApprovalStatus.APPROVED
+
         jobs = await job_helper.get_list_job(db, redis, page.model_dump())
 
         params = job_schema.JobCount(**data)
@@ -81,26 +81,48 @@ class JobService:
 
     async def search_by_user(self, db: Session, redis: Redis, data: dict):
         page = job_schema.JobSearchByUser(**data)
-
         page.job_status = JobStatus.PUBLISHED
-        page.job_approve_status = JobApprovalStatus.APPROVED
-        try:
-            response = await job_cache_service.get_cache_user_search(
-                redis, job_helper.search_job_user_search_key(page)
-            )
-            if response:
-                return CustomResponse(data=response)
-
-        except Exception as e:
-            print(e)
-
-        jobs = crud.job.user_search(db, **page.model_dump())
+        jobs_response = None
         count = 0
         jobs_of_district_response = []
 
+        from datetime import datetime
+
+        start_time = datetime.now()
+        try:
+            jobs_response = await job_cache_service.get_cache_user_search(
+                redis, page.get_count_job_user_search_key()
+            )
+        except Exception as e:
+            print(e)
+
+        if not jobs_response:
+            jobs = crud.job.user_search(db, **page.model_dump())
+            end_time = datetime.now()
+            print(
+                "Seconds time for search_by_user query: ",
+                (end_time - start_time).total_seconds(),
+            )
+            jobs_response = await job_helper.get_list_job_info(db, redis, jobs)
+            end_time2 = datetime.now()
+            print(
+                "Seconds time for search_by_user get_list_job_info: ",
+                (end_time2 - end_time).total_seconds(),
+            )
+            try:
+                await job_cache_service.cache_user_search(
+                    redis, page.get_count_job_user_search_key(), jobs_response
+                )
+            except Exception as e:
+                print(e)
+        end_time = datetime.now()
+        print(
+            "Seconds time for search_by_user: ", (end_time - start_time).total_seconds()
+        )
+
         if (page.province_id or page.district_id) and page.suggest:
             try:
-                cache_key = page.model_dump().__str__()
+                cache_key = page.get_jobs_of_district_key()
                 jobs_of_district_response = await job_cache_service.get_list(
                     redis, cache_key
                 )
@@ -138,9 +160,11 @@ class JobService:
                     print(e)
 
         else:
-            cache_key = job_helper.get_count_job_user_search_key(page)
+            start_time = datetime.now()
+            cache_key = page.get_count_job_user_search_key()
             count = None
             try:
+                print("8")
                 count = await job_cache_service.get_cache_count_search_by_user(
                     redis, cache_key
                 )
@@ -156,19 +180,23 @@ class JobService:
                     )
                 except Exception as e:
                     print(e)
-
-        jobs_response = []
-        for job in jobs:
-            job_res = await job_helper.get_info(db, redis, job)
-            (
-                jobs_response.append(job_res)
-                if (
-                    isinstance(job_res, dict)
-                    and job_res.get("company")
-                    or job_res.company
-                )
-                else None
+            end_time = datetime.now()
+            print(
+                "Seconds time for search_by_user count: ",
+                (end_time - start_time).total_seconds(),
             )
+        # jobs_response = []
+        # for job in jobs:
+        #     job_res = await job_helper.get_info(db, redis, job)
+        #     (
+        #         jobs_response.append(job_res)
+        #         if (
+        #             isinstance(job_res, dict)
+        #             and job_res.get("company")
+        #             or job_res.company
+        #         )
+        #         else None
+        #     )
 
         response = {
             "count": count,
@@ -177,12 +205,12 @@ class JobService:
             "jobs_of_district": jobs_of_district_response,
         }
 
-        try:
-            await job_cache_service.cache_user_search(
-                redis, job_helper.search_job_user_search_key(page), response
-            )
-        except Exception as e:
-            print(e)
+        # try:
+        #     await job_cache_service.cache_user_search(
+        #         redis, job_helper.search_job_user_search_key(page), response
+        #     )
+        # except Exception as e:
+        #     print(e)
 
         return CustomResponse(data=response)
 
@@ -218,7 +246,11 @@ class JobService:
         jobs_response = []
         for job in jobs:
             job_res = await job_helper.get_info(db, redis, job)
-            jobs_response.append(job_res) if job_res.get("company") else None
+            # jobs_response.append(job_res) if job_res.get("company") else None
+            if isinstance(job_res, dict):
+                jobs_response.append(job_res) if job_res.get("company") else None
+            else:
+                jobs_response.append(job_res) if job_res.company else None
 
         response = {
             "count": count,
@@ -479,8 +511,8 @@ class JobService:
             locations=job_data.locations,
             categories=job_data.categories,
             working_times=job_data.working_times,
-            job_experience_id=job_data.job_experience_id,
-            job_position_id=job_data.job_position_id,
+            experience_id=job_data.job_experience_id,
+            position_id=job_data.job_position_id,
         )
 
         campaign = campaign_helper.check_exist(

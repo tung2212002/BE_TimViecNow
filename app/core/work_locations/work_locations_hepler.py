@@ -46,7 +46,7 @@ class WorkLocationHepler:
         ]
 
     def create(self, db: Session, data: work_location_schema.WorkLocatioCreate) -> dict:
-        work_location = crud.work_location.create(db, data)
+        work_location = crud.work_location.create(db, obj_in=data)
 
         return self.get_info(db, work_location)
 

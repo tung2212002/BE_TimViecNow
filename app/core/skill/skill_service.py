@@ -28,9 +28,7 @@ class SkillService:
             skills = crud.skill.get_multi(db, **page.model_dump())
             response = skill_helper.get_list_info(skills)
             try:
-                await config_cache_service.cache_skill(
-                    redis, key, [skill.__dict__ for skill in response]
-                )
+                await config_cache_service.cache_skill(redis, key, response)
             except Exception as e:
                 print(e)
 

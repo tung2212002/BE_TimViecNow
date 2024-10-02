@@ -75,9 +75,6 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         db: Session,
         **kwargs,
     ):
-        from datetime import datetime
-
-        start_time = datetime.now()
         query = db.query(func.count(self.model.id))
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -88,7 +85,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             **kwargs,
         )
         result = query.scalar()
-        end_time = datetime.now()
+
         return result
 
     def search(
@@ -128,21 +125,21 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         db: Session,
         **kwargs,
     ):
-        subquery = (
-            db.query(
-                JobApprovalRequest.job_id,
-                JobApprovalRequest.updated_at,
-                func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
-            )
-            .filter(JobApprovalRequest.status == "APPROVED")
-            .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
-            .subquery()
-        )
+        # subquery = (
+        #     db.query(
+        #         JobApprovalRequest.job_id,
+        #         JobApprovalRequest.updated_at,
+        #         func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
+        #     )
+        #     .filter(JobApprovalRequest.status == "APPROVED")
+        #     .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
+        #     .subquery()
+        # )
 
         query = (
             db.query(func.count(self.model.id))
-            .join(subquery, Job.id == subquery.c.job_id)
-            .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
+            # .join(subquery, Job.id == subquery.c.job_id)
+            # .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
             .filter(Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now())
         )
 
@@ -160,22 +157,8 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         sort_by = kwargs.get("sort_by", "id")
         order_by = kwargs.get("order_by", "desc")
 
-        subquery = (
-            db.query(
-                JobApprovalRequest.job_id,
-                JobApprovalRequest.updated_at,
-                func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
-            )
-            .filter(JobApprovalRequest.status == "APPROVED")
-            .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
-            .subquery()
-        )
-
-        query = (
-            db.query(Job)
-            .join(subquery, Job.id == subquery.c.job_id)
-            .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
-            .filter(Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now())
+        query = db.query(Job).filter(
+            Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now()
         )
 
         query = (

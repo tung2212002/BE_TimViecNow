@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
-from typing import Union
+from typing import Union, List
 
 from app.schema.job import (
     JobItemResponse,
@@ -27,9 +27,17 @@ class JobHepler:
         jobs_response = []
         for job in jobs:
             job_res = await self.get_info(db, redis, job)
-            jobs_response.append(job_res) if job_res.company else None
+            if isinstance(job_res, dict):
+                jobs_response.append(job_res) if job_res.get("company") else None
+            else:
+                jobs_response.append(job_res) if job_res.company else None
 
         return jobs_response
+
+    async def get_list_job_info(
+        self, db: Session, redis: Redis, jobs: List[Job]
+    ) -> List[JobItemResponse]:
+        return [await self.get_info(db, redis, job) for job in jobs]
 
     def check_fields(
         self,
@@ -91,7 +99,7 @@ class JobHepler:
         )
 
         try:
-            await job_cache_service.cache_job_info(redis, job_id, job_response.__dict__)
+            await job_cache_service.cache_job_info(redis, job_id, job_response)
         except Exception as e:
             print(e)
         return job_response

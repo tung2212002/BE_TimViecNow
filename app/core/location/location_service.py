@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from typing import List
 from redis.asyncio import Redis
 
 from app.core import constant
@@ -27,11 +26,7 @@ class LocationService:
         if not response:
             response = location_helper.get_list_province_info(db, page.model_dump())
             try:
-                await location_cache_service.cache_list_province(
-                    redis,
-                    key,
-                    [province.__dict__ for province in response],
-                )
+                await location_cache_service.cache_list_province(redis, key, response)
             except Exception as e:
                 print(e)
 
@@ -39,15 +34,15 @@ class LocationService:
 
     async def get_district(self, db: Session, redis: Redis, data: dict):
         page = schema_page.Pagination(**data)
-
         province_id = data.get("province_id")
+        response = None
+        key = page.get_key() + f"_{province_id}"
+
         if not province_id:
             raise CustomException(
                 status_code=status.HTTP_400_BAD_REQUEST, msg="Province id is required"
             )
 
-        response = None
-        key = page.get_key() + f"_{province_id}"
         try:
             response = await location_cache_service.get_cache_district_of_province(
                 redis, key
@@ -61,9 +56,7 @@ class LocationService:
             )
             try:
                 await location_cache_service.cache_district_of_province(
-                    redis,
-                    key,
-                    [district.__dict__ for district in response],
+                    redis, key, response
                 )
             except Exception as e:
                 print(e)
@@ -84,9 +77,8 @@ class LocationService:
                     status_code=status.HTTP_404_NOT_FOUND, msg="Province not found"
                 )
 
-            dict_province = response.__dict__
             try:
-                await location_cache_service.set_dict(redis, id, dict_province)
+                await location_cache_service.cache_province(redis, id, response)
             except Exception as e:
                 print(e)
 
@@ -101,13 +93,10 @@ class LocationService:
 
         if not response:
             response = location_helper.get_district_info_by_id(db, id)
-
             if not response:
                 return constant.ERROR, 404, "District not found"
             try:
-                await location_cache_service.cache_district(
-                    redis, id, response.__dict__
-                )
+                await location_cache_service.cache_district(redis, id, response)
             except Exception as e:
                 print(e)
 

@@ -38,7 +38,10 @@ class CommonHelper:
         Returns:
             (Any): Python-data.
         """
-        return json.loads(v, cls=cls)
+        try:
+            return json.loads(v, cls=cls)
+        except json.JSONDecodeError:
+            return v
 
     @staticmethod
     def get_timestamp(v: datetime.datetime) -> float:

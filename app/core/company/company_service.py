@@ -46,7 +46,7 @@ class CompanyService:
         return CustomResponse(data=response)
 
     async def search(self, db: Session, data: dict):
-        page = schema_page.Pagination(**data)
+        page = schema_company.CompanyPagination(**data)
 
         total, companies = crud.company.search_multi(db, **page.model_dump())
         response = company_helper.get_list_info(db, companies, detail=True)

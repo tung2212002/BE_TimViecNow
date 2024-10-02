@@ -63,5 +63,11 @@ class CRUDUser(
         db.refresh(db_obj)
         return db_obj
 
+    def increase_count_job_apply(self, db: Session, db_obj: User) -> User:
+        db_obj.count_job_apply += 1
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
 
 user = CRUDUser(User)

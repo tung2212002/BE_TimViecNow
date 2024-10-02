@@ -44,6 +44,23 @@ class BaseCache:
         """Get Value from Key"""
         return await redis.hgetall(self.key_prefix + key)
 
+    async def set_number(self, redis: Redis, key: str, value: int, expire: int = None):
+        """Set Value to Key"""
+        await redis.set(self.key_prefix + key, value, expire or self.expire)
+
+    async def get_number(self, redis: Redis, key: str) -> int:
+        """Get Value from Key"""
+        response = await redis.get(self.key_prefix + key)
+        return int(response) if response else None
+
+    async def incr(self, redis: Redis, key: str, amount: int = 1):
+        """Increase Value"""
+        await redis.incr(self.key_prefix + key, amount)
+
+    async def decr(self, redis: Redis, key: str, amount: int = 1):
+        """Decrease Value"""
+        await redis.decr(self.key_prefix + key, amount)
+
     async def delete(self, redis: Redis, key: str):
         """Delete Key"""
         await redis.delete(self.key_prefix + key)

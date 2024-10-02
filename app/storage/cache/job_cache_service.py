@@ -2,8 +2,10 @@ import json
 from redis.asyncio import Redis
 from datetime import datetime, date
 from enum import Enum
+from typing import List
 
 from app.storage.base_cache import BaseCache
+from app.schema.job import JobItemResponse
 
 
 class JobCacheService(BaseCache):
@@ -84,11 +86,9 @@ class JobCacheService(BaseCache):
         response = await self.get(redis, self.job_cruiment_demand_key)
         return json.loads(response) if response else None
 
-    async def cache_job_info(self, redis: Redis, key: int, value: dict):
-        deadline = str(value["deadline"])
-        value = json.dumps(
-            value, default=custom_serializer, ensure_ascii=False, indent=4
-        )
+    async def cache_job_info(self, redis: Redis, key: int, value: JobItemResponse):
+        deadline = str(value.deadline)
+        value = json.dumps(value.model_dump(), default=str)
         expire_time = int(
             (datetime.fromisoformat(deadline) - datetime.now()).total_seconds()
         )
@@ -99,32 +99,31 @@ class JobCacheService(BaseCache):
             expire_time,
         )
 
-    async def get_cache_job_info(self, redis: Redis, key: int):
+    async def get_cache_job_info(self, redis: Redis, key: int) -> JobItemResponse:
         response = await self.get(redis, self.job_info_key + str(key))
-        return json.loads(response) if response else None
+        return JobItemResponse(**json.loads(response)) if response else None
 
-    async def cache_user_search(self, redis: Redis, key: str, value: dict):
+    async def cache_user_search(
+        self, redis: Redis, key: str, value: List[JobItemResponse]
+    ):
         expire_time = 60
+        serialized_value = [job.model_dump() for job in value]
         await self.set(
             redis,
             self.user_search_key + key,
-            json.dumps(value, default=custom_serializer),
+            json.dumps(serialized_value, default=str),
             expire_time,
         )
 
-    async def get_cache_user_search(self, redis: Redis, key: str) -> dict:
+    async def get_cache_user_search(
+        self, redis: Redis, key: str
+    ) -> List[JobItemResponse]:
         response = await self.get(redis, self.user_search_key + key)
-        return json.loads(response) if response else None
-
-
-def custom_serializer(obj):
-    if isinstance(obj, Enum):
-        return obj.value
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if hasattr(obj, "__dict__"):
-        return obj.__dict__
-    return str(obj)
+        return (
+            [JobItemResponse(**job) for job in json.loads(response)]
+            if response
+            else None
+        )
 
 
 job_cache_service = JobCacheService()

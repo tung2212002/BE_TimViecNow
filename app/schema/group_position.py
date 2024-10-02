@@ -1,5 +1,7 @@
-from pydantic import BaseModel, validator, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
+
+from app.schema.job_position import JobPositionItemResponse
 
 
 class GroupPositionBase(BaseModel):
@@ -32,4 +34,4 @@ class GroupPositionUpdate(GroupPositionBase):
 # response
 class GroupPositionItemResponse(GroupPositionBase):
     id: int
-    tags: Optional[list] = None
+    tags: Optional[List[JobPositionItemResponse]] = None

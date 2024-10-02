@@ -1,6 +1,7 @@
 from app.core import constant
 import re
 from datetime import datetime, date
+from fastapi import UploadFile
 
 from app.hepler.common import CommonHelper
 from app.hepler.enum import (
@@ -85,6 +86,23 @@ class SchemaValidator:
             v.filename = CommonHelper.generate_file_name(
                 FolderBucket.AVATAR, v.filename
             )
+        return v
+
+    @staticmethod
+    def validate_cv_upload_file(v: UploadFile):
+        if v is not None:
+            if v.content_type not in constant.ALLOWED_CV_TYPES:
+                raise ValueError("Invalid cv type")
+            elif v.size > constant.MAX_CV_SIZE:
+                raise ValueError("CV size must be at most 2MB")
+            v.filename = CommonHelper.generate_file_name(FolderBucket.CV, v.filename)
+        return v
+
+    @staticmethod
+    def validate_cv_url(v):
+        if v is not None:
+            if not v.startswith("https://"):
+                v = constant.BUCKET_URL + v
         return v
 
     @staticmethod

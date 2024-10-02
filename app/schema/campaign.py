@@ -66,22 +66,22 @@ class CampaignFilterListPagination(Pagination):
         return SchemaValidator.validate_filter_campaign(v)
 
 
-class CampaignGetOnlyOpenPagination(BaseModel):
-    business_id: Optional[int] = None
-    company_id: Optional[int] = None
-    status: Optional[CampaignStatus] = CampaignStatus.OPEN
-
-
-class CampaignGetHasNewApplicationPagination(BaseModel):
+class CampaignGetOnlyOpenPagination(Pagination):
     business_id: Optional[int] = None
     company_id: Optional[int] = None
 
 
-class CampaignGetHasPublishedJobPagination(CampaignGetOnlyOpenPagination):
-    pass
+class CampaignGetHasNewApplicationPagination(Pagination):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
 
 
-class CampaignGetHasPublishedJobExpiredPagination(BaseModel):
+class CampaignGetHasPublishedJobPagination(Pagination):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
+
+
+class CampaignGetHasPublishedJobExpiredPagination(Pagination):
     business_id: Optional[int] = None
     company_id: Optional[int] = None
 
@@ -100,6 +100,11 @@ class CountGetListPagination(BaseModel):
     business_id: Optional[int] = None
     company_id: Optional[int] = None
     status: Optional[CampaignStatus] = None
+
+
+class CountGetListStatusPagination(BaseModel):
+    business_id: Optional[int] = None
+    company_id: Optional[int] = None
 
 
 # schema

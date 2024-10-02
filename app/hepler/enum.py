@@ -166,6 +166,13 @@ class CVApplicationStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    INTERVIEW = "interview"
+    VIEWED = "viewed"
+
+
+class CVApplicationUpdateStatus(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
     STOPPED = "stopped"
     INTERVIEW = "interview"
 

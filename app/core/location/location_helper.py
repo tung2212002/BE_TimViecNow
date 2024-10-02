@@ -1,44 +1,33 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from app import crud
-from app.schema import (
-    province as schema_province,
-    district as schema_district,
-)
+from app.schema.province import ProvinceItemResponse
+from app.schema.district import DistrictItemResponse
 from app.common.exception import CustomException
 from fastapi import status
 
 
 class LocationHelper:
-    def get_province_info_by_id(self, db: Session, id: int) -> dict:
+    def get_province_info_by_id(self, db: Session, id: int) -> ProvinceItemResponse:
         province = crud.province.get(db, id)
-        return (
-            schema_province.ProvinceItemResponse(**province.__dict__)
-            if province
-            else None
-        )
+        return ProvinceItemResponse(**province.__dict__) if province else None
 
-    def get_district_info_by_id(self, db: Session, id: int) -> dict:
+    def get_district_info_by_id(self, db: Session, id: int) -> DistrictItemResponse:
         district = crud.district.get(db, id)
-        return (
-            schema_district.DistrictItemResponse(**district.__dict__)
-            if district
-            else None
-        )
+        return DistrictItemResponse(**district.__dict__) if district else None
 
-    def get_list_province_info(self, db: Session, data: dict) -> list:
+    def get_list_province_info(
+        self, db: Session, data: dict
+    ) -> List[ProvinceItemResponse]:
         provinces = crud.province.get_multi(db, **data)
-        return [
-            schema_province.ProvinceItemResponse(**province.__dict__)
-            for province in provinces
-        ]
+        return [ProvinceItemResponse(**province.__dict__) for province in provinces]
 
-    def get_list_district_info(self, db: Session, data: dict) -> list:
+    def get_list_district_info(
+        self, db: Session, data: dict
+    ) -> List[DistrictItemResponse]:
         districts = crud.district.get_multi_by_province(db, **data)
-        return [
-            schema_district.DistrictItemResponse(**district.__dict__)
-            for district in districts
-        ]
+        return [DistrictItemResponse(**district.__dict__) for district in districts]
 
     def check_valid_province_district(
         self, db: Session, province_id: int, district_id: int

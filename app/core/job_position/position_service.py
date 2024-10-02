@@ -32,9 +32,7 @@ class JobPositionService:
                 for job_position in job_positions
             ]
             try:
-                await config_cache_service.cache_position(
-                    redis, key, [job_position.__dict__ for job_position in response]
-                )
+                await config_cache_service.cache_position(redis, key, response)
             except Exception as e:
                 print(e)
 
@@ -46,7 +44,7 @@ class JobPositionService:
 
         response = None
         try:
-            response = await config_cache_service.get_cache_group(redis, key)
+            response = await config_cache_service.get_cache_position_group(redis, key)
         except Exception as e:
             print(e)
 
@@ -62,9 +60,7 @@ class JobPositionService:
                 for group_position in group_positions
             ]
             try:
-                await config_cache_service.cache_group(
-                    redis, key, [group_position.__dict__ for group_position in response]
-                )
+                await config_cache_service.cache_position_group(redis, key, response)
             except Exception as e:
                 print(e)
 

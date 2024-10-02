@@ -19,17 +19,15 @@ from app.api.api_v1.endpoint.config import (
     field,
 )
 
-from app.api.api_v1.endpoint.user import (
-    user_auth,
-    user,
-    company,
-    job,
-)
+from app.api.api_v1.endpoint.user import user_auth, user, company, job, cv_applications
 from app.api.api_v1.endpoint.admin import admin_approval_request_job
 
 api_router = APIRouter(prefix="/v1/api")
 api_router.include_router(user_auth.router, prefix="/user", tags=["user_auth"])
 api_router.include_router(user.router, prefix="/user/users", tags=["user"])
+api_router.include_router(
+    cv_applications.router, prefix="/user/cv_applications", tags=["cv_applications"]
+)
 api_router.include_router(location.router, prefix="/location", tags=["location"])
 api_router.include_router(position.router, prefix="/position", tags=["position"])
 api_router.include_router(

@@ -31,13 +31,17 @@ filter_functions = {
     ),
 }
 
+from datetime import datetime
+
 
 class CampaignService:
     async def get(self, db: Session, data: dict, current_user: ManagerBase):
         page = schema_campaign.CampaignGetListPagination(**data)
 
         campaigns = []
+        count = 0
         business_id = page.business_id
+
         role = business_auth_helper.check_permission_business(
             current_user,
             roles=[Role.BUSINESS, Role.ADMIN, Role.SUPER_USER],
@@ -64,6 +68,9 @@ class CampaignService:
             page.business_id = business_id
             page.company_id = company.id
             campaigns, count = filter_functions.get(page.filter_by)(db, page)
+        else:
+            campaigns, count = filter_functions.get(page.filter_by)(db, page)
+
         campaigns_response = [
             campaign_helper.get_info(db, campaign) for campaign in campaigns
         ]

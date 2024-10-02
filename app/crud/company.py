@@ -72,6 +72,7 @@ class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest])
             query = query.filter(CompanyField.field_id.in_(fields))
 
         if key_word:
+            print(key_word)
             query = query.filter(Company.name.ilike(f"%{key_word}%"))
 
         return query

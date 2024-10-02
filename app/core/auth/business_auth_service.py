@@ -86,6 +86,10 @@ class BusinessService:
 
         id = token_decode["id"]
         user = crud.manager_base.get(db, id)
+        if user is None:
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
+            )
         business = user.business
         if user is None:
             raise CustomException(

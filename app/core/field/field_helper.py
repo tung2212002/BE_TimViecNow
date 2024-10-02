@@ -9,10 +9,10 @@ from fastapi import status
 
 
 class FieldHelper:
-    def get_info(self, field: Field):
+    def get_info(self, field: Field) -> FieldItemResponse:
         return FieldItemResponse(**field.__dict__)
 
-    def get_list_info(self, fields: List[Field]):
+    def get_list_info(self, fields: List[Field]) -> List[FieldItemResponse]:
         return [self.get_info(field) for field in fields]
 
     def check_valid(
@@ -57,28 +57,13 @@ class FieldHelper:
         current_field_ids = crud.company_field.get_field_ids_by_company_id(
             db, company_id
         )
-
-        print("current field ids")
-        print(current_field_ids)
-
         new_field_ids = list(set(new_field_ids))
-
-        print("new field ids")
-        print(new_field_ids)
-
         remove_field_ids = list(set(current_field_ids) - set(new_field_ids))
         add_field_ids = list(set(new_field_ids) - set(current_field_ids))
-
-        print("remove field ids")
-        print(remove_field_ids)
-
-        print("add field ids")
-        print(add_field_ids)
         for id in remove_field_ids:
             print(id)
 
         for field_id in remove_field_ids:
-            print(field_id + " " + company_id)
             crud.company_field.remove_by_company_id_and_field_id(
                 db, company_id, field_id
             )
