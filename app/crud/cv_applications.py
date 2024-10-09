@@ -3,11 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from app.crud.base import CRUDBase
-from app.model import Job, Company, Business, User, CVApplication
+from app.model import Job, CVApplication
 from app.schema.cv_application import CVApplicationCreate, CVApplicationUpdate
 from app.hepler.enum import (
     CVApplicationStatus,
-    CVApplicationUpdateStatus,
     SortBy,
     OrderType,
 )

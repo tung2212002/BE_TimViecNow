@@ -29,7 +29,6 @@ class CompanyHelper:
                 fields=field_helper.get_list_info(fields),
                 total_active_jobs=self.get_jobs_active_by_company(db, company.id),
             )
-        print("1")
         return CompanyItemResponse(
             **{k: v for k, v in company.__dict__.items() if k not in ["fields"]},
             fields=field_helper.get_list_info(fields),
@@ -38,7 +37,6 @@ class CompanyHelper:
     def get_info_general(
         self, company: Company
     ) -> Optional[CompanyItemGeneralResponse]:
-        print(company.__dict__)
         if not company:
             return None
         return CompanyItemGeneralResponse(

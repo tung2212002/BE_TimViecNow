@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from .base import CRUDBase
 from app.model import CompanyField
@@ -24,7 +25,7 @@ class CRUDCompanyField(CRUDBase[CompanyField, CompanyFieldCreate, CompanyFieldUp
         ).delete()
         db.commit()
 
-    def get_field_ids_by_company_id(self, db: Session, company_id: int):
+    def get_field_ids_by_company_id(self, db: Session, company_id: int) -> List[int]:
         return (
             field_id
             for (field_id,) in db.query(self.model.field_id)

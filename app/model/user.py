@@ -1,28 +1,18 @@
-from sqlalchemy import Column, String, Enum, Boolean, DateTime, Integer
+from sqlalchemy import Column, String, Enum, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.db.base_class import Base
-from app.hepler.enum import Role, Gender, TypeAccount
+from app.hepler.enum import Gender
 
 
 class User(Base):
-    full_name = Column(String(50), nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    id = Column(Integer, ForeignKey("account.id", ondelete="CASCADE"), primary_key=True)
+    email = Column(String(255), unique=True, index=True, nullable=True)
     phone_number = Column(String(10), nullable=True)
     gender = Column(Enum(Gender), nullable=True)
-    is_active = Column(Boolean, default=True)
-    role = Column(Enum(Role), default=Role.USER)
-    is_verified = Column(Boolean, default=False)
-    avatar = Column(String(255), nullable=True)
-    type_account = Column(Enum(TypeAccount), default=TypeAccount.NORMAL)
     count_job_apply = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
-        DateTime(timezone=True), default=func.now(), onupdate=func.now()
-    )
-    last_login = Column(DateTime(timezone=True), default=func.now())
+    is_verified = Column(Boolean, default=False)
+    hashed_password = Column(String(255), nullable=True)
 
     user_job_save = relationship("UserJobSave", back_populates="user")
     cv_applications = relationship("CVApplication", back_populates="user")
@@ -31,3 +21,4 @@ class User(Base):
     )
     job_reports = relationship("JobReport", back_populates="user")
     social_network = relationship("SocialNetwork", back_populates="user")
+    account = relationship("Account", back_populates="user")

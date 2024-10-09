@@ -2,6 +2,7 @@ from app.core import constant
 import re
 from datetime import datetime, date
 from fastapi import UploadFile
+from typing import List
 
 from app.hepler.common import CommonHelper
 from app.hepler.enum import (
@@ -77,7 +78,7 @@ class SchemaValidator:
         return v
 
     @staticmethod
-    def validator_avatar_upload_file(v):
+    def validate_avatar_upload_file(v):
         if v is not None:
             if v.content_type not in constant.ALLOWED_IMAGE_TYPES:
                 raise ValueError("Invalid avatar type")
@@ -99,6 +100,19 @@ class SchemaValidator:
         return v
 
     @staticmethod
+    def validate_files(v: List[UploadFile]):
+        if v is not None:
+            for file in v:
+                if file.content_type not in constant.ALLOWED_IMAGE_TYPES:
+                    raise ValueError("Invalid file type")
+                elif file.size > constant.MAX_IMAGE_SIZE:
+                    raise ValueError("File size must be at most 2MB")
+                file.filename = CommonHelper.generate_file_name(
+                    FolderBucket.ATTACHMENT, file.filename
+                )
+        return v
+
+    @staticmethod
     def validate_cv_url(v):
         if v is not None:
             if not v.startswith("https://"):
@@ -113,6 +127,12 @@ class SchemaValidator:
             elif v.size > constant.MAX_IMAGE_SIZE:
                 raise ValueError("Image size must be at most 2MB")
             v.filename = CommonHelper.generate_file_name(FolderBucket.LOGO, v.filename)
+        return v
+
+    @staticmethod
+    def validate_attachment_url(v, values):
+        if "upload_filename" in values:
+            v = constant.BUCKET_URL + values["upload_filename"]
         return v
 
     @staticmethod
@@ -302,4 +322,13 @@ class SchemaValidator:
             raise ValueError("Invalid fields")
         elif len(v) == 0:
             raise ValueError("Fields must not be empty")
+        return v
+
+    @staticmethod
+    def validate_list_member(v):
+        if not isinstance(v, list):
+            raise ValueError("Invalid list member")
+        v = list(set(v))
+        if len(v) < 1:
+            raise ValueError("Invalid list member")
         return v

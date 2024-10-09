@@ -3,18 +3,16 @@ from sqlalchemy.orm import Session
 
 from app.core.security import PasswordManager
 from .base import CRUDBase
-from app.model.admin import Admin
+from app.model import Admin
 from app.schema import admin as schema_admin
 from app.hepler.enum import Role
-from app.crud.manager_base import manager_base
+from app.crud.manager import manager
 
 
-class CRUDAdmin(
-    CRUDBase[Admin, schema_admin.AdminCreateRequest, schema_admin.AdminUpdateRequest]
-):
+class CRUDAdmin(CRUDBase[Admin, schema_admin.AdminCreate, schema_admin.AdminUpdate]):
 
     def get_by_email(self, db: Session, email: str) -> Admin:
-        manager = manager_base.get_by_email(db, email)
+        manager = manager.get_by_email(db, email)
         return (
             db.query(Admin).filter(Admin.id == manager.id).first() if manager else None
         )

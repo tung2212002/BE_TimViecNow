@@ -1,44 +1,54 @@
+from fastapi import status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import requests
 from fastapi import Request
 
 from app.core import constant
-from app import crud
-from app.schema import (
-    user as schema_user,
-    social_network as schema_social_network,
-    auth as schema_auth,
+from app.crud import (
+    user as userCRUD,
+    social_network as social_networkCRUD,
+    blacklist as blacklistCRUD,
+    account as accountCRUD,
+)
+from app.schema.auth import AuthLogin, AuthChangePassword
+from app.schema.account import AccountCreate
+from app.schema.user import UserCreate
+from app.schema.social_network import (
+    SocialNetworkCreate,
 )
 from app.core.auth.jwt.auth_handler import token_manager
 from app.hepler.enum import Provider
-from app.core.security import PasswordManager
-from app.model import User
+from app.model import User, Account
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
-from fastapi import status
+from app.core.user.user_helper import user_helper
+from app.hepler.enum import Provider, Role, TypeAccount
 
 
 class UserAuthService:
     async def authenticate(self, db: Session, data: dict):
-        user_data = schema_auth.AuthLogin(**data)
+        user_data = AuthLogin(**data)
 
-        user = crud.user.get_by_email(db, user_data.email)
+        user = userCRUD.get_by_email(db, user_data.email)
         if not user:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
             )
 
-        if not PasswordManager.verify_password(
-            user_data.password, user.hashed_password
+        if not userCRUD.authenticate(
+            db, email=user_data.email, password=user_data.password
         ):
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Incorrect password"
             )
 
-        access_token = token_manager.signJWT(user)
-        refresh_token = token_manager.signJWTRefreshToken(user)
-        user = schema_user.UserItemResponse(**user.__dict__)
+        account = user.account
+        payload = token_manager.create_payload(account)
+        access_token = token_manager.signJWT(payload)
+        refresh_token = token_manager.signJWTRefreshToken(payload)
+
+        user = user_helper.get_info(db, account, user)
 
         return CustomResponse(
             data={
@@ -69,34 +79,61 @@ class UserAuthService:
                 status_code=status.HTTP_400_BAD_REQUEST, msg="Invalid token"
             )
 
-        social_network = crud.social_network.get_by_email(db, email)
+        account = None
+        user = None
+        social_network = social_networkCRUD.get_by_email(db, email, Provider.GOOGLE)
         if not social_network:
-            data = schema_social_network.SocialNetworkCreateRequest(
-                **data,
-                type=Provider.GOOGLE,
-                social_id=data.get("id"),
-                full_name=data.get("name"),
-                avatar=data.get("picture"),
-                access_token=token,
-            )
-            social_network = crud.social_network.create(db=db, obj_in=data)
-        if not social_network.is_verified:
-            social_network = schema_social_network.SocialNetworkItemResponse(
-                **social_network.__dict__
-            )
+            user = userCRUD.get_by_email(db, email)
+            if user:
+                userCRUD.set_verify(db, user, True)
+                social_network_data = SocialNetworkCreate(
+                    type=Provider.GOOGLE,
+                    social_id=data.get("id"),
+                    avatar=data.get("picture"),
+                    email=email,
+                    access_token=token,
+                    id=user.id,
+                )
+                social_network = social_networkCRUD.create(
+                    db=db, obj_in=social_network_data
+                )
+                account = user.account
+            else:
+                account_data = AccountCreate(
+                    full_name=data.get("name"),
+                    avatar=data.get("picture"),
+                    role=Role.SOCIAL_NETWORK,
+                    type_account=TypeAccount.NORMAL,
+                )
+                account = accountCRUD.create(db=db, obj_in=account_data)
+
+                user_data = UserCreate(id=account.id, phone_number=None, email=email)
+                user = userCRUD.create(db=db, obj_in=user_data)
+                social_network_data = SocialNetworkCreate(
+                    type=Provider.GOOGLE,
+                    social_id=data.get("id"),
+                    avatar=data.get("picture"),
+                    email=email,
+                    access_token=token,
+                    id=account.id,
+                )
+                social_network = social_networkCRUD.create(
+                    db=db, obj_in=social_network_data
+                )
         else:
-            social_network = schema_user.UserItemResponse(
-                **social_network.user.__dict__
-            )
-            access_token = token_manager.signJWT(social_network)
-            return CustomResponse(
-                data={"access_token": access_token, "user": social_network}
-            )
+            user = userCRUD.get_by_email(db, email)
+            account = user.account
+        payload = token_manager.create_payload(account)
+        access_token = token_manager.signJWT(payload)
+        refresh_token = token_manager.signJWTRefreshToken(payload)
 
-        access_token = token_manager.signJWT(social_network)
-
+        user = user_helper.get_info(db, account, user)
         return CustomResponse(
-            data={"access_token": access_token, "user": social_network}
+            data={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user": user,
+            }
         )
 
     async def check_verify_token(self, db: Session, token: str):
@@ -108,7 +145,7 @@ class UserAuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Token expired"
             )
 
-        check_blacklist = crud.blacklist.get_by_token(db, token)
+        check_blacklist = blacklistCRUD.get_by_token(db, token)
         if check_blacklist:
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Token revoked"
@@ -125,26 +162,28 @@ class UserAuthService:
             )
 
         email = token_decode["email"]
-        user = crud.user.get_by_email(db, email)
+        user = userCRUD.get_by_email(db, email)
         if user is None:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
             )
 
-        user.id
-        access_token = token_manager.signJWT(user)
-        user = schema_user.UserItemResponse(**user.__dict__)
+        account = user.account
+        payload = token_manager.create_payload(account)
+        access_token = token_manager.signJWT(payload)
+
+        user = user_helper.get_info(db, account, user)
 
         return CustomResponse(data={"access_token": access_token, "user": user})
 
     async def logout(self, db: Session, request: Request):
         token = request.headers.get("Authorization").split(" ")[1]
-        crud.blacklist.create(db=db, token=token)
+        blacklistCRUD.create(db=db, token=token)
 
         return CustomResponse(msg="Logout successfully")
 
-    async def change_password(self, db: Session, data: dict, current_user: User):
-        user_data = schema_auth.AuthChangePassword(**data)
+    async def change_password(self, db: Session, data: dict, current_user: Account):
+        user_data = AuthChangePassword(**data)
 
         if user_data.old_password == user_data.new_password:
             raise CustomException(
@@ -152,14 +191,15 @@ class UserAuthService:
                 msg="Old password and new password are the same",
             )
 
-        if not PasswordManager.verify_password(
-            user_data.old_password, current_user.hashed_password
+        user: User = current_user.user
+        if not userCRUD.authenticate(
+            db, email=user.email, password=user_data.old_password
         ):
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Incorrect password"
             )
 
-        crud.user.update(db=db, obj_in=user_data, db_obj=current_user)
+        userCRUD.update(db=db, obj_in=user_data, db_obj=user)
 
         return CustomResponse(msg="Change password successfully")
 

@@ -135,7 +135,6 @@ class CompanyItemGeneralResponse(BaseModel):
     logo: Optional[str] = None
     website: Optional[str] = None
     address: str
-    company_short_description: Optional[str] = None
     scale: str
     is_verified: bool
     total_active_jobs: int = None
@@ -145,10 +144,6 @@ class CompanyItemGeneralResponse(BaseModel):
     @validator("logo")
     def validate_logo(cls, v):
         return SchemaValidator.validate_logo(v)
-
-    @validator("company_short_description")
-    def validate_company_short_description(cls, v):
-        return SchemaValidator.validate_json_loads(v)
 
     @validator("banner")
     def validate_banner(cls, v):

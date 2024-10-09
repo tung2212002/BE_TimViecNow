@@ -1,14 +1,16 @@
 from sqlalchemy.orm import Session
 
-from app import crud
-from app.schema import (
-    job_approval_request as schema_job_approval_request,
-    job_approval_log as schema_job_approval_log,
+from app.schema.job_approval_request import (
+    JobApprovalRequestList,
+    JobApprovalRequestCreate,
+    JobApprovalRequestUpdate,
 )
+from app.schema.job_approval_log import JobApprovalLogCreate
 from app.core.job_approval_log.job_approval_log_helper import job_approval_log_helper
 from app.crud.job import job as jobCRUD
+from app.crud import job_approval_request as job_approval_requestCRUD
 from app.hepler.enum import JobStatus, JobApprovalStatus
-from app.model import ManagerBase
+from app.model import Account
 from fastapi import status
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
@@ -16,11 +18,9 @@ from app.common.response import CustomResponse
 
 class JobApprovalRequestService:
     async def get(self, db: Session, data: dict):
-        job_approval_request_data = schema_job_approval_request.JobApprovalRequestList(
-            **data
-        )
+        job_approval_request_data = JobApprovalRequestList(**data)
 
-        response = crud.job_approval_request.get_multi(
+        response = job_approval_requestCRUD.get_multi(
             db,
             **job_approval_request_data.model_dump(),
         )
@@ -28,7 +28,7 @@ class JobApprovalRequestService:
         return CustomResponse(data=response)
 
     async def get_by_id(self, db: Session, id: int):
-        response = crud.job_approval_request.get(db, id)
+        response = job_approval_requestCRUD.get(db, id)
         if not response:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -37,12 +37,10 @@ class JobApprovalRequestService:
 
         return CustomResponse(data=response)
 
-    async def approve(self, db: Session, current_user: ManagerBase, data: dict):
-        job_approval_request_data = (
-            schema_job_approval_request.JobApprovalRequestCreate(**data)
-        )
+    async def approve(self, db: Session, current_user: Account, data: dict):
+        job_approval_request_data = JobApprovalRequestCreate(**data)
 
-        job_approval_request = crud.job_approval_request.get(
+        job_approval_request = job_approval_requestCRUD.get(
             db, job_approval_request_data.job_approval_request_id
         )
         if not job_approval_request:
@@ -61,12 +59,12 @@ class JobApprovalRequestService:
             if job.status != JobStatus.PUBLISHED:
                 jobCRUD.update(db, db_obj=job, obj_in={"status": JobStatus.PUBLISHED})
         job_approval_request.id
-        crud.job_approval_request.update(
+        job_approval_requestCRUD.update(
             db,
             db_obj=job_approval_request,
             obj_in={"status": job_approval_request_data.status},
         )
-        job_approval_log = schema_job_approval_log.JobApprovalLogCreate(
+        job_approval_log = JobApprovalLogCreate(
             **{
                 "job_approval_request_id": job_approval_request.id,
                 "previous_status": job_approval_request.status,
@@ -82,12 +80,10 @@ class JobApprovalRequestService:
 
         return CustomResponse(data=job_approval_request)
 
-    async def approve_update(self, db: Session, current_user: ManagerBase, data: dict):
-        job_approval_update_data = schema_job_approval_request.JobApprovalRequestUpdate(
-            **data
-        )
+    async def approve_update(self, db: Session, current_user: Account, data: dict):
+        job_approval_update_data = JobApprovalRequestUpdate(**data)
 
-        job_approval_request = crud.job_approval_request.get(
+        job_approval_request = job_approval_requestCRUD.get(
             db, job_approval_update_data.job_approval_request_id
         )
         if not job_approval_request:
@@ -112,16 +108,14 @@ class JobApprovalRequestService:
 
         job_approval_request.id
         if job_approval_request.status == JobApprovalStatus.APPROVED:
-            job_update_in = schema_job_approval_request.JobApprovalRequestUpdate(
-                **job_approval_request.__dict__
-            )
+            job_update_in = JobApprovalRequestUpdate(**job_approval_request.__dict__)
             jobCRUD.update(db, db_obj=job, obj_in=job_update_in)
-        crud.job_approval_request.update(
+        job_approval_requestCRUD.update(
             db,
             db_obj=job_approval_request,
             obj_in={"status": job_approval_update_data.status},
         )
-        job_approval_log = schema_job_approval_log.JobApprovalLogCreate(
+        job_approval_log = JobApprovalLogCreate(
             **{
                 "job_approval_request_id": job_approval_request.id,
                 "previous_status": job_approval_request.status,

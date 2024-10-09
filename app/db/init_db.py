@@ -1,15 +1,15 @@
 from sqlalchemy.orm import Session
 
 from app import crud
-from app.schema import admin as schema_admin, manager_base as schema_manager_base
+from app.schema import admin as schema_admin, manager as schema_manager
 from app.core.config import settings
 from app.hepler.enum import Role, Gender
 
 
 def init_db(db: Session) -> None:
-    user = crud.manager_base.get_by_email(db, email=settings.FIRST_SUPERUSER_EMAIL)
+    user = crud.manager.get_by_email(db, email=settings.FIRST_SUPERUSER_EMAIL)
     if not user:
-        manager_base_in = schema_manager_base.ManagerBaseCreateRequest(
+        manager_in = schema_manager.ManagerCreateRequest(
             full_name=settings.FIRST_SUPERUSER,
             email=settings.FIRST_SUPERUSER_EMAIL,
             password=settings.FIRST_SUPERUSER_PASSWORD,
@@ -17,12 +17,12 @@ def init_db(db: Session) -> None:
             role=Role.SUPER_USER,
         )
 
-        manager_base = crud.manager_base.create(db, obj_in=manager_base_in)
+        manager = crud.manager.create(db, obj_in=manager_in)
 
         user_in = schema_admin.AdminCreateRequest(
             gender=Gender.OTHER,
             phone_number=settings.FIRST_SUPERUSER_PHONE_NUMBER,
         )
         user_in = dict(user_in)
-        user_in["id"] = manager_base.id
+        user_in["id"] = manager.id
         user = crud.admin.create(db, obj_in=user_in)

@@ -1,21 +1,23 @@
-from typing import Type
+from typing import Type, List
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import distinct
 from sqlalchemy import case, func, or_, and_, text, exists
 
 from .base import CRUDBase
-from app.model.job import Job
-from app.model.job_approval_request import JobApprovalRequest
-from app.model.business import Business
-from app.model.work_location import WorkLocation
-from app.model.province import Province
-from app.model.district import District
-from app.model.campaign import Campaign
-from app.model.field import Field
-from app.model.job_category import JobCategory
-from app.model.company import Company
-from app.model.company_field import CompanyField
+from app.model import (
+    Job,
+    JobApprovalRequest,
+    Business,
+    WorkLocation,
+    Province,
+    District,
+    Campaign,
+    Field,
+    JobCategory,
+    Company,
+    CompanyField,
+)
 from app.schema.job import JobCreate, JobUpdate
 from app.hepler.enum import JobStatus, SalaryType, JobApprovalStatus
 
@@ -38,7 +40,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self,
         db: Session,
         **kwargs,
-    ):
+    ) -> List[Job]:
         query = db.query(self.model)
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -65,7 +67,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
             .all()
         )
 
-    def get_by_campaign_id(self, db: Session, campaign_id: int):
+    def get_by_campaign_id(self, db: Session, campaign_id: int) -> Job:
         return (
             db.query(self.model).filter(self.model.campaign_id == campaign_id).first()
         )
@@ -74,7 +76,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self,
         db: Session,
         **kwargs,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         if kwargs.get("province_id") or kwargs.get("district_id"):
             query = query.join(
@@ -92,7 +94,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self,
         db: Session,
         **kwargs,
-    ):
+    ) -> List[Job]:
         skip = kwargs.get("skip", 0)
         limit = kwargs.get("limit", 10)
         sort_by = kwargs.get("sort_by", "id")
@@ -124,23 +126,9 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self,
         db: Session,
         **kwargs,
-    ):
-        # subquery = (
-        #     db.query(
-        #         JobApprovalRequest.job_id,
-        #         JobApprovalRequest.updated_at,
-        #         func.max(JobApprovalRequest.updated_at).label("max_updated_at"),
-        #     )
-        #     .filter(JobApprovalRequest.status == "APPROVED")
-        #     .group_by(JobApprovalRequest.job_id, JobApprovalRequest.updated_at)
-        #     .subquery()
-        # )
-
-        query = (
-            db.query(func.count(self.model.id))
-            # .join(subquery, Job.id == subquery.c.job_id)
-            # .join(JobApprovalRequest, JobApprovalRequest.id == subquery.c.job_id)
-            .filter(Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now())
+    ) -> int:
+        query = db.query(func.count(self.model.id)).filter(
+            Job.status == JobStatus.PUBLISHED, Job.deadline >= func.now()
         )
 
         query = self.user_apply_filters(query, **kwargs)
@@ -151,7 +139,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         self,
         db: Session,
         **kwargs,
-    ):
+    ) -> List[Job]:
         skip = kwargs.get("skip", 0)
         limit = kwargs.get("limit", 10)
         sort_by = kwargs.get("sort_by", "id")
@@ -349,29 +337,6 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         return query.all()
 
     def count_job_by_salary(self, db: Session, salary_ranges):
-        # query = text(
-        #     """
-        #     SELECT
-        #         CASE
-        #             WHEN ((job.min_salary >= 0 AND job.max_salary < 3000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 0
-        #             WHEN ((job.min_salary >= 3000000 AND job.max_salary < 10000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 1
-        #             WHEN ((job.min_salary >= 10000000 AND job.max_salary < 20000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 2
-        #             WHEN ((job.min_salary >= 20000000 AND job.max_salary < 30000000 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 3
-        #             WHEN ((job.min_salary >= 30000000 AND job.max_salary < 0 AND job.salary_type = 'VND' AND job.status = 'PUBLISHED')) THEN 4
-        #             WHEN ((job.salary_type = 'DEAL' AND job.status = 'PUBLISHED')) THEN 5
-        #             WHEN ((job.salary_type = 'USD' AND job.status = 'PUBLISHED')) THEN 6
-        #             ELSE 7
-        #         END AS salary_range,
-        #         MIN(job.min_salary) AS min_salary,
-        #         MAX(job.max_salary) AS max_salary,
-        #         MIN(job.salary_type) AS salary_type,
-        #         COUNT(job.id) AS job_count
-        #     FROM job
-        #     WHERE job.deadline >= NOW()
-        #     GROUP BY salary_range;
-        #     """
-        # )
-        # return db.execute(query).fetchall()
         unit = 1000000
 
         query = (
@@ -415,7 +380,7 @@ class CRUDJob(CRUDBase[Job, JobCreate, JobUpdate]):
         results = query
         return results
 
-    def count_company_active_job(self, db: Session):
+    def count_company_active_job(self, db: Session) -> int:
         return (
             db.query(func.count(func.distinct(self.company.id)).label("count_1"))
             .filter(

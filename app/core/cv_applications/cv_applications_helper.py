@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
-from typing import List
 from fastapi import status
 
-from app import crud
+from app.crud import cv_applications as cv_applicationCRUD, job as jobCRUD
 from app.model import CVApplication, Job
 from app.core.job.job_helper import job_helper
 from app.core.company.company_helper import company_helper
@@ -40,7 +39,7 @@ class CVApplicationsHelper:
         return CVApplicationGeneralResponse(**cv_application.__dict__, job=job_info)
 
     def job_open(sefl, db: Session, job_id: int) -> Job:
-        job = crud.job.get(db, job_id)
+        job = jobCRUD.get(db, job_id)
         if not job:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
@@ -58,9 +57,7 @@ class CVApplicationsHelper:
         self, db: Session, user_id: int, campaign_id: int
     ) -> bool:
         return (
-            crud.cv_applications.get_by_user_id_and_campaign_id(
-                db, user_id, campaign_id
-            )
+            cv_applicationCRUD.get_by_user_id_and_campaign_id(db, user_id, campaign_id)
             is not None
         )
 

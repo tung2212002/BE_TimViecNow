@@ -35,6 +35,14 @@ class BaseCache:
         """Get Value from Key"""
         return [json.loads(v) for v in await redis.lrange(self.key_prefix + key, 0, -1)]
 
+    async def add_to_list(self, redis: Redis, key: str, value: Any):
+        """Add Value to List"""
+        await redis.rpush(self.key_prefix + key, json.dumps(value))
+
+    async def remove_from_list(self, redis: Redis, key: str, value: Any):
+        """Remove Value from List"""
+        await redis.lrem(self.key_prefix + key, 0, json.dumps(value))
+
     async def set_dict(self, redis: Redis, key: str, value: dict, expire: int = None):
         """Set Value to Key"""
         await redis.hmset(self.key_prefix + key, value)

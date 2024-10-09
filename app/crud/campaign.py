@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from sqlalchemy.sql import func, text
+from typing import List
 
 from .base import CRUDBase
 from app.model import Job, Campaign, CVApplication
@@ -26,7 +27,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
         status: CampaignStatus = None,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query, business_id=business_id, company_id=company_id, status=status
@@ -41,7 +42,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         business_id: int = None,
         company_id: int = None,
         status: CampaignStatus = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query, business_id=business_id, company_id=company_id, status=status
@@ -59,7 +60,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         limit=10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query,
@@ -78,7 +79,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -101,7 +102,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         limit=10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query,
@@ -118,7 +119,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -139,7 +140,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         limit=10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query,
@@ -157,7 +158,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
 
     def count_has_new_application(
         self, db: Session, *, business_id: int = None, Company_id: int = None
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(query, business_id=business_id, company_id=Company_id)
         query = query.join(Job).filter(
@@ -176,7 +177,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> List[Campaign]:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -194,7 +195,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -215,7 +216,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         limit=10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query,
@@ -235,7 +236,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -258,7 +259,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         limit=10,
         sort_by: SortBy = SortBy.ID,
         order_by: OrderType = OrderType.DESC,
-    ):
+    ) -> List[Campaign]:
         query = db.query(self.model)
         query = self.apply_filter(
             query,
@@ -275,7 +276,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
         *,
         business_id: int = None,
         company_id: int = None,
-    ):
+    ) -> int:
         query = db.query(func.count(self.model.id))
         query = self.apply_filter(
             query,
@@ -311,7 +312,7 @@ class CRUDCampaign(CRUDBase[Campaign, CampaignCreate, CampaignUpdate]):
 
         return query
 
-    def return_campaign(self, query, skip, limit, sort_by, order_by):
+    def return_campaign(self, query, skip, limit, sort_by, order_by) -> List[Campaign]:
         query = (
             query.order_by(
                 getattr(self.model, sort_by).desc()

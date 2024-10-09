@@ -1,4 +1,4 @@
-from redis.asyncio import Redis
+from redis.asyncio import Redis, ConnectionPool
 import json
 from typing import Any, Optional, Annotated
 from fastapi import Depends
@@ -11,7 +11,6 @@ logger = get_logger(__name__)
 
 
 class RedisBackend:
-
     def __init__(
         self,
         host: str,
@@ -21,12 +20,14 @@ class RedisBackend:
         expire: int,
     ):
         self.expire = expire
-        self.connection = Redis(
+        self.connection_pool = ConnectionPool(
             host=host,
             port=port,
             password=password,
             db=db,
+            max_connections=settings.REDIS_MAX_CONNECTIONS or 10,
         )
+        self.connection = Redis(connection_pool=self.connection_pool)
 
     async def get(self, key: str) -> Any:
         """Get Value from Key"""
@@ -82,7 +83,6 @@ class RedisDependency:
                 db=settings.REDIS_DB,
                 expire=settings.REDIS_EXPIRE,
             )
-
             await self.redis.connection.ping()
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")

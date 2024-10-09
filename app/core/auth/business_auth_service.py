@@ -3,59 +3,55 @@ from datetime import datetime, timezone
 from fastapi import Request
 from fastapi import BackgroundTasks
 
-from app import crud
-from app.schema import (
-    manager_base as schema_manager_base,
-    auth as schema_auth,
-)
+from app.crud import manager as managerCRUD, blacklist as blacklistCRUD
+from app.schema.auth import AuthLogin, AuthChangePassword, AuthForgotPassword
 from app.core.auth.jwt.auth_handler import token_manager
-from app.core.business.business_helper import business_hepler
-from app.core.security import PasswordManager
+from app.core.business.business_helper import business_helper
+from app.core.admin.admin_helper import admin_helper
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
 from fastapi import status
-from app.model import ManagerBase
+from app.model import Manager, Account
 
 
 class BusinessService:
     async def authenticate(self, db: Session, data: dict):
-        user_data = schema_auth.AuthLogin(**data)
+        manager_data = AuthLogin(**data)
 
-        user = crud.manager_base.get_by_email(db, user_data.email)
-        if not user:
+        manager = managerCRUD.get_by_email(db, manager_data.email)
+        if not manager:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
             )
 
-        if not PasswordManager.verify_password(
-            user_data.password, user.hashed_password
+        if not managerCRUD.authenticate(
+            db, email=manager_data.email, password=manager_data.password
         ):
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Incorrect password"
             )
 
-        access_token = token_manager.signJWT(user)
-        refresh_token = token_manager.signJWTRefreshToken(user)
+        payload = token_manager.create_payload(manager.account)
+        access_token = token_manager.signJWT(payload)
+        refresh_token = token_manager.signJWTRefreshToken(payload)
 
-        business = user.business
+        business = manager.business
         if business is None:
             return CustomResponse(
                 data={
                     "access_token": access_token,
                     "refresh_token": refresh_token,
-                    "user": schema_manager_base.ManagerBaseItemResponse(
-                        **user.__dict__
-                    ),
+                    "user": admin_helper.get_info_by_manager(db, manager),
                 }
             )
 
-        user_response = business_hepler.get_info(db, user)
+        business_response = business_helper.get_info_by_manager(db, manager)
 
         return CustomResponse(
             data={
                 "access_token": access_token,
                 "refresh_token": refresh_token,
-                "user": {**user_response},
+                "user": business_response,
             }
         )
 
@@ -68,7 +64,7 @@ class BusinessService:
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Token expired"
             )
 
-        check_blacklist = crud.blacklist.get_by_token(db, token)
+        check_blacklist = blacklistCRUD.get_by_token(db, token)
         if check_blacklist:
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Token revoked"
@@ -85,51 +81,53 @@ class BusinessService:
             )
 
         id = token_decode["id"]
-        user = crud.manager_base.get(db, id)
-        if user is None:
+        manager = managerCRUD.get(db, id)
+        if manager is None:
             raise CustomException(
-                status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, msg="Business not found"
             )
-        business = user.business
-        if user is None:
+        business = manager.business
+        if business is None:
             raise CustomException(
-                status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, msg="Business not found"
             )
 
-        access_token = token_manager.signJWT(user)
-        user_response = business_hepler.get_info(db, user)
+        payload = token_manager.create_payload(manager.account)
+        access_token = token_manager.signJWT(payload)
+        manager_response = business_helper.get_info(db, manager)
 
         return CustomResponse(
             data={
                 "access_token": access_token,
-                "user": user_response,
+                "manager": manager_response,
             }
         )
 
     async def logout(self, db: Session, request: Request):
         token = request.headers.get("Authorization").split(" ")[1]
-        crud.blacklist.create(db=db, token=token)
+        blacklistCRUD.create(db=db, token=token)
 
         return CustomResponse(msg="Logout successfully")
 
-    async def change_password(self, db: Session, data: dict, current_user: ManagerBase):
-        user_data = schema_auth.AuthChangePassword(**data)
+    async def change_password(self, db: Session, data: dict, current_user: Account):
+        business_data = AuthChangePassword(**data)
 
-        if user_data.old_password == user_data.new_password:
+        if business_data.old_password == business_data.new_password:
             raise CustomException(
                 status_code=status.HTTP_409_CONFLICT,
                 msg="Old password and new password are the same",
             )
 
-        if not PasswordManager.verify_password(
-            user_data.old_password, current_user.hashed_password
+        manager: Manager = current_user.manager
+        if not managerCRUD.authenticate(
+            db, email=manager.email, password=business_data.old_password
         ):
             raise CustomException(
                 status_code=status.HTTP_401_UNAUTHORIZED, msg="Incorrect password"
             )
 
-        crud.manager_base.update(
-            db=db, obj_in={"password": user_data.new_password}, db_obj=current_user
+        managerCRUD.update(
+            db=db, obj_in={"password": business_data.new_password}, db_obj=manager
         )
 
         return CustomResponse(msg="Change password successfully")
@@ -137,9 +135,9 @@ class BusinessService:
     async def send_forgot_password(
         self, db: Session, background_tasks: BackgroundTasks, data: dict
     ):
-        user_data = schema_auth.AuthForgotPassword(**data)
+        business_data = AuthForgotPassword(**data)
 
-        user = crud.manager_base.get_by_email(db, user_data.email)
+        user = managerCRUD.get_by_email(db, business_data.email)
         if user is None:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="User not found"
@@ -152,11 +150,9 @@ class BusinessService:
     async def change_password_for_test(self, db: Session, data: dict):
         pass_word = data.get("password")
         user_id = data.get("user_id")
-        current_user = crud.manager_base.get(db, user_id)
+        current_user = managerCRUD.get(db, user_id)
 
-        crud.manager_base.update(
-            db=db, obj_in={"password": pass_word}, db_obj=current_user
-        )
+        managerCRUD.update(db=db, obj_in={"password": pass_word}, db_obj=current_user)
 
         return CustomResponse(msg="Change password test successfully")
 

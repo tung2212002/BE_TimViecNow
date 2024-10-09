@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = Field(default="")
     REDIS_DB: int = Field(default=0)
     REDIS_EXPIRE: int = Field(default=3600)
+    REDIS_MAX_CONNECTIONS: int = Field(default=10)
     # Logging information
     LOG_LEVEL: int = Field(default=10)
 

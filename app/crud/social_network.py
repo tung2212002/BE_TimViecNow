@@ -2,21 +2,25 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from app.model.social_network import SocialNetwork
+from app.model import SocialNetwork
 from app.schema import social_network as schema_social_network
-from app.hepler.enum import Role
+from app.hepler.enum import Role, Provider
 
 
 class CRUDSocialNetwork(
     CRUDBase[
         SocialNetwork,
-        schema_social_network.SocialNetworkCreateRequest,
-        schema_social_network.SocialNetworkUpdateRequest,
+        schema_social_network.SocialNetworkCreate,
+        schema_social_network.SocialNetworkUpdate,
     ]
 ):
 
-    def get_by_email(self, db: Session, email: str) -> SocialNetwork:
-        return db.query(self.model).filter(self.model.email == email).first()
+    def get_by_email(self, db: Session, email: str, type: Provider) -> SocialNetwork:
+        return (
+            db.query(self.model)
+            .filter(self.model.email == email, self.model.type == type)
+            .first()
+        )
 
     def get_multi(
         self,
@@ -32,7 +36,7 @@ class CRUDSocialNetwork(
         )
 
     def create(
-        self, db: Session, *, obj_in: schema_social_network.SocialNetworkCreateRequest
+        self, db: Session, *, obj_in: schema_social_network.SocialNetworkCreate
     ) -> SocialNetwork:
         db_obj = SocialNetwork(**obj_in.dict())
         db.add(db_obj)

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, Union, Tuple, List
 from pydantic import BaseModel
 
-from app import crud
+from app.crud import campaign as campaignCRUD, company as companyCRUD
 from app.hepler.enum import CampaignStatus
 from app.core.job.job_helper import job_helper
 from app.model import Campaign
@@ -31,7 +31,7 @@ class CampaignHelper:
         title: str,
     ) -> Campaign:
         if campaign_id:
-            campaign = crud.campaign.get(db, campaign_id)
+            campaign = campaignCRUD.get(db, campaign_id)
             if not campaign:
                 raise CustomException(
                     status_code=status_code.HTTP_404_NOT_FOUND, msg="Campaign not found"
@@ -50,8 +50,8 @@ class CampaignHelper:
 
             return campaign
         else:
-            company = crud.company.get_by_business_id(db, business_id)
-            campaign = crud.campaign.create(
+            company = companyCRUD.get_by_business_id(db, business_id)
+            campaign = campaignCRUD.create(
                 db,
                 obj_in={
                     "business_id": business_id,
@@ -77,11 +77,11 @@ class CampaignHelper:
         multi_paigination = CampaignGetMutilPagination(**page.model_dump())
         count_pagination = CountGetListPagination(**page.model_dump())
 
-        count = crud.campaign.count(db, **count_pagination.model_dump())
+        count = campaignCRUD.count(db, **count_pagination.model_dump())
         if count < multi_paigination.skip:
             return [], count
 
-        return crud.campaign.get_multi(db, **multi_paigination.model_dump()), count
+        return campaignCRUD.get_multi(db, **multi_paigination.model_dump()), count
 
     def get_list_campaign_open(
         self, db: Session, page: Union[dict, BaseModel]
@@ -89,11 +89,11 @@ class CampaignHelper:
         multi_paigination = CampaignGetOnlyOpenPagination(**page.model_dump())
         count_pagination = CountGetListStatusPagination(**page.model_dump())
 
-        count = crud.campaign.count(db, **count_pagination.model_dump())
+        count = campaignCRUD.count(db, **count_pagination.model_dump())
         if count < multi_paigination.skip:
             return [], count
 
-        return crud.campaign.get_open(db, **multi_paigination.model_dump()), count
+        return campaignCRUD.get_open(db, **multi_paigination.model_dump()), count
 
     def get_list_campaign_has_new_application(
         self, db: Session, page: Union[dict, BaseModel]
@@ -101,14 +101,14 @@ class CampaignHelper:
         multi_paigination = CampaignGetHasNewApplicationPagination(**page.model_dump())
         count_pagination = CountGetListPagination(**page.model_dump())
 
-        count = crud.campaign.count_has_new_application(
+        count = campaignCRUD.count_has_new_application(
             db, **count_pagination.model_dump()
         )
         if count < multi_paigination.skip:
             return [], count
 
         return (
-            crud.campaign.get_has_new_application(db, **multi_paigination.model_dump()),
+            campaignCRUD.get_has_new_application(db, **multi_paigination.model_dump()),
             count,
         )
 
@@ -118,14 +118,14 @@ class CampaignHelper:
         multi_paigination = CampaignGetHasPublishedJobPagination(**page.model_dump())
         count_pagination = CountGetListStatusPagination(**page.model_dump())
 
-        count = crud.campaign.count_has_published_job(
+        count = campaignCRUD.count_has_published_job(
             db, **count_pagination.model_dump()
         )
         if count < multi_paigination.skip:
             return [], count
 
         return (
-            crud.campaign.get_has_published_job(db, **multi_paigination.model_dump()),
+            campaignCRUD.get_has_published_job(db, **multi_paigination.model_dump()),
             count,
         )
 
@@ -137,14 +137,14 @@ class CampaignHelper:
         )
         count_pagination = CountGetListStatusPagination(**page.model_dump())
 
-        count = crud.campaign.count_has_published_job_expired(
+        count = campaignCRUD.count_has_published_job_expired(
             db, **count_pagination.model_dump()
         )
         if count < multi_paigination.skip:
             return [], count
 
         return (
-            crud.campaign.get_has_published_job_expired(
+            campaignCRUD.get_has_published_job_expired(
                 db, **multi_paigination.model_dump()
             ),
             count,
@@ -156,12 +156,12 @@ class CampaignHelper:
         multi_paigination = CampaignGetHasPendingJobPagination(**page.model_dump())
         count_pagination = CountGetListStatusPagination(**page.model_dump())
 
-        count = crud.campaign.count_has_pending_job(db, **count_pagination.model_dump())
+        count = campaignCRUD.count_has_pending_job(db, **count_pagination.model_dump())
         if count < multi_paigination.skip:
             return [], count
 
         return (
-            crud.campaign.get_has_pending_job(db, **multi_paigination.model_dump()),
+            campaignCRUD.get_has_pending_job(db, **multi_paigination.model_dump()),
             count,
         )
 

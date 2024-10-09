@@ -1,25 +1,26 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
+from typing import List
 
 from .base import CRUDBase
 from app.model import Company
 from app.model.company_field import CompanyField
-from app.schema.company import CompanyCreateRequest, CompanyUpdateRequest
+from app.schema.company import CompanyCreate, CompanyUpdate
 
 
-class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest]):
-    def get_by_business_id(self, db: Session, business_id: int):
+class CRUDCompany(CRUDBase[Company, CompanyCreate, CompanyUpdate]):
+    def get_by_business_id(self, db: Session, business_id: int) -> Company:
         return (
             db.query(self.model).filter(self.model.business_id == business_id).first()
         )
 
-    def get_company_by_tax_code(self, db: Session, tax_code: str):
+    def get_company_by_tax_code(self, db: Session, tax_code: str) -> Company:
         return db.query(self.model).filter(self.model.tax_code == tax_code).first()
 
-    def get_company_by_email(self, db: Session, email: str):
+    def get_company_by_email(self, db: Session, email: str) -> Company:
         return db.query(self.model).filter(self.model.email == email).first()
 
-    def get_multi(self, db: Session, **kwargs):
+    def get_multi(self, db: Session, **kwargs) -> List[Company]:
         skip = kwargs.get("skip")
         limit = kwargs.get("limit")
         sort_by = kwargs.get("sort_by")
@@ -44,7 +45,7 @@ class CRUDCompany(CRUDBase[Company, CompanyCreateRequest, CompanyUpdateRequest])
             .all()
         )
 
-    def search_multi(self, db: Session, **kwargs):
+    def search_multi(self, db: Session, **kwargs) -> List[Company]:
         skip = kwargs.get("skip", 0)
         limit = kwargs.get("limit", 10)
         sort_by = kwargs.get("sort_by", "id")

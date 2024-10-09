@@ -5,7 +5,7 @@ from app.model import Business
 from app.common.exception import CustomException
 from fastapi import status
 from app.hepler.enum import Role
-from app.model import ManagerBase
+from app.model import Account, Business
 
 
 class BusinessAuthHelper:
@@ -38,29 +38,29 @@ class BusinessAuthHelper:
                 msg="Indentity not verified",
             )
 
-    def verified(self, user, verify_types: List[VerifyType]) -> None:
+    def verified(self, business: Business, verify_types: List[VerifyType]) -> None:
         for verify_type in verify_types:
             if verify_type == VerifyType.EMAIL:
-                self.verified_email(user)
+                self.verified_email(business)
             elif verify_type == VerifyType.PHONE:
-                self.verified_phone(user)
+                self.verified_phone(business)
             elif verify_type == VerifyType.COMPANY:
-                self.verified_company(user)
+                self.verified_company(business)
             elif verify_type == VerifyType.IDENTIFY:
-                self.verified_identity(user)
+                self.verified_identity(business)
 
-    def verified_level(self, user, level: int) -> None:
+    def verified_level(self, business: Business, level: int) -> None:
         if level == 1:
-            self.verified(user, [VerifyType.EMAIL])
+            self.verified(business, [VerifyType.EMAIL])
         elif level == 2:
-            self.verified(user, [VerifyType.EMAIL, VerifyType.PHONE])
+            self.verified(business, [VerifyType.EMAIL, VerifyType.PHONE])
         elif level == 3:
             self.verified(
-                user, [VerifyType.EMAIL, VerifyType.PHONE, VerifyType.COMPANY]
+                business, [VerifyType.EMAIL, VerifyType.PHONE, VerifyType.COMPANY]
             )
         elif level == 4:
             self.verified(
-                user,
+                business,
                 [
                     VerifyType.EMAIL,
                     VerifyType.PHONE,
@@ -70,7 +70,7 @@ class BusinessAuthHelper:
             )
 
     def check_permission_business(
-        self, current_user: ManagerBase, roles: List[Role], business_id: int = None
+        self, current_user: Account, roles: List[Role], business_id: int = None
     ) -> Role:
         if business_id:
             if current_user.role not in [Role.SUPER_USER, Role.ADMIN]:

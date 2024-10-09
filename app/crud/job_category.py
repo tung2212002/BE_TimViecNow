@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from .base import CRUDBase
 from app.model import JobCategory
@@ -24,10 +25,10 @@ class CRUDJobCategory(CRUDBase[JobCategory, JobCategoryCreate, JobCategoryUpdate
         ).delete()
         db.commit()
 
-    def get_by_job_id(self, db: Session, job_id: int):
+    def get_by_job_id(self, db: Session, job_id: int) -> List[JobCategory]:
         return db.query(self.model).filter(self.model.job_id == job_id).all()
 
-    def get_ids_by_job_id(self, db: Session, job_id: int):
+    def get_ids_by_job_id(self, db: Session, job_id: int) -> List[int]:
         return (
             category_id
             for (category_id,) in db.query(self.model.category_id)

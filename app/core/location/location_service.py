@@ -1,20 +1,18 @@
+from fastapi import status
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
 
 from app.core import constant
-from app.schema import (
-    page as schema_page,
-)
+from app.schema.page import Pagination
 from app.storage.cache.location_cache_service import location_cache_service
 from app.core.location.location_helper import location_helper
-from fastapi import status
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
 
 
 class LocationService:
     async def get_province(self, db: Session, redis: Redis, data: dict):
-        page = schema_page.Pagination(**data)
+        page = Pagination(**data)
         key = page.get_key()
 
         response = None
@@ -33,7 +31,7 @@ class LocationService:
         return CustomResponse(data=response)
 
     async def get_district(self, db: Session, redis: Redis, data: dict):
-        page = schema_page.Pagination(**data)
+        page = Pagination(**data)
         province_id = data.get("province_id")
         response = None
         key = page.get_key() + f"_{province_id}"

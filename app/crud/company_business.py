@@ -1,5 +1,5 @@
 from .base import CRUDBase
-from app.model.company_business import CompanyBusiness
+from app.model import CompanyBusiness
 from app.schema.company_business import CompanyBusinessCreate, CompanyBusinessUpdate
 
 

@@ -77,6 +77,6 @@ def register_exception(app: FastAPI):
             status_code=500,
             content={
                 "status": "error",
-                "message": "Internal server error",
+                "message": "Internal server error.",
             },
         )

@@ -4,23 +4,25 @@ from sqlalchemy.orm import Session
 from app.schema import business as schema_business
 from app.core.security import PasswordManager
 from .base import CRUDBase
-from app.model.business import Business
+from app.model import Business
 from app.hepler.enum import Role
-from app.crud.manager_base import manager_base
+from app.crud.manager import manager as managerCRUD
 
 
 class CRUDBusiness(
     CRUDBase[
         Business,
-        schema_business.BusinessCreateRequest,
-        schema_business.BusinessUpdateRequest,
+        schema_business.BusinessCreate,
+        schema_business.BusinessUpdate,
     ]
 ):
 
     def get_by_email(self, db: Session, email: str) -> Business:
-        user = manager_base.get_by_email(db, email)
+        manager = managerCRUD.get_by_email(db, email)
         return (
-            db.query(Business).filter(Business.id == user.id).first() if user else None
+            db.query(Business).filter(Business.id == manager.id).first()
+            if manager
+            else None
         )
 
     def create(

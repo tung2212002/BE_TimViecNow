@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from .base import CRUDBase
 from app.model import District
@@ -18,8 +19,7 @@ class CRUDDistrict(CRUDBase[District, DistrictCreate, DistrictUpdate]):
         limit: int = 1000,
         sort_by: str = "id",
         order_by: str = "asc",
-    ):
-
+    ) -> List[District]:
         return (
             db.query(self.model)
             .filter(self.model.province_id == province_id)

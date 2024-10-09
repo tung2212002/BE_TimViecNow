@@ -3,9 +3,13 @@ from sqlalchemy.orm import Session
 from app.crud.campaign import campaign as campaignCRUD
 from app.crud.company import company as companyCRUD
 from app.core.auth.business_auth_helper import business_auth_helper
-from app.schema import campaign as schema_campaign
+from app.schema.campaign import (
+    CampaignGetListPagination,
+    CampaignCreateRequest,
+    CampaignUpdateRequest,
+)
 from app.hepler.enum import Role, FilterCampaign
-from app.model import ManagerBase
+from app.model import Manager, Account, Business, Company
 from app.core.campaign.campaign_helper import campaign_helper
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
@@ -35,8 +39,8 @@ from datetime import datetime
 
 
 class CampaignService:
-    async def get(self, db: Session, data: dict, current_user: ManagerBase):
-        page = schema_campaign.CampaignGetListPagination(**data)
+    async def get(self, db: Session, data: dict, current_user: Account):
+        page = CampaignGetListPagination(**data)
 
         campaigns = []
         count = 0
@@ -48,8 +52,9 @@ class CampaignService:
             business_id=business_id,
         )
         if role == Role.BUSINESS:
-            business = current_user.business
-            company = business.company
+            manager: Manager = current_user.manager
+            business: Business = manager.business
+            company: Company = business.company
             if not company:
                 raise CustomException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -78,14 +83,14 @@ class CampaignService:
         return CustomResponse(data={"count": count, "campaigns": campaigns_response})
 
     async def get_list(self, db: Session, data: dict):
-        page = schema_campaign.CampaignGetListPagination(**data)
+        page = CampaignGetListPagination(**data)
 
         campaigns = filter_functions.get(page.filter_by)(db, page)
         response = [campaign_helper.get_info(db, campaign) for campaign in campaigns]
 
         return CustomResponse(data={"campaigns": response})
 
-    async def get_by_id(self, db: Session, campaign_id: int, current_user: ManagerBase):
+    async def get_by_id(self, db: Session, campaign_id: int, current_user: Account):
         campaign = campaignCRUD.get(db, campaign_id)
         if not campaign:
             raise CustomException(
@@ -106,19 +111,19 @@ class CampaignService:
 
         return CustomResponse(data=response)
 
-    async def create(self, db: Session, data: dict, current_user: ManagerBase):
-        campaign_data = schema_campaign.CampaignCreateRequest(**data)
+    async def create(self, db: Session, data: dict, current_user: Account):
+        campaign_data = CampaignCreateRequest(**data)
 
         if current_user.role == Role.BUSINESS:
-            business = current_user.business
-            company = business.company
+            manager: Manager = current_user.manager
+            business: Business = manager.business
+            company: Company = business.company
             if not company:
                 raise CustomException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     msg="Business not join any company",
                 )
 
-            business = current_user.business
             campaign_data = {
                 **campaign_data.model_dump(),
                 "business_id": business.id,
@@ -129,7 +134,7 @@ class CampaignService:
 
         return CustomResponse(status_code=status.HTTP_201_CREATED, data=response)
 
-    async def update(self, db: Session, data: dict, current_user: ManagerBase):
+    async def update(self, db: Session, data: dict, current_user: Account):
         campaign_id = data.get("id")
         campaign = campaignCRUD.get(db, campaign_id)
         company = companyCRUD.get_by_business_id(db, current_user.id)
@@ -147,14 +152,14 @@ class CampaignService:
                 status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
             )
 
-        campaign_data = schema_campaign.CampaignUpdateRequest(**data)
+        campaign_data = CampaignUpdateRequest(**data)
 
         campaign = campaignCRUD.update(db, db_obj=campaign, obj_in=campaign_data)
         response = campaign_helper.get_info(db, campaign)
 
         return CustomResponse(data=response)
 
-    async def delete(self, db: Session, id: int, current_user: ManagerBase):
+    async def delete(self, db: Session, id: int, current_user: Account):
         campaign = campaignCRUD.get(db, id)
         company = companyCRUD.get_by_business_id(db, current_user.id)
         if not campaign:

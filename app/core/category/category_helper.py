@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List
 
-from app import crud
+from app.crud import category as categoryCRUD, job_category as job_categoryCRUD
 from app.schema.category import (
     CategoryItemResponse,
 )
@@ -16,7 +16,7 @@ class CategoryHelper:
         db: Session,
         id: int,
     ) -> int:
-        category = crud.category.get(db, id)
+        category = categoryCRUD.get(db, id)
         if not category:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Category not found"
@@ -37,7 +37,7 @@ class CategoryHelper:
         return CategoryItemResponse(**category.__dict__)
 
     def get_info_by_id(self, db: Session, id: int) -> CategoryItemResponse:
-        category = crud.category.get(db, id)
+        category = categoryCRUD.get(db, id)
         return self.get_info(category)
 
     def get_list_info(self, categories: List[Category]) -> List:
@@ -58,7 +58,7 @@ class CategoryHelper:
                 "job_id": job_id,
                 "category_id": category_id,
             }
-            crud.job_category.create(db, obj_in=job_category_data)
+            job_categoryCRUD.create(db, obj_in=job_category_data)
 
     def update_with_job_id(
         self,
@@ -66,19 +66,19 @@ class CategoryHelper:
         job_id: int,
         new_category_ids: List[int],
     ) -> None:
-        current_category_ids = crud.job_category.get_ids_by_job_id(db, job_id)
+        current_category_ids = job_categoryCRUD.get_ids_by_job_id(db, job_id)
         new_category_ids = list(set(new_category_ids))
         remove_category_ids = list(set(current_category_ids) - set(new_category_ids))
         add_category_ids = list(set(new_category_ids) - set(current_category_ids))
 
         for category_id in remove_category_ids:
-            crud.job_category.remove_by_job_id_and_category_id(db, job_id, category_id)
+            job_categoryCRUD.remove_by_job_id_and_category_id(db, job_id, category_id)
         for category_id in add_category_ids:
             job_category_data = {
                 "job_id": job_id,
                 "category_id": category_id,
             }
-            crud.job_category.create(db, obj_in=job_category_data)
+            job_categoryCRUD.create(db, obj_in=job_category_data)
 
 
 category_helper = CategoryHelper()

@@ -17,6 +17,6 @@ class VerifyCode(Base):
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
     expired_at = Column(DateTime(timezone=True), index=True)
-    manager_base_id = Column(
-        Integer, ForeignKey("manager_base.id", ondelete="CASCADE"), nullable=False
+    manager_id = Column(
+        Integer, ForeignKey("manager.id", ondelete="CASCADE"), nullable=False
     )

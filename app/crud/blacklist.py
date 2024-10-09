@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.model.blacklist import Blacklist
+from app.model import Blacklist
 
 
 class CRUDBlacklist:

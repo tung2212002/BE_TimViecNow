@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.crud.base import CRUDBase
 
-from app.model import JobApprovalRequest, Job, Company, Campaign
+from app.model import JobApprovalRequest, Job, Campaign
 from app.schema.job_approval_request import (
     JobApprovalRequestCreate,
     JobApprovalRequestUpdate,
@@ -11,18 +11,16 @@ from app.hepler.enum import (
     JobApprovalStatus,
     OrderType,
     SortBy,
-    JobStatus,
-    CVApplicationStatus,
 )
 
 
 class CRUDJobApprovalRequest(
     CRUDBase[JobApprovalRequest, JobApprovalRequestCreate, JobApprovalRequestUpdate]
 ):
-    def get_by_job_id(self, db, job_id: int):
+    def get_by_job_id(self, db, job_id: int) -> List[JobApprovalRequest]:
         return db.query(self.model).filter(self.model.job_id == job_id).all()
 
-    def get_pending_by_job_id(self, db, job_id: int):
+    def get_pending_by_job_id(self, db, job_id: int) -> List[JobApprovalRequest]:
         return (
             db.query(self.model)
             .filter(

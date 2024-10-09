@@ -42,8 +42,6 @@ class SocialNetworkBase(BaseModel):
 
 
 # request
-
-
 class SocialNetworkGetRequest(BaseModel):
     email: str = Field(..., example="1@email.com")
 
@@ -98,12 +96,16 @@ class SocialNetworkUpdateRequest(BaseModel):
 
 
 # schema
-class SocialNetworkCreate(SocialNetworkBase):
-    pass
+class SocialNetworkCreate(BaseModel):
+    type: Provider
+    social_id: str
+    email: str
+    access_token: str
+    id: int
 
 
-class SocialNetworkUpdate(SocialNetworkUpdateRequest):
-    pass
+class SocialNetworkUpdate(BaseModel):
+    access_token: Optional[str] = None
 
 
 # response

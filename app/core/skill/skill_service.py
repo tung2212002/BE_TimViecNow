@@ -1,22 +1,20 @@
 from sqlalchemy.orm import Session
+from fastapi import status
 from redis.asyncio import Redis
 
-from app import crud
-from app.schema import (
-    skill as schema_skill,
-    page as schema_page,
-)
+from app.crud import skill as skillCRUD
+from app.schema.skill import SkillCreateRequest, SkillUpdateRequest
+from app.schema.page import Pagination
 from app.core import constant
 from app.storage.cache.config_cache_service import config_cache_service
 from app.core.skill.skill_helper import skill_helper
-from fastapi import status
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
 
 
 class SkillService:
     async def get(self, db: Session, redis: Redis, data: dict):
-        page = schema_page.Pagination(**data)
+        page = Pagination(**data)
         key = page.get_key()
 
         response = None
@@ -25,7 +23,7 @@ class SkillService:
         except Exception as e:
             print(e)
         if not response:
-            skills = crud.skill.get_multi(db, **page.model_dump())
+            skills = skillCRUD.get_multi(db, **page.model_dump())
             response = skill_helper.get_list_info(skills)
             try:
                 await config_cache_service.cache_skill(redis, key, response)
@@ -44,28 +42,28 @@ class SkillService:
         return CustomResponse(data=response)
 
     async def create(self, db: Session, data: dict):
-        skill_data = schema_skill.SkillCreateRequest(**data)
-        response = crud.skill.create(db, obj_in=skill_data)
+        skill_data = SkillCreateRequest(**data)
+        response = skillCRUD.create(db, obj_in=skill_data)
 
         return CustomResponse(data=response)
 
     async def update(self, db: Session, id: int, data: dict):
-        skill = crud.skill.get(db, id)
+        skill = skillCRUD.get(db, id)
         if not skill:
             return constant.ERROR, 404, "Skill not found"
 
-        skill_data = schema_skill.SkillUpdateRequest(**data)
+        skill_data = SkillUpdateRequest(**data)
 
-        response = crud.skill.update(db, db_obj=skill, obj_in=skill_data)
+        response = skillCRUD.update(db, db_obj=skill, obj_in=skill_data)
 
         return CustomResponse(data=response)
 
     async def delete(self, db: Session, id: int):
-        skill = crud.skill.get(db, id)
+        skill = skillCRUD.get(db, id)
         if not skill:
             return constant.ERROR, 404, "Skill not found"
 
-        crud.skill.remove(db, id=id)
+        skillCRUD.remove(db, id=id)
 
         return CustomResponse(msg="Skill has been deleted")
 

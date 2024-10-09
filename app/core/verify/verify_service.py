@@ -1,16 +1,20 @@
+from fastapi import status
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 import uuid
 
-from app import crud
+from app.crud import (
+    verify_code as verify_codeCRUD,
+    verify_code_block as verify_code_blockCRUD,
+    business as businessCRUD,
+)
 from app.schema.verify_code import VerifyCodeCreate, VerifyCodeUpdate, VerifyCodeRequest
 from app.schema.verify_code_block import VerifyCodeBlockCreate
 from app.hepler.enum import VerifyCodeType
 from app.core.email.email_service import email_service
 from app.core.email.email_hepler import EmailHelper
-from app.model import ManagerBase
+from app.model import Manager, Account, Business
 from app.hepler.common import CommonHelper
-from fastapi import status
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
 
@@ -21,21 +25,18 @@ class VerifyService:
         db: Session,
         background_tasks: BackgroundTasks,
         data: dict,
-        current_user: ManagerBase,
+        current_user: Account,
     ):
         if data.get("type") == VerifyCodeType.EMAIL:
-            if not current_user.business:
-                raise CustomException(
-                    status_code=status.HTTP_404_NOT_FOUND, msg="Business not found"
-                )
-
-            if current_user.business.is_verified_email:
+            manager: Manager = current_user.manager
+            business: Business = manager.business
+            if business.is_verified_email:
                 raise CustomException(
                     status_code=status.HTTP_400_BAD_REQUEST, msg="Email is verified"
                 )
 
-            verify_code_block = crud.verify_code_block.search(
-                db, email=current_user.email, delta=5
+            verify_code_block = verify_code_blockCRUD.search(
+                db, email=manager.email, delta=5
             )
             if verify_code_block:
                 raise CustomException(
@@ -43,7 +44,7 @@ class VerifyService:
                     msg="Please wait 5 minutes to resend email",
                 )
 
-            email_to = current_user.email
+            email_to = manager.email
             subject = "Verify Email"
             verify_code = CommonHelper.generate_code(6)
             session_id = str(uuid.uuid4())
@@ -57,13 +58,13 @@ class VerifyService:
             )
 
             obj_in = VerifyCodeCreate(
-                manager_base_id=current_user.id,
+                manager_id=current_user.id,
                 email=email_to,
                 code=verify_code,
                 session_id=session_id,
             )
 
-            crud.verify_code.create(db, obj_in=obj_in)
+            verify_codeCRUD.create(db, obj_in=obj_in)
 
             response = await email_service.send_email_background(
                 db, background_tasks, subject, email_to, body
@@ -75,12 +76,11 @@ class VerifyService:
                 status_code=status.HTTP_400_BAD_REQUEST, msg="Send email failed"
             )
 
-    async def verify_code(self, db: Session, data: dict, current_user: ManagerBase):
-        data = VerifyCodeRequest(**data)
+    async def verify_code(self, db: Session, data: dict, current_user: Account):
+        code_data = VerifyCodeRequest(**data)
 
-        code_block = crud.verify_code_block.search(
-            db, email=current_user.email, delta=5
-        )
+        manager: Manager = current_user.manager
+        code_block = verify_code_blockCRUD.search(db, email=manager.email, delta=5)
         if code_block:
             raise CustomException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -88,8 +88,8 @@ class VerifyService:
             )
 
         code_by_session_id_and_email = (
-            crud.verify_code.get_valid_code_by_session_id_and_email(
-                db, data.session_id, current_user.email, 5
+            verify_codeCRUD.get_valid_code_by_session_id_and_email(
+                db, code_data.session_id, manager.email, 5
             )
         )
         if not code_by_session_id_and_email:
@@ -97,13 +97,13 @@ class VerifyService:
                 status_code=status.HTTP_404_NOT_FOUND, msg="Verify code not found"
             )
 
-        if code_by_session_id_and_email.code != data.code:
+        if code_by_session_id_and_email.code != code_data.code:
             if code_by_session_id_and_email.failed_attempts >= 4:
-                crud.verify_code.remove(db=db, id=code_by_session_id_and_email.id)
-                crud.verify_code_block.create(
+                verify_codeCRUD.remove(db=db, id=code_by_session_id_and_email.id)
+                verify_code_blockCRUD.create(
                     db,
                     obj_in=VerifyCodeBlockCreate(
-                        email=current_user.email,
+                        email=manager.email,
                         delta=5,
                     ),
                 )
@@ -112,7 +112,7 @@ class VerifyService:
                     msg="Verify code is incorrect. Please wait 5 minutes to resend email",
                 )
 
-            crud.verify_code.update(
+            verify_codeCRUD.update(
                 db,
                 db_obj=code_by_session_id_and_email,
                 obj_in=VerifyCodeUpdate(
@@ -123,8 +123,8 @@ class VerifyService:
                 status_code=status.HTTP_404_NOT_FOUND, msg="Verify code is incorrect"
             )
 
-        crud.verify_code.remove(db=db, id=code_by_session_id_and_email.id)
-        crud.business.set_is_verified_email(
+        verify_codeCRUD.remove(db=db, id=code_by_session_id_and_email.id)
+        businessCRUD.set_is_verified_email(
             db=db, db_obj=current_user.business, is_verified_email=True
         )
 
