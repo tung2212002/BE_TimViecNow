@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Enum, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Column, Enum, Integer, String, ForeignKey, Boolean, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -7,18 +7,14 @@ from app.hepler.enum import Gender
 
 
 class Business(Base):
-    # manager_base_id = Column(
-    #     Integer, ForeignKey("manager_base.id", ondelete="CASCADE"), primary_key=True
-    # )
     id = Column(
         Integer,
-        ForeignKey("manager_base.id", ondelete="CASCADE"),
+        ForeignKey("manager.id", ondelete="CASCADE"),
         primary_key=True,
         index=True,
     )
     province_id = Column(Integer, ForeignKey("province.id"), nullable=False)
     district_id = Column(Integer, ForeignKey("district.id"), nullable=True)
-    phone_number = Column(String(10), nullable=False)
     gender = Column(Enum(Gender), nullable=False)
     company_name = Column(String(255), nullable=False)
     work_position = Column(String(100), nullable=False)
@@ -28,8 +24,8 @@ class Business(Base):
     is_verified_company = Column(Boolean, default=False)
     is_verified_identity = Column(Boolean, default=False)
 
-    manager_base = relationship(
-        "ManagerBase",
+    manager = relationship(
+        "Manager",
         back_populates="business",
         single_parent=True,
         passive_deletes=True,

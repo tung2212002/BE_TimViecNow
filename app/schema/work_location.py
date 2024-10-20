@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
+from app.schema.province import ProvinceItemResponse
+from app.schema.district import DistrictItemResponse
+
 
 class WorkLocationBase(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
@@ -31,6 +34,6 @@ class WorkLocatioUpdate(WorkLocationBase):
 
 # response
 class WorkLocatioResponse(BaseModel):
-    province: dict
-    district: Optional[dict] = None
+    province: ProvinceItemResponse
+    district: Optional[DistrictItemResponse] = None
     description: Optional[str] = None

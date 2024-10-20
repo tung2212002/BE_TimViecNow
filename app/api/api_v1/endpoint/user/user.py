@@ -19,6 +19,7 @@ router = APIRouter()
 
 @router.get("/me")
 async def get_me(
+    db: Session = Depends(get_db),
     current_user=Depends(user_manager_service.get_current_user),
 ):
     """
@@ -31,7 +32,7 @@ async def get_me(
     - status_code (401): The user is not authorized.
 
     """
-    return await user_service.get_me(current_user)
+    return await user_service.get_me(db, current_user)
 
 
 @router.get("", summary="Get list of users.")

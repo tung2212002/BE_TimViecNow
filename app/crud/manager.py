@@ -3,23 +3,24 @@ from typing import List
 
 from app.core.security import PasswordManager
 from .base import CRUDBase
-from app.model.manager_base import ManagerBase
-from app.schema import manager_base as schema_manager_base
-from app.hepler.enum import Role
+from app.model import Manager, Account
+from app.schema.manager import ManagerCreate, ManagerUpdate
+from app.hepler.enum import Role, TypeAccount
 
 
-class CRUDManagerBase(
+class CRUDManager(
     CRUDBase[
-        ManagerBase,
-        schema_manager_base.ManagerBaseCreateRequest,
-        schema_manager_base.ManagerBaseUpdateRequest,
+        Manager,
+        ManagerCreate,
+        ManagerUpdate,
     ]
 ):
 
-    def get(self, db: Session, id: int) -> ManagerBase:
+    def get(self, db: Session, id: int) -> Manager:
         return (
             db.query(self.model)
-            .filter(self.model.id == id, self.model.role == Role.BUSINESS)
+            .join(Account, Account.id == self.model.id)
+            .filter(Account.type_account == TypeAccount.BUSINESS, self.model.id == id)
             .first()
         )
 
@@ -31,21 +32,22 @@ class CRUDManagerBase(
         limit: int = 10,
         sort_by: str = "id",
         order_by: str = "desc",
-    ) -> List[ManagerBase]:
+    ) -> List[Manager]:
         return (
             db.query(self.model)
-            .filter(self.model.role == Role.BUSINESS)
+            .join(Account, Account.id == self.model.id)
+            .filter(Account.type_account == TypeAccount.BUSINESS)
             .order_by(
-                getattr(self.model, sort_by).desc()
+                getattr(Account, sort_by).desc()
                 if order_by == "desc"
-                else getattr(self.model, sort_by)
+                else getattr(Account, sort_by)
             )
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def get_by_admin(self, db: Session, id: int) -> ManagerBase:
+    def get_by_admin(self, db: Session, id: int) -> Manager:
         return db.query(self.model).filter(self.model.id == id).first()
 
     def get_multi_by_admin(
@@ -56,13 +58,14 @@ class CRUDManagerBase(
         limit: int = 100,
         sort_by: str = "id",
         order_by: str = "desc",
-    ) -> List[ManagerBase]:
+    ) -> List[Manager]:
         return (
             db.query(self.model)
+            .join(Account, Account.id == self.model.id)
             .order_by(
-                getattr(self.model, sort_by).desc()
+                getattr(Account, sort_by).desc()
                 if order_by == "desc"
-                else getattr(self.model, sort_by)
+                else getattr(Account, sort_by)
             )
             .offset(skip)
             .limit(limit)
@@ -77,14 +80,15 @@ class CRUDManagerBase(
         limit: int = 100,
         sort_by: str = "id",
         order_by: str = "desc",
-    ) -> List[ManagerBase]:
+    ) -> List[Manager]:
         return (
             db.query(self.model)
-            .filter(self.model.role == Role.ADMIN)
+            .join(Account, Account.id == self.model.id)
+            .filter(Account.role == Role.ADMIN)
             .order_by(
-                getattr(self.model, sort_by).desc()
+                getattr(Account, sort_by).desc()
                 if order_by == "desc"
-                else getattr(self.model, sort_by)
+                else getattr(Account, sort_by)
             )
             .offset(skip)
             .limit(limit)
@@ -99,28 +103,27 @@ class CRUDManagerBase(
         limit: int = 100,
         sort_by: str = "id",
         order_by: str = "desc",
-    ) -> List[ManagerBase]:
+    ) -> List[Manager]:
 
         return (
             db.query(self.model)
-            .filter(self.model.role == Role.BUSINESS)
+            .join(Account, Account.id == self.model.id)
+            .filter(Account.type_account == TypeAccount.BUSINESS)
             .order_by(
-                getattr(self.model, sort_by).desc()
+                getattr(Account, sort_by).desc()
                 if order_by == "desc"
-                else getattr(self.model, sort_by)
+                else getattr(Account, sort_by)
             )
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def get_by_email(self, db: Session, email: str) -> ManagerBase:
-        return db.query(ManagerBase).filter(ManagerBase.email == email).first()
+    def get_by_email(self, db: Session, email: str) -> Manager:
+        return db.query(Manager).filter(Manager.email == email).first()
 
-    def create(
-        self, db: Session, *, obj_in: schema_manager_base.ManagerBaseCreate
-    ) -> ManagerBase:
-        db_obj = ManagerBase(
+    def create(self, db: Session, *, obj_in: ManagerCreate) -> Manager:
+        db_obj = Manager(
             **obj_in.model_dump(
                 exclude_unset=True, exclude={"password", "confirm_password"}
             ),
@@ -135,9 +138,9 @@ class CRUDManagerBase(
         self,
         db: Session,
         *,
-        db_obj: ManagerBase,
-        obj_in: schema_manager_base.ManagerBaseUpdateRequest,
-    ) -> ManagerBase:
+        db_obj: Manager,
+        obj_in: ManagerUpdate,
+    ) -> Manager:
 
         if isinstance(obj_in, dict):
             if obj_in.get("password"):
@@ -157,7 +160,7 @@ class CRUDManagerBase(
             obj_in.pop("confirm_password")
         return super().update(db, db_obj=db_obj, obj_in=obj_in)
 
-    def authenticate(self, db: Session, *, email: str, password: str) -> ManagerBase:
+    def authenticate(self, db: Session, *, email: str, password: str) -> Manager:
         user = self.get_by_email(db, email)
         if not user:
             return None
@@ -165,19 +168,5 @@ class CRUDManagerBase(
             return None
         return user
 
-    def is_active(self, user: ManagerBase) -> bool:
-        return user.is_active
 
-    def is_superuser(self, user: ManagerBase) -> bool:
-        return user.role == Role.SUPER_USER
-
-    def set_active(
-        self, db: Session, *, db_obj: ManagerBase, is_active: bool
-    ) -> ManagerBase:
-        db_obj.is_active = is_active
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
-
-
-manager_base = CRUDManagerBase(ManagerBase)
+manager = CRUDManager(Manager)

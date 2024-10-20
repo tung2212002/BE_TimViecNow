@@ -19,7 +19,7 @@ async def validation_error_handler(
     error_input = error["loc"][0]
     error_msg = error["msg"]
     field = error["loc"][-1]
-    message = f"{field} {error_input}: {error_msg}"
+    message = f"{field} : {error_msg}"
 
     return JSONResponse(
         status_code=400,
@@ -77,6 +77,6 @@ def register_exception(app: FastAPI):
             status_code=500,
             content={
                 "status": "error",
-                "message": "Internal server error",
+                "message": "Internal server error.",
             },
         )

@@ -31,7 +31,7 @@ class VerifyCodeRequest(BaseModel):
 
 
 class VerifyCodeCreateRequest(VerifyCodeBase):
-    manager_base_id: int
+    manager_id: int
     failed_attempts: Optional[int] = 0
     session_id: Optional[str] = None
 

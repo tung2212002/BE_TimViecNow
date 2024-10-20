@@ -2,12 +2,28 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from redis.asyncio import Redis
 
-from app.schema import (
-    job as job_schema,
-    job_approval_request as job_approval_request_schema,
-    job_statistics as job_statistics_schema,
+from app.schema.job import (
+    JobCreate,
+    JobUpdate,
+    JobCreateRequest,
+    JobUpdateRequest,
+    JobFilterByBusiness,
+    JobFilterByUser,
+    JobSearchByUser,
+    JobSearchByBusiness,
+    JobCount,
 )
-from app import crud
+from app.schema.job_approval_request import (
+    JobApprovalRequestCreate,
+    JobApprovalRequestResponse,
+)
+from app.schema.job_statistics import JobCountBySalary
+from app.crud import (
+    job as jobCRUD,
+    company as companyCRUD,
+    job_approval_request as job_approval_requestCRUD,
+    campaign as campaignCRUD,
+)
 from app.core import constant
 from app.hepler.enum import (
     Role,
@@ -17,11 +33,11 @@ from app.hepler.enum import (
     CampaignStatus,
     RequestApproval,
 )
-from app.core.location import location_service
 from app.core.job_approval_requests import job_approval_request_helper
 from app.storage.cache.job_cache_service import job_cache_service
 from app.hepler.common import CommonHelper
-from app.model import ManagerBase
+from app.model import Manager, Account, Business, Company
+from app.core.location.location_helper import location_helper
 from app.core.job.job_helper import job_helper
 from app.core.category.category_helper import category_helper
 from app.core.auth.business_auth_helper import business_auth_helper
@@ -29,14 +45,13 @@ from app.core.campaign.campaign_helper import campaign_helper
 from fastapi import status
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
-from app.schema import job as job_schema
 
 
 class JobService:
     async def get_by_business(
-        self, db: Session, redis: Redis, data: dict, current_user: ManagerBase
+        self, db: Session, redis: Redis, data: dict, current_user: Account
     ):
-        page = job_schema.JobFilterByBusiness(**data)
+        page = JobFilterByBusiness(**data)
 
         if current_user.role == Role.BUSINESS:
             if page.business_id and page.business_id != current_user.id:
@@ -45,7 +60,7 @@ class JobService:
                 )
 
             page.business_id = current_user.id
-            company = crud.company.get_by_business_id(db, current_user.id)
+            company = companyCRUD.get_by_business_id(db, current_user.id)
             if not company:
                 raise CustomException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -63,14 +78,14 @@ class JobService:
         return CustomResponse(data=response)
 
     async def get_by_user(self, db: Session, redis: Redis, data: dict):
-        page = job_schema.JobFilterByUser(**data)
-
+        page = JobFilterByUser(**data)
         page.job_status = JobStatus.PUBLISHED
         page.job_approve_status = JobApprovalStatus.APPROVED
+
         jobs = await job_helper.get_list_job(db, redis, page.model_dump())
 
-        params = job_schema.JobCount(**data)
-        number_of_all_jobs = crud.job.count(db, **params.model_dump())
+        params = JobCount(**data)
+        number_of_all_jobs = jobCRUD.count(db, **params.model_dump())
 
         response = {
             "count": number_of_all_jobs,
@@ -80,27 +95,32 @@ class JobService:
         return CustomResponse(data=response)
 
     async def search_by_user(self, db: Session, redis: Redis, data: dict):
-        page = job_schema.JobSearchByUser(**data)
-
+        page = JobSearchByUser(**data)
         page.job_status = JobStatus.PUBLISHED
-        page.job_approve_status = JobApprovalStatus.APPROVED
-        try:
-            response = await job_cache_service.get_cache_user_search(
-                redis, job_helper.search_job_user_search_key(page)
-            )
-            if response:
-                return CustomResponse(data=response)
-
-        except Exception as e:
-            print(e)
-
-        jobs = crud.job.user_search(db, **page.model_dump())
+        jobs_response = None
         count = 0
         jobs_of_district_response = []
 
+        try:
+            jobs_response = await job_cache_service.get_cache_user_search(
+                redis, page.get_count_job_user_search_key()
+            )
+        except Exception as e:
+            print(e)
+
+        if not jobs_response:
+            jobs = jobCRUD.user_search(db, **page.model_dump())
+            jobs_response = await job_helper.get_list_job_info(db, redis, jobs)
+            try:
+                await job_cache_service.cache_user_search(
+                    redis, page.get_count_job_user_search_key(), jobs_response
+                )
+            except Exception as e:
+                print(e)
+
         if (page.province_id or page.district_id) and page.suggest:
             try:
-                cache_key = page.model_dump().__str__()
+                cache_key = page.get_jobs_of_district_key()
                 jobs_of_district_response = await job_cache_service.get_list(
                     redis, cache_key
                 )
@@ -108,14 +128,14 @@ class JobService:
                 print(e)
 
             if not jobs_of_district_response:
-                jobs_of_district = crud.job.get_number_job_of_district(
+                jobs_of_district = jobCRUD.get_number_job_of_district(
                     db, **page.model_dump()
                 )
                 jobs_of_district_response = []
                 for key, value in jobs_of_district:
                     count += value
                     if value > 0 and key is not None:
-                        district = location_service.get_district_info(db, key)
+                        district = location_helper.get_district_info(db, key)
                         jobs_of_district_response.append(
                             {
                                 "district": district,
@@ -138,7 +158,7 @@ class JobService:
                     print(e)
 
         else:
-            cache_key = job_helper.get_count_job_user_search_key(page)
+            cache_key = page.get_count_job_user_search_key()
             count = None
             try:
                 count = await job_cache_service.get_cache_count_search_by_user(
@@ -148,27 +168,14 @@ class JobService:
                 print(e)
 
             if not count:
-                params = job_schema.JobCount(**data)
-                count = crud.job.user_count(db, **params.model_dump())
+                params = JobCount(**data)
+                count = jobCRUD.user_count(db, **params.model_dump())
                 try:
                     await job_cache_service.cache_count_search_by_user(
                         redis, cache_key, count
                     )
                 except Exception as e:
                     print(e)
-
-        jobs_response = []
-        for job in jobs:
-            job_res = await job_helper.get_info(db, redis, job)
-            (
-                jobs_response.append(job_res)
-                if (
-                    isinstance(job_res, dict)
-                    and job_res.get("company")
-                    or job_res.company
-                )
-                else None
-            )
 
         response = {
             "count": count,
@@ -177,19 +184,12 @@ class JobService:
             "jobs_of_district": jobs_of_district_response,
         }
 
-        try:
-            await job_cache_service.cache_user_search(
-                redis, job_helper.search_job_user_search_key(page), response
-            )
-        except Exception as e:
-            print(e)
-
         return CustomResponse(data=response)
 
     async def search_by_business(
-        self, db: Session, redis: Redis, current_user: ManagerBase, data: dict
+        self, db: Session, redis: Redis, current_user: Account, data: dict
     ):
-        page = job_schema.JobSearchByBusiness(**data)
+        page = JobSearchByBusiness(**data)
 
         if current_user.role == Role.BUSINESS:
             if page.business_id and page.business_id != current_user.id:
@@ -198,7 +198,7 @@ class JobService:
                 )
 
             page.business_id = current_user.id
-            company = crud.company.get_by_business_id(db, current_user.id)
+            company = companyCRUD.get_by_business_id(db, current_user.id)
             if not company:
                 raise CustomException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -211,14 +211,17 @@ class JobService:
                 )
             page.company_id = company.id
 
-        jobs = crud.job.search(db, **page.model_dump())
-        params = job_schema.JobCount(**page.model_dump())
-        count = crud.job.count(db, **params.model_dump())
+        jobs = jobCRUD.search(db, **page.model_dump())
+        params = JobCount(**page.model_dump())
+        count = jobCRUD.count(db, **params.model_dump())
 
         jobs_response = []
         for job in jobs:
             job_res = await job_helper.get_info(db, redis, job)
-            jobs_response.append(job_res) if job_res.get("company") else None
+            if isinstance(job_res, dict):
+                jobs_response.append(job_res) if job_res.get("company") else None
+            else:
+                jobs_response.append(job_res) if job_res.company else None
 
         response = {
             "count": count,
@@ -229,10 +232,10 @@ class JobService:
         return CustomResponse(data=response)
 
     async def get_by_id_for_business(
-        self, db: Session, redis: Redis, job_id: int, current_user: ManagerBase
+        self, db: Session, redis: Redis, job_id: int, current_user: Account
     ):
-        job = crud.job.get(db, job_id)
-        company = crud.company.get_by_business_id(db, current_user.id)
+        job = jobCRUD.get(db, job_id)
+        company = companyCRUD.get_by_business_id(db, current_user.id)
         if not job:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
@@ -259,7 +262,7 @@ class JobService:
         return CustomResponse(data=response)
 
     async def get_by_id_for_user(self, db: Session, redis: Redis, job_id: int):
-        job = crud.job.get(db, job_id)
+        job = jobCRUD.get(db, job_id)
         if not job:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
@@ -278,10 +281,10 @@ class JobService:
         return CustomResponse(data=response)
 
     async def get_by_campaign_id(
-        self, db: Session, redis: Redis, campaign_id: int, current_user: ManagerBase
+        self, db: Session, redis: Redis, campaign_id: int, current_user: Account
     ):
-        campaign = crud.campaign.get(db, campaign_id)
-        company = crud.company.get_by_business_id(db, current_user.id)
+        campaign = campaignCRUD.get(db, campaign_id)
+        company = companyCRUD.get_by_business_id(db, current_user.id)
         if not campaign:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Campaign not found"
@@ -302,7 +305,7 @@ class JobService:
                 status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
             )
 
-        job = crud.job.get_by_campaign_id(db, campaign_id)
+        job = jobCRUD.get_by_campaign_id(db, campaign_id)
         response = await job_helper.get_info(db, redis, job)
 
         return CustomResponse(data=response)
@@ -316,7 +319,7 @@ class JobService:
             print(e)
 
         if not response:
-            data = crud.job.count_job_by_category(db)
+            data = jobCRUD.count_job_by_category(db)
             response = []
 
             for id, count in data:
@@ -356,7 +359,7 @@ class JobService:
 
         time_scan = CommonHelper.get_current_time(db)
         if not data:
-            data = crud.job.count_job_by_salary(db, salary_ranges)
+            data = jobCRUD.count_job_by_salary(db, salary_ranges)
             try:
                 await job_cache_service.cache_count_job_by_salary(redis, data)
             except Exception as e:
@@ -366,7 +369,7 @@ class JobService:
         for index, (idx, count) in enumerate(data[:-3]):
             min, max, salary_type = salary_ranges[idx]
             response.append(
-                job_statistics_schema.JobCountBySalary(
+                JobCountBySalary(
                     min_salary=min,
                     max_salary=max if max != 999 else 0,
                     salary_type=salary_type,
@@ -378,7 +381,7 @@ class JobService:
         for index, (idx, count) in enumerate(data[-3:]):
             salary_type = other_salary[index]
             response.append(
-                job_statistics_schema.JobCountBySalary(
+                JobCountBySalary(
                     min_salary=0,
                     max_salary=0,
                     salary_type=salary_type,
@@ -390,7 +393,7 @@ class JobService:
         return CustomResponse(data=response)
 
     async def count_job_by_district(self, db: Session):
-        response = crud.job.count_job_by_district(db)
+        response = jobCRUD.count_job_by_district(db)
         return constant.SUCCESS, 200, response
 
     async def get_cruitment_demand(self, db: Session, redis: Redis):
@@ -398,7 +401,7 @@ class JobService:
         approved_time = time_scan - timedelta(days=1)
 
         response = None
-        params = job_schema.JobCount(
+        params = JobCount(
             job_status=JobStatus.PUBLISHED,
             job_approve_status=JobApprovalStatus.APPROVED,
         )
@@ -411,7 +414,7 @@ class JobService:
         if not response:
             number_of_job_24h = await job_cache_service.get_cache_count_job_24h(redis)
             if not number_of_job_24h:
-                number_of_job_24h = crud.job.user_count(
+                number_of_job_24h = jobCRUD.user_count(
                     db, **params.model_dump(), approved_time=approved_time
                 )
                 try:
@@ -425,7 +428,7 @@ class JobService:
                 redis
             )
             if not number_of_job_active:
-                number_of_job_active = crud.job.user_count(
+                number_of_job_active = jobCRUD.user_count(
                     db,
                     **params.model_dump(),
                 )
@@ -439,7 +442,7 @@ class JobService:
                 await job_cache_service.get_cache_count_job_active(redis)
             )
             if not number_of_company_active:
-                number_of_company_active = crud.job.count_company_active_job(db)
+                number_of_company_active = jobCRUD.count_company_active_job(db)
                 try:
                     await job_cache_service.cache_count_job_active(
                         redis, number_of_company_active
@@ -460,13 +463,14 @@ class JobService:
         return CustomResponse(data=response)
 
     async def create(
-        self, db: Session, redis: Redis, data: dict, current_user: ManagerBase
+        self, db: Session, redis: Redis, data: dict, current_user: Account
     ):
-        business = current_user.business
+        manager: Manager = current_user.manager
+        business: Business = manager.business
         business_auth_helper.verified_level(business, 2)
-        job_data = job_schema.JobCreateRequest(**data)
+        job_data = JobCreateRequest(**data)
 
-        company = business.company
+        company: Company = business.company
         if not company:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Require join company"
@@ -479,8 +483,8 @@ class JobService:
             locations=job_data.locations,
             categories=job_data.categories,
             working_times=job_data.working_times,
-            job_experience_id=job_data.job_experience_id,
-            job_position_id=job_data.job_position_id,
+            experience_id=job_data.job_experience_id,
+            position_id=job_data.job_position_id,
         )
 
         campaign = campaign_helper.check_exist(
@@ -490,7 +494,7 @@ class JobService:
             status=CampaignStatus.OPEN,
             title=job_data.title,
         )
-        if crud.job.get_by_campaign_id(db, campaign.id):
+        if jobCRUD.get_by_campaign_id(db, campaign.id):
             raise CustomException(
                 status_code=status.HTTP_400_BAD_REQUEST, msg="Campaign already has job"
             )
@@ -498,14 +502,14 @@ class JobService:
         job_data.campaign_id = campaign.id
 
         is_verified_company = company.is_verified
-        job_data_in = job_schema.JobCreate(
+        job_data_in = JobCreate(
             **job_data.model_dump(),
             business_id=current_user.id,
             status=JobStatus.PENDING,
             employer_verified=is_verified_company,
         )
 
-        job = crud.job.create(db=db, obj_in=job_data_in)
+        job = jobCRUD.create(db=db, obj_in=job_data_in)
         job_helper.create_fields(
             db,
             job_id=job.id,
@@ -519,16 +523,16 @@ class JobService:
 
         return CustomResponse(status_code=status.HTTP_201_CREATED, data=job_response)
 
-    async def update(self, db: Session, data: dict, current_user):
-        job_data = job_schema.JobUpdateRequest(**data)
+    async def update(self, db: Session, data: dict, current_user: Account):
+        job_data = JobUpdateRequest(**data)
 
-        job = crud.job.get(db, job_data.job_id)
+        job = jobCRUD.get(db, job_data.job_id)
         if not job:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
             )
 
-        company = current_user.business.company
+        company: Company = companyCRUD.get_by_business_id(db, current_user.id)
         if (
             job.business_id != current_user.id
             or not company
@@ -560,17 +564,15 @@ class JobService:
             "work_locations": job_data.locations,
             **job_data.model_dump(),
         }
-        job_approval_request = job_approval_request_schema.JobApprovalRequestCreate(
-            **job_approval_request_data
-        )
+        job_approval_request = JobApprovalRequestCreate(**job_approval_request_data)
         job_approval_requests_pending_before = (
-            crud.job_approval_request.get_pending_by_job_id(db, job.id)
+            job_approval_requestCRUD.get_pending_by_job_id(db, job.id)
         )
         if job_approval_requests_pending_before:
             for (
                 job_approval_request_pending_before
             ) in job_approval_requests_pending_before:
-                crud.job_approval_request.remove(
+                job_approval_requestCRUD.remove(
                     db, id=job_approval_request_pending_before.id
                 )
         job_approval_request = (
@@ -582,19 +584,17 @@ class JobService:
                 },
             )
         )
-        job_approval_request_response = (
-            job_approval_request_schema.JobApprovalRequestResponse(
-                **job_approval_request.__dict__
-            )
+        job_approval_request_response = JobApprovalRequestResponse(
+            **job_approval_request.__dict__
         )
 
         return CustomResponse(
             status_code=status.HTTP_201_CREATED, data=job_approval_request_response
         )
 
-    async def delete(self, db: Session, job_id: int, current_user: ManagerBase):
-        job = crud.job.get(db, job_id)
-        company = crud.company.get_by_business_id(db, current_user.id)
+    async def delete(self, db: Session, job_id: int, current_user: Account):
+        job = jobCRUD.get(db, job_id)
+        company = companyCRUD.get_by_business_id(db, current_user.id)
         if not job:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Job not found"
@@ -609,7 +609,7 @@ class JobService:
                 status_code=status.HTTP_403_FORBIDDEN, msg="Permission denied"
             )
 
-        response = crud.job.remove(db, id=job_id)
+        response = jobCRUD.remove(db, id=job_id)
 
         return CustomResponse(data=response)
 

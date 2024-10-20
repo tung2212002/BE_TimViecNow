@@ -8,6 +8,7 @@ from app.schema.token import TokenPayload
 from app.core.config import settings
 from app.db.base_class import Base
 from app.hepler.common import CommonHelper
+from app.model import Account
 
 
 class TokenManager:
@@ -69,6 +70,13 @@ class TokenManager:
             return decode_token
         except:
             return {}
+
+    def create_payload(self, account: Account):
+        return {
+            "id": account.id,
+            "role": account.role,
+            "type_account": account.type_account,
+        }
 
 
 token_manager = TokenManager()

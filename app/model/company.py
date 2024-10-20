@@ -25,7 +25,6 @@ class Company(Base):
     phone_number = Column(String(10), nullable=False)
     logo = Column(String(255), nullable=True)
     banner = Column(String(255), nullable=True)
-    total_active_jobs = Column(Integer, default=0)
     is_premium = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
     label_company_id = Column(Integer, ForeignKey("label_company.id"), nullable=True)

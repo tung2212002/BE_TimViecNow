@@ -1,10 +1,9 @@
 from typing import List
 from sqlalchemy.orm import Session
-from app.crud.base import CRUDBase
 
-from app.model import ApprovalLog, Job, Company, Campaign
+from app.crud.base import CRUDBase
+from app.model import ApprovalLog, Job
 from app.schema.job_approval_log import JobApprovalLogCreate
-from app.hepler.enum import JobApprovalStatus
 
 
 class CRUDJobLogRequest:

@@ -17,7 +17,6 @@ from sqlalchemy.orm import relationship, Session
 
 from app.db.base_class import Base
 from app.hepler.enum import JobStatus, Gender, JobType, SalaryType
-from app.model.job_approval_request import JobApprovalRequest
 from app.model.job_position import JobPosition
 from app.model.job_category import JobCategory
 from app.model.category import Category
@@ -72,7 +71,6 @@ class Job(Base):
 
     business = relationship("Business", back_populates="job", uselist=False)
     job_experience = relationship("JobExperience", back_populates="job", uselist=False)
-    cv_applications = relationship("CVApplication", back_populates="job")
     job_approval_request = relationship(
         "JobApprovalRequest", back_populates="job", uselist=False
     )
@@ -118,11 +116,11 @@ class Job(Base):
 @event.listens_for(Job, "after_insert")
 def receive_after_insert(mapper, connection, target):
     session = Session(bind=connection)
-    if target.status != JobStatus.DRAFT:
-        job_approval_request = JobApprovalRequest(job_id=target.id)
-        session.add(job_approval_request)
-        session.commit()
-        session.close()
+    # if target.status != JobStatus.DRAFT:
+    #     job_approval_request = JobApprovalRequest(job_id=target.id)
+    #     session.add(job_approval_request)
+    #     session.commit()
+    #     session.close()
 
 
 @event.listens_for(Job.status, "set")

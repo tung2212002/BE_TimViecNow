@@ -5,6 +5,7 @@ from typing import Optional, List
 from app.hepler.enum import CompanyType
 from app.schema.page import Pagination
 from app.hepler.schema_validator import SchemaValidator
+from app.schema.field import FieldItemResponse
 
 
 class CompanyBase(BaseModel):
@@ -34,82 +35,7 @@ class CompanyBase(BaseModel):
         return SchemaValidator.validate_phone_number(v)
 
 
-class CompanyItemResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    type: CompanyType
-    phone_number: str
-    is_premium: bool
-    label: Optional[object] = None
-    logo: Optional[str] = None
-    website: Optional[str] = None
-    address: str
-    company_short_description: Optional[str] = None
-    scale: str
-    is_verified: bool
-    total_active_jobs: int = None
-    tax_code: str
-    banner: Optional[str] = None
-
-    @validator("logo")
-    def validate_logo(cls, v):
-        return SchemaValidator.validate_logo(v)
-
-    @validator("company_short_description")
-    def validate_company_short_description(cls, v):
-        return SchemaValidator.validate_json_loads(v)
-
-    @validator("banner")
-    def validate_banner(cls, v):
-        return SchemaValidator.validate_logo(v)
-
-
-class CompanyPrivateResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    type: CompanyType
-    phone_number: str
-    is_premium: bool
-    label: Optional[object] = None
-    logo: Optional[str] = None
-    website: Optional[str] = None
-    address: str
-    company_short_description: Optional[str] = None
-    scale: str
-    tax_code: str
-    is_verified: bool
-    total_active_jobs: int = 0
-    banner: Optional[str] = None
-
-    model_config = ConfigDict(from_attribute=True, extra="ignore")
-
-    @validator("logo")
-    def validate_logo(cls, v):
-        return SchemaValidator.validate_logo(v)
-
-    @validator("company_short_description")
-    def validate_company_short_description(cls, v):
-        return SchemaValidator.validate_json_loads(v)
-
-    @validator("banner")
-    def validate_banner(cls, v):
-        return SchemaValidator.validate_logo(v)
-
-
-class CompanyJobResponse(CompanyBase):
-    id: int
-    name: str
-    logo: Optional[str] = None
-
-    @validator("logo")
-    def validate_logo(cls, v):
-        return SchemaValidator.validate_logo(v)
-
-    @validator("company_short_description")
-    def validate_company_short_description(cls, v):
-        return SchemaValidator.validate_json_loads(v)
+# request
 
 
 class CompanyPagination(Pagination):
@@ -194,3 +120,87 @@ class CompanyUpdate(BaseModel):
     @validator("phone_number")
     def validate_phone_number(cls, v):
         return SchemaValidator.validate_phone_number(v)
+
+
+# response
+
+
+class CompanyItemGeneralResponse(BaseModel):
+    id: int
+    name: str
+    type: CompanyType
+    phone_number: str
+    is_premium: bool
+    label: Optional[object] = None
+    logo: Optional[str] = None
+    website: Optional[str] = None
+    address: str
+    scale: str
+    is_verified: bool
+    total_active_jobs: int = None
+    tax_code: str
+    banner: Optional[str] = None
+
+    @validator("logo")
+    def validate_logo(cls, v):
+        return SchemaValidator.validate_logo(v)
+
+    @validator("banner")
+    def validate_banner(cls, v):
+        return SchemaValidator.validate_logo(v)
+
+
+class CompanyItemResponse(CompanyItemGeneralResponse):
+    fields: List[FieldItemResponse]
+
+
+class CompanyItemDetailSearchResponse(CompanyItemResponse):
+    total_active_jobs: int
+
+
+class CompanyPrivateResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    type: CompanyType
+    phone_number: str
+    is_premium: bool
+    label: Optional[object] = None
+    logo: Optional[str] = None
+    website: Optional[str] = None
+    address: str
+    company_short_description: Optional[str] = None
+    scale: str
+    tax_code: str
+    is_verified: bool
+    total_active_jobs: int = 0
+    banner: Optional[str] = None
+    fields: List[FieldItemResponse]
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+    @validator("logo")
+    def validate_logo(cls, v):
+        return SchemaValidator.validate_logo(v)
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        return SchemaValidator.validate_json_loads(v)
+
+    @validator("banner")
+    def validate_banner(cls, v):
+        return SchemaValidator.validate_logo(v)
+
+
+class CompanyJobResponse(CompanyBase):
+    id: int
+    name: str
+    logo: Optional[str] = None
+
+    @validator("logo")
+    def validate_logo(cls, v):
+        return SchemaValidator.validate_logo(v)
+
+    @validator("company_short_description")
+    def validate_company_short_description(cls, v):
+        return SchemaValidator.validate_json_loads(v)

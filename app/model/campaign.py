@@ -24,6 +24,7 @@ class Campaign(Base):
         nullable=False,
         index=True,
     )
+    count_apply = Column(Integer, default=0)
 
     company = relationship(
         "Company",
@@ -34,4 +35,7 @@ class Campaign(Base):
         back_populates="campaign",
         single_parent=True,
     )
-    job = relationship("Job", back_populates="campaign", passive_deletes=True)
+    job = relationship(
+        "Job", back_populates="campaign", passive_deletes=True, uselist=False
+    )
+    cv_applications = relationship("CVApplication", back_populates="campaign")

@@ -1,13 +1,13 @@
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
-from typing import Union
+from typing import Union, List
 
 from app.schema.job import (
     JobItemResponse,
     JobItemResponseGeneral,
     JobSearchByUser,
 )
-from app import crud
+from app.crud import job as jobCRUD, company as companyCRUD
 from app.core.working_times.working_times_helper import working_times_helper
 from app.storage.cache.job_cache_service import job_cache_service
 from app.model import Job
@@ -23,13 +23,21 @@ from app.hepler.enum import JobSkillType
 
 class JobHepler:
     async def get_list_job(self, db: Session, redis: Redis, data: dict):
-        jobs = crud.job.get_multi(db, **data)
+        jobs = jobCRUD.get_multi(db, **data)
         jobs_response = []
         for job in jobs:
             job_res = await self.get_info(db, redis, job)
-            jobs_response.append(job_res) if job_res.company else None
+            if isinstance(job_res, dict):
+                jobs_response.append(job_res) if job_res.get("company") else None
+            else:
+                jobs_response.append(job_res) if job_res.company else None
 
         return jobs_response
+
+    async def get_list_job_info(
+        self, db: Session, redis: Redis, jobs: List[Job]
+    ) -> List[JobItemResponse]:
+        return [await self.get_info(db, redis, job) for job in jobs]
 
     def check_fields(
         self,
@@ -64,7 +72,7 @@ class JobHepler:
 
         working_times_response = working_times_helper.get_by_job_id(db, job.id)
         work_locations_response = work_location_helper.get_by_job_id(db, job.id)
-        company = crud.company.get_by_business_id(db, job.business_id)
+        company = companyCRUD.get_by_business_id(db, job.business_id)
         company_response = company_helper.get_info(db, company)
         categories_response = category_helper.get_list_info(job.job_categories)
         must_have_skills_response = skill_helper.get_list_info(job.must_have_skills)
@@ -91,7 +99,7 @@ class JobHepler:
         )
 
         try:
-            await job_cache_service.cache_job_info(redis, job_id, job_response.__dict__)
+            await job_cache_service.cache_job_info(redis, job_id, job_response)
         except Exception as e:
             print(e)
         return job_response

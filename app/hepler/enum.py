@@ -6,7 +6,6 @@ class Role(str, Enum):
     ADMIN = "admin"
     USER = "user"
     SOCIAL_NETWORK = "social_network"
-    GUEST = "guest"
     BUSINESS = "business"
 
 
@@ -153,6 +152,7 @@ class FolderBucket(str, Enum):
     BUSINESS = "business"
     FIELD = "field"
     LABEL_COMPANY = "label_company"
+    ATTACHMENT = "attachment"
 
 
 class VerifyType(str, Enum):
@@ -166,6 +166,13 @@ class CVApplicationStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    INTERVIEW = "interview"
+    VIEWED = "viewed"
+
+
+class CVApplicationUpdateStatus(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
     STOPPED = "stopped"
     INTERVIEW = "interview"
 
@@ -173,3 +180,43 @@ class CVApplicationStatus(str, Enum):
 class JobSkillType(str, Enum):
     MUST_HAVE = "must_have"
     SHOULD_HAVE = "should_have"
+
+
+class ConversationType(str, Enum):
+    PRIVATE = "private"
+    GROUP = "group"
+
+
+class MessageType(str, Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    FILE = "file"
+    VIDEO = "video"
+    AUDIO = "audio"
+    STICKER = "sticker"
+    MEDIA = "media"
+    ADD_MEMBER = "add_member"
+    REMOVE_MEMBER = "remove_member"
+    LEAVE_GROUP = "leave_group"
+    CREATE_GROUP = "create_group"
+    RENAME_GROUP = "rename_group"
+    CHANGE_AVATAR = "change_avatar"
+
+
+class ReactionType(str, Enum):
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+
+class MemberType(str, Enum):
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+class WebsocketActionType(str, Enum):
+    NEW_MESSAGE = "new_message"
+    USER_TYPING = "user_typing"
+    NEW_CONVERSATION = "new_conversation"
+    ADD_MEMBER = "add_member"
+    UPDATE_CONVERSATION = "update_conversation"
+    UPDATE_AVATAR_CONVERSATION = "update_avatar_conversation"

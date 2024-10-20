@@ -1,28 +1,28 @@
+from fastapi import status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app import crud
-from app.schema import (
-    work_location as work_location_schema,
-    province as schema_province,
-    district as schema_district,
+from app.crud import work_location as work_locationCRUD
+from app.schema.work_location import (
+    WorkLocatioCreate,
+    WorkLocatioResponse,
+    WorkLocatioUpdate,
 )
 from app.core.location.location_helper import location_helper
 from app.model import WorkLocation
 from app.common.exception import CustomException
-from fastapi import status
 
 
 class WorkLocationHepler:
     def get_by_job_id(self, db: Session, job_id: int) -> List[dict]:
-        work_locations = crud.work_location.get_by_job_id(db, job_id)
+        work_locations = work_locationCRUD.get_by_job_id(db, job_id)
         work_locations_response = []
         for work_location in work_locations:
             work_locations_response.append(self.get_info(db, work_location))
         return work_locations_response
 
     def get_by_id(self, db: Session, id: int) -> dict:
-        work_location = crud.work_location.get(db, id)
+        work_location = work_locationCRUD.get(db, id)
         if not work_location:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Working time not found"
@@ -40,73 +40,59 @@ class WorkLocationHepler:
         return [
             self.create(
                 db,
-                work_location_schema.WorkLocatioCreate(job_id=job_id, **work_location),
+                WorkLocatioCreate(job_id=job_id, **work_location),
             )
             for work_location in data
         ]
 
-    def create(self, db: Session, data: work_location_schema.WorkLocatioCreate) -> dict:
-        work_location = crud.work_location.create(db, data)
+    def create(self, db: Session, data: WorkLocatioCreate) -> dict:
+        work_location = work_locationCRUD.create(db, obj_in=data)
 
         return self.get_info(db, work_location)
 
     def update_with_job_id(
         self, db: Session, job_id: int, data: List[dict]
     ) -> List[dict]:
-        crud.work_location.remove_by_job_id(db, job_id)
+        work_locationCRUD.remove_by_job_id(db, job_id)
 
         return [
             self.update(
                 db,
-                work_location_schema.WorkLocatioUpdate(job_id=job_id, **work_location),
+                WorkLocatioUpdate(job_id=job_id, **work_location),
             )
             for work_location in data
         ]
 
-    def update(self, db: Session, id: int, data: dict) -> dict:
-        work_location = crud.work_location.get(db, id)
+    def update(self, db: Session, id: int, data: dict) -> WorkLocatioResponse:
+        work_location = work_locationCRUD.get(db, id)
         if not work_location:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Working time not found"
             )
 
-        work_location = crud.work_location.update(db, work_location, data)
+        work_location = work_locationCRUD.update(db, work_location, data)
 
         return self.get_info(db, work_location)
 
     def delete(self, db: Session, id: int) -> None:
-        work_location = crud.work_location.get(db, id)
+        work_location = work_locationCRUD.get(db, id)
         if not work_location:
             raise CustomException(
                 status_code=status.HTTP_404_NOT_FOUND, msg="Working time not found"
             )
-        work_location = crud.work_location.remove(db, id)
+        work_location = work_locationCRUD.remove(db, id)
 
         return work_location
 
-    def get_info(self, db: Session, work_location: WorkLocation) -> dict:
-        province = crud.province.get(db, work_location.province_id)
-        district = crud.district.get(db, work_location.district_id)
-        work_location_response = work_location_schema.WorkLocatioResponse(
-            **work_location.__dict__,
-            province=(
-                {
-                    **schema_province.ProvinceItemResponse(
-                        **province.__dict__
-                    ).model_dump(),
-                }
-                if province
-                else None
-            ),
-            district=(
-                {
-                    **schema_district.DistrictItemResponse(
-                        **district.__dict__
-                    ).model_dump(),
-                }
-                if district
-                else None
-            ),
+    def get_info(self, db: Session, work_location: WorkLocation) -> WorkLocatioResponse:
+        province = location_helper.get_province_info_by_id(
+            db, work_location.province_id
+        )
+        district = location_helper.get_district_info_by_id(
+            db, work_location.district_id
+        )
+        work_location_response = WorkLocatioResponse(
+            **work_location.__dict__, province=province, district=district
         )
 
         return work_location_response

@@ -13,6 +13,10 @@ from app.hepler.enum import (
     AdminJobApprovalStatus,
 )
 from app.hepler.schema_validator import SchemaValidator
+from app.schema.skill import SkillItemResponse
+from app.schema.category import CategoryItemResponse
+from app.schema.working_time import WorkingTimeResponse
+from app.schema.work_location import WorkLocatioResponse
 
 
 class JobBase(BaseModel):
@@ -222,7 +226,6 @@ class JobCount(BaseModel):
 
 class JobSearchByUser(PaginationJob):
     job_status: Optional[JobStatus] = JobStatus.PUBLISHED
-    job_approve_status: Optional[JobApprovalStatus] = JobApprovalStatus.APPROVED
     business_id: Optional[int] = None
     company_id: Optional[int] = None
     province_id: Optional[int] = None
@@ -252,9 +255,11 @@ class JobSearchByUser(PaginationJob):
     def validate_job_status(cls, v):
         return v or JobStatus.PUBLISHED
 
-    @validator("job_approve_status")
-    def validate_job_approve_status(cls, v):
-        return v or JobApprovalStatus.APPROVED
+    def get_count_job_user_search_key(self):
+        return f"{self.province_id}_{self.district_id}_{self.province_id}_{self.category_id}_{self.field_id}_{self.employment_type}_{self.job_experience_id}_{self.job_position_id}_{self.min_salary}_{self.max_salary}_{self.salary_type}_{self.deadline}_{self.keyword}_{self.suggest}_{self.updated_at}_{self.sort_by}_{self.order_by}_{self.skip}_{self.limit}"
+
+    def get_jobs_of_district_key(self):
+        return f"{self.province_id}_{self.district_id}_{self.province_id}_{self.category_id}_{self.field_id}_{self.employment_type}_{self.job_experience_id}_{self.job_position_id}_{self.min_salary}_{self.max_salary}_{self.salary_type}_{self.deadline}_{self.keyword}_{self.suggest}_{self.updated_at}"
 
 
 class JobSearchByBusiness(PaginationJob):
@@ -426,6 +431,9 @@ class JobItemResponseGeneral(BaseModel):
     phone_number_contact: str
     full_name_contact: str
     deadline: date
+    max_salary: Optional[int] = 0
+    min_salary: Optional[int] = 0
+    salary_type: SalaryType = SalaryType.VND
 
 
 class JobItemResponseUser(BaseModel):
@@ -443,11 +451,11 @@ class JobItemResponseUser(BaseModel):
     employer_verified: bool = False
     is_new: bool = False
     is_hot: bool = False
-    locations: List[object]
-    categories: List[object]
-    working_times: List[object]
-    must_have_skills: List[object]
-    should_have_skills: List[object]
+    locations: List[WorkLocatioResponse]
+    categories: List[CategoryItemResponse]
+    working_times: List[WorkingTimeResponse]
+    must_have_skills: List[SkillItemResponse]
+    should_have_skills: List[SkillItemResponse]
     company: object
     title: Optional[str] = None
     max_salary: Optional[int] = 0
@@ -493,7 +501,7 @@ class JobSearchResponseUser(BaseModel):
     is_job_flash: bool = False
     is_new: bool = False
     is_hot: bool = False
-    locations: List[object]
+    locations: List[dict]
     company: object
     title: Optional[str] = None
     max_salary: Optional[int] = 0

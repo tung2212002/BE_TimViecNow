@@ -1,114 +1,136 @@
 from sqlalchemy.orm import Session
+from fastapi import status
 
-from app.crud.manager_base import manager_base as manager_baseCRUD
+from app.crud.manager import manager as managerCRUD
 from app.crud.admin import admin as adminCRUD
+from app.crud.account import account as accountCRUD
 from app.core import constant
-from app.schema import (
-    page as schema_page,
-    manager_base as schema_manager_base,
-    admin as schema_admin,
+from app.schema.page import Pagination
+from app.schema.account import AccountCreate, AccountUpdate
+from app.schema.manager import ManagerCreate, ManagerUpdate
+from app.schema.admin import (
+    AdminCreateRequest,
+    AdminUpdateRequest,
+    AdminGetByEmailRequest,
+    AdminCreate,
+    AdminUpdate,
+    AdminItemResponse,
 )
 from app.core.auth.jwt.auth_handler import token_manager
 from app.hepler.enum import Role
-from app.core.business.business_helper import business_hepler
+from app.core.admin.admin_helper import admin_helper
 from app.common.exception import CustomException
-from app.model import ManagerBase
+from app.model import Manager, Account, Admin
 from fastapi import status
 from app.common.response import CustomResponse
 
 
 class AdminService:
     async def get_by_email(self, db: Session, data: dict):
-        admin_data = schema_admin.AdminGetByEmailRequest(**data)
+        admin_data = AdminGetByEmailRequest(**data)
 
-        admin = manager_baseCRUD.get_by_email(db, admin_data.email)
+        admin = managerCRUD.get_by_email(db, admin_data.email)
         if not admin:
-            raise CustomException(status_code=404, msg="Admin not found")
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Admin not found"
+            )
 
-        admin_response = await business_hepler.get_info(db, admin)
+        admin_response = await admin_helper.get_info_by_admin(db, admin)
 
         return CustomResponse(data=admin_response)
 
     async def get_by_id(self, db: Session, id: int):
-        admin = manager_baseCRUD.get_by_admin(db, id)
+        admin = adminCRUD.get(db, id)
         if not admin:
-            raise CustomException(status_code=404, msg="Admin not found")
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Admin not found"
+            )
 
-        admin_response = await business_hepler.get_info(db, admin)
+        admin_response = await admin_helper.get_info_by_admin(db, admin)
 
         return CustomResponse(data=admin_response)
 
     async def get(self, db: Session, data: dict):
-        page = schema_page.Pagination(**data)
+        page = Pagination(**data)
 
-        admins = manager_baseCRUD.get_list_admin(db, **page.model_dump())
+        admins = managerCRUD.get_multi(db, **page.model_dump())
         if not admins:
-            raise CustomException(status_code=404, msg="Admin not found")
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Admin not found"
+            )
 
-        admin = await [business_hepler.get_info(db, admin) for admin in admins]
+        admin = await [admin_helper.get_info_by_admin(db, admin) for admin in admins]
 
         return CustomResponse(data=admin)
 
     async def create(self, db: Session, data: dict):
         data["role"] = Role.ADMIN
-        manager_base_data = schema_manager_base.ManagerBaseCreateRequest(**data)
-        admin_data = schema_admin.AdminCreateRequest(**data)
+        admin_data = AdminCreateRequest(**data)
 
-        manager_base = manager_baseCRUD.get_by_email(db, manager_base_data.email)
-        if manager_base:
-            raise CustomException(status_code=409, msg="Email already registered")
+        manager = managerCRUD.get_by_email(db, admin_data.email)
+        if manager:
+            raise CustomException(
+                status_code=status.HTTP_409_CONFLICT, msg="Email already registered"
+            )
 
-        manager_base = manager_baseCRUD.create(
-            db,
-            obj_in=manager_base_data,
+        account = accountCRUD.create(
+            db, obj_in=AccountCreate(**admin_data.model_dump())
         )
-
-        admin_input = dict(admin_data)
-        admin_input["id"] = manager_base.id
+        manager = managerCRUD.create(
+            db, obj_in=ManagerCreate(**admin_data.model_dump(), id=account.id)
+        )
         admin = adminCRUD.create(
-            db,
-            obj_in=admin_input,
+            db, obj_in=AdminCreate(**admin_data.model_dump(), id=manager.id)
         )
 
-        admin_response = await business_hepler.get_info(db, manager_base)
+        admin_response: AdminItemResponse = await admin_helper.get_info(
+            db, account, manager, admin
+        )
+        payload = {
+            "role": Role.ADMIN,
+            "id": admin_response.id,
+        }
 
-        access_token = token_manager.signJWT(admin_response)
-        refresh_token = token_manager.signJWTRefreshToken(admin_response)
+        access_token = token_manager.signJWT(payload)
+        refresh_token = token_manager.signJWTRefreshToken(payload)
 
         response = {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": {
-                **admin_response.__dict__,
-            },
+            "user": admin_response,
         }
-        return CustomResponse(status_code=201, data=response)
 
-    async def update(self, db: Session, data: dict, current_user: ManagerBase):
-        if current_user is None:
-            return constant.ERROR, 401, "Unauthorized"
-        if data["id"] != current_user.id:
-            return constant.ERROR, 401, "Unauthorized"
+        return CustomResponse(status_code=status.HTTP_201_CREATED, data=response)
 
-        admin = schema_admin.AdminUpdateRequest(**data)
-        manager_base = schema_manager_base.ManagerBaseUpdateRequest(**data)
+    async def update(self, db: Session, data: dict, current_user: Account):
+        admin_data = AdminUpdateRequest(**data)
 
-        manager_base = manager_baseCRUD.update(db, current_user, manager_base)
-        admin = adminCRUD.update(
+        manager: Manager = current_user.manager
+        admin: Admin = manager.admin
+
+        account = accountCRUD.update(
             db=db,
             db_obj=current_user,
-            obj_in=admin,
+            obj_in=AccountUpdate(**admin_data.model_dump()),
         )
-        admin_response = business_hepler.get_info(db, manager_base)
+        manager = managerCRUD.update(
+            db, db_obj=manager, obj_in=ManagerUpdate(**admin_data.model_dump())
+        )
+        admin = adminCRUD.update(
+            db=db,
+            db_obj=admin,
+            obj_in=AdminUpdate(**admin_data.model_dump()),
+        )
+
+        admin_response = admin_helper.get_info(db, account, manager, admin)
 
         return CustomResponse(data=admin_response)
 
-    async def delete(self, db: Session, id: int, current_user: ManagerBase):
-        if current_user is None or (
-            id != current_user.id and current_user.role != Role.SUPER_USER
-        ):
+    async def delete(self, db: Session, id: int, current_user: Account):
+        if id != current_user.id and not adminCRUD.is_superuser(current_user):
             raise CustomException(
-                status_code=status.HTTP_401_UNAUTHORIZED, msg="Unauthorized"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                msg="Unauthorized",
             )
 
         if id is None:
@@ -116,7 +138,7 @@ class AdminService:
                 status_code=status.HTTP_400_BAD_REQUEST, msg="Id is required"
             )
 
-        manager_baseCRUD.remove(db, id)
+        managerCRUD.remove(db, id)
 
         return CustomResponse(msg="Admin has been deleted successfully")
 
