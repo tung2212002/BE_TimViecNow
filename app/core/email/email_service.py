@@ -7,6 +7,7 @@ from app.core.email_config import conf
 
 class EmailService:
     async def send_email_background(
+        self,
         db: Session,
         background_tasks: BackgroundTasks,
         subject: str,

@@ -17,7 +17,7 @@ router = APIRouter()
 @router.post("/send_verify_code", summary="Send verify code.")
 async def send_verify_code(
     db: Session = Depends(get_db),
-    current_user=Depends(user_manager_service.get_current_user),
+    current_user=Depends(user_manager_service.get_current_business),
     data: dict = Body(
         ...,
         example={
@@ -50,7 +50,7 @@ async def send_verify_code(
 @router.post("/verify_code", summary="Verify code.")
 async def verify_code(
     db: Session = Depends(get_db),
-    current_user=Depends(user_manager_service.get_current_user),
+    current_user=Depends(user_manager_service.get_current_business),
     data: dict = Body(
         ...,
         example={

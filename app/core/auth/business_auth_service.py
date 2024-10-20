@@ -94,7 +94,7 @@ class BusinessService:
 
         payload = token_manager.create_payload(manager.account)
         access_token = token_manager.signJWT(payload)
-        manager_response = business_helper.get_info(db, manager)
+        manager_response = business_helper.get_info_by_manager(db, manager)
 
         return CustomResponse(
             data={

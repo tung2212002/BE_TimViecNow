@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  tvnow-mysql:
+    image: mysql:8.0.40
+    container_name: tvnow-mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - tvnow-network
+
+  tvnow-redis:
+    image: redis:latest
+    container_name: tvnow-redis
+    environment:
+      SERVICE_TAGS: dev
+      SERVICE_NAME: redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - tvnow-network
+
+  tvnow-api:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: tvnow-api
+    container_name: tvnow-api
+    working_dir: /var/www/
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - tvnow-mysql
+      - tvnow-redis
+    networks:
+      - tvnow-network
+
+  tvnow-nginx:
+    image: nginx:alpine
+    container_name: tvnow-nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    depends_on:
+      - tvnow-api
+    networks:
+      - tvnow-network
+
+networks:
+  tvnow-network:
+    driver: bridge
+
+volumes:
+  redis_data:

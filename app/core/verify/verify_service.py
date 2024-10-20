@@ -125,7 +125,7 @@ class VerifyService:
 
         verify_codeCRUD.remove(db=db, id=code_by_session_id_and_email.id)
         businessCRUD.set_is_verified_email(
-            db=db, db_obj=current_user.business, is_verified_email=True
+            db=db, db_obj=manager.business, is_verified_email=True
         )
 
         return CustomResponse(msg="Verify code is correct")
