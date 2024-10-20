@@ -64,11 +64,9 @@ class TokenManager:
 
     def decodeJWT(self, token: str):
         try:
-            print("check token", token)
             decode_token = jwt.decode(
                 token, self.secret_key, algorithms=[self.algorithm]
             )
-            print("decode_token", decode_token)
             return decode_token
         except:
             return {}

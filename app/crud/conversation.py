@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import List
+from sqlalchemy.sql import func
 
 from .base import CRUDBase
-from app.model import Conversation, ConversationMember
+from app.model import Conversation, ConversationMember, Message
 from app.schema.conversation import ConversationCreate, ConversationUpdate
 from app.hepler.enum import ConversationType
 
@@ -63,6 +64,36 @@ class CRUDConversation(CRUDBase[Conversation, ConversationCreate, ConversationUp
             .filter(ConversationMember.conversation_id == conversation_id)
             .first()
         )
+
+    def get_by_lastest_message(
+        self, db: Session, *, account_id: int, limit: int = 10, skip: int = 0, **kwargs
+    ) -> Conversation:
+        subquery = (
+            db.query(
+                Message.conversation_id,
+                func.max(Message.created_at).label("latest_message"),
+            )
+            .group_by(Message.conversation_id)
+            .subquery()
+        )
+
+        query = (
+            db.query(Conversation)
+            .join(
+                ConversationMember,
+                ConversationMember.conversation_id == Conversation.id,
+            )
+            .join(
+                subquery,
+                subquery.c.conversation_id == Conversation.id,
+            )
+            .filter(ConversationMember.account_id == account_id)
+            .order_by(subquery.c.latest_message.desc())
+            .limit(limit)
+            .offset(skip)
+        )
+
+        return query.all()
 
 
 conversation = CRUDConversation(Conversation)

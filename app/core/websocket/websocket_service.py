@@ -47,6 +47,7 @@ class WebsocketService:
                     incoming_message = await websocket.receive_json()
                     message_type = incoming_message.get("type")
                     message_data = incoming_message.get("data")
+
                     if not message_type or not message_data:
                         await websocket_manager.send_error(
                             websocket, "Message type or data is missing."
@@ -67,9 +68,7 @@ class WebsocketService:
                         message_data,
                         current_user,
                     )
-
                 except (JSONDecodeError, AttributeError) as e:
-                    print(e)
                     await websocket_manager.send_error(
                         websocket, "Invalid message format."
                     )

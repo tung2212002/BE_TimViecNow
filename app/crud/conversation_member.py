@@ -4,7 +4,7 @@ from sqlalchemy import case
 from typing import List
 
 from .base import CRUDBase
-from app.model import ConversationMember, Account
+from app.model import ConversationMember, Account, Message
 from app.schema.conversation_member import (
     ConversationMemberCreate,
     ConversationMemberUpdate,

@@ -44,5 +44,13 @@ class MessageCRUD(CRUDBase[Message, MessageCreate, MessageUpdate]):
             .scalar()
         )
 
+    def get_last_message(self, db: Session, conversation_id: int) -> Message:
+        return (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.desc())
+            .first()
+        )
+
 
 message = MessageCRUD(Message)

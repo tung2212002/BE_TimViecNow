@@ -7,6 +7,7 @@ from typing import List
 from app.hepler.enum import ConversationType
 from app.hepler.schema_validator import SchemaValidator
 from app.schema.account import AccountBasicResponse
+from app.schema.message import MessageBasicResponse
 
 
 # request
@@ -64,7 +65,8 @@ class ConversationResponse(BaseModel):
     avatar: Optional[str] = None
     count_member: int
     members: List[AccountBasicResponse]
+    last_message: Optional[MessageBasicResponse] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")

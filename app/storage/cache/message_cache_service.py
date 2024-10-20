@@ -61,7 +61,6 @@ class MessageCacheService(BaseCache):
             redis,
             f"{self.list_conversation_id}:{user_id}",
         )
-        print(response)
         return response if response else None
 
     async def delete_cache_list_conversation_id(

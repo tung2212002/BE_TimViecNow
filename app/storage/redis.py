@@ -102,6 +102,3 @@ async def get_redis() -> Redis:
     if redis_dependency.redis is None:
         await redis_dependency.init()
     return await redis_dependency.get_redis()
-
-
-CurrentRedis = Annotated[Redis, Depends(get_redis)]

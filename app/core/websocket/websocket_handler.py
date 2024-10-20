@@ -71,7 +71,6 @@ class WebsocketHandler:
         try:
             new_message_data: NewMessageSchema = NewMessageSchema(**incoming_message)
         except ValueError as e:
-            print(e)
             await self.websocket_manager.send_error(
                 websocket, "Invalid message format."
             )
@@ -87,20 +86,19 @@ class WebsocketHandler:
                 return
 
             member_ids: List[int] = conversation_helper.filter_member(
-                member_ids, current_user
+                new_message_data.members, current_user
             )
 
             response_conversation, members = await websocket_helper.new_conversation(
                 db, redis, websocket, current_user, member_ids, websocket_manager
             )
-
             user_id_to_websocket: dict = websocket_manager.user_id_to_websocket
-            for member in members.append(current_user):
+            for member in members:
                 websockets = user_id_to_websocket.get(member.id)
                 if websockets:
-                    if websocket:
+                    for ws in websockets:
                         await websocket_manager.add_conversation(
-                            response_conversation.id, websocket
+                            response_conversation.id, ws
                         )
 
             outcoming_message: NewConversationSchema = NewConversationSchema(
@@ -109,11 +107,13 @@ class WebsocketHandler:
                 avatar=response_conversation.avatar,
                 members=response_conversation.members,
                 created_at=response_conversation.created_at,
+                conversation_type=response_conversation.type,
             )
 
             await websocket_manager.broadcast(
                 response_conversation.id, outcoming_message.model_dump_json()
             )
+            conversation_id = response_conversation.id
 
         else:
             is_valid_conversation = await conversation_helper.is_join_conversation(
@@ -125,7 +125,6 @@ class WebsocketHandler:
                     f"Conversation {conversation_id} not found in your conversations.",
                 )
                 return
-
         type = new_message_data.type
         if type == MessageType.TEXT:
             outcoming_message: ResponseMessageSchema = (
@@ -148,9 +147,11 @@ class WebsocketHandler:
         user_typing_data: UserTypingSchema = UserTypingSchema(**incoming_message)
         conversation_id: int = user_typing_data.conversation_id
 
-        if not conversation_helper.is_join_conversation(
+        is_join_conversation = await conversation_helper.is_join_conversation(
             db, redis, conversation_id, current_user.id
-        ):
+        )
+
+        if not is_join_conversation:
             await self.websocket_manager.send_error(
                 websocket,
                 f"Conversation {conversation_id} not found in your conversations.",

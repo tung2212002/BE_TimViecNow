@@ -3,12 +3,13 @@ from typing import List, Union
 from fastapi import status
 from redis.asyncio import Redis
 
-from app.model import Account, Conversation, ConversationMember
+from app.model import Account, Conversation, ConversationMember, Message
 from app.crud import (
     conversation as conversationCRUD,
     conversation_member as conversation_memberCRUD,
     account as accountCRUD,
     contact as contactCRUD,
+    message as messageCRUD,
 )
 from app.schema.conversation import (
     ConversationCreate,
@@ -16,8 +17,7 @@ from app.schema.conversation import (
 )
 from app.schema.account import AccountBasicResponse
 from app.schema.conversation_member import ConversationMemberCreate
-from app.schema.user import UserBasicResponse
-from app.schema.business import BusinessBasicInfoResponse
+from app.schema.message import MessageBasicResponse
 from app.common.exception import CustomException
 from app.core.user.user_helper import user_helper
 from app.core.business.business_helper import business_helper
@@ -50,6 +50,9 @@ class ConversationHelper:
         return ConversationResponse(
             **conversation.__dict__,
             members=member,
+            last_message=MessageBasicResponse(
+                **self.get_last_message(db, conversation.id).__dict__
+            ),
         )
 
     def get_group_conversation_response(
@@ -67,6 +70,9 @@ class ConversationHelper:
         return ConversationResponse(
             **conversation.__dict__,
             members=members,
+            last_message=MessageBasicResponse(
+                **self.get_last_message(db, conversation.id).__dict__
+            ),
         )
 
     def filter_member(self, members: List[int], current_user: Account) -> List[int]:
@@ -238,6 +244,19 @@ class ConversationHelper:
             )
 
         return is_exist
+
+    def get_last_message(self, db: Session, conversation_id: int) -> Message:
+        # return messageCRUD.get_last_message(db, conversation_id=conversation_id)
+        message: Message = messageCRUD.get_last_message(
+            db, conversation_id=conversation_id
+        )
+        user = accountCRUD.get(db, message.account_id)
+        return MessageBasicResponse(
+            **message.__dict__,
+            user=AccountBasicResponse(
+                **user.__dict__,
+            ),
+        )
 
 
 conversation_helper = ConversationHelper()

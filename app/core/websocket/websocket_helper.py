@@ -2,6 +2,7 @@ from fastapi import WebSocket
 from sqlalchemy.orm import Session
 from redis.asyncio import Redis
 from typing import Any, Dict, List, Tuple
+from fastapi import status
 
 from app.core.websocket.websocket_manager import WebsocketManager
 from app.model import Account
@@ -11,6 +12,7 @@ from app.crud import (
     account as accountCRUD,
     message as messageCRUD,
     conversation as conversationCRUD,
+    conversation_member as conversation_memberCRUD,
 )
 from app.schema.conversation import ConversationResponse
 from app.hepler.enum import TypeAccount
@@ -42,9 +44,11 @@ class WebsocketHelper:
                 db, websocket, redis, current_user, member_ids, websocket_manager
             )
         try:
-            await message_cache_service.add_conversation_id_to_list(
-                redis, user_id=current_user.id, conversation_id=response_conversation.id
-            )
+            for member in members:
+                await message_cache_service.add_conversation_id_to_list(
+                    redis, user_id=member.id, conversation_id=response_conversation.id
+                )
+                pass
         except Exception as e:
             print(e)
 
@@ -66,9 +70,19 @@ class WebsocketHelper:
                     websocket, f"Member {member_ids[0]} not found."
                 )
             conversation_helper.check_valid_contact(db, member, current_user)
+            if conversation_memberCRUD.get_by_account_ids(
+                db, [current_user.id, member.id]
+            ):
+                raise CustomException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    msg="Already connected to member.",
+                )
         except CustomException as e:
-            await websocket_manager.send_error(websocket, "Invalid members.")
-            return
+            await websocket_manager.send_error(websocket, "Cannot connect to members.")
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                msg="Cannot connect to members.",
+            )
 
         return conversation_helper.create_private_conversation(
             db, current_user, member
@@ -88,7 +102,10 @@ class WebsocketHelper:
                 websocket,
                 "Only business account can create group conversation",
             )
-            return
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                msg="Only business account can create group conversation",
+            )
         members: List[Account] = []
         for member_id in member_ids:
             member = accountCRUD.get(db, member_id)
@@ -96,10 +113,23 @@ class WebsocketHelper:
                 await websocket_manager.send_error(
                     websocket, f"Member {member_id} not found."
                 )
-                return
+                raise CustomException(
+                    status_code=status.HTTP_404_NOT_FOUND, msg="Member not found"
+                )
+
             members.append(member)
 
         conversation_helper.check_business_valid_contact(db, members, current_user)
+        if conversation_memberCRUD.get_by_account_ids(
+            db, [current_user.id] + member_ids
+        ):
+            await websocket_manager.send_error(
+                websocket, "Already connected to members."
+            )
+            raise CustomException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                msg="Already connected to members.",
+            )
         return conversation_helper.create_group_conversation(
             db, members, current_user
         ), members + [current_user]

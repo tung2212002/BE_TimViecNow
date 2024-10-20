@@ -14,14 +14,14 @@ from app.schema.message_image import AttachmentResponse
 class GetMessagesRequest(BaseModel):
     conversation_id: int
     limit: Optional[int] = Field(10, ge=1, le=20)
-    offset: int = Field(0, ge=0)
+    skip: int = Field(0, ge=0)
 
     @validator("limit")
     def validate_limit(cls, v):
         return v or 10
 
-    @validator("offset")
-    def validate_offset(cls, v):
+    @validator("skip")
+    def validate_skip(cls, v):
         return v or 0
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
@@ -56,13 +56,30 @@ class MessageResponse(BaseModel):
     like_count: int
     dislike_count: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     user: AccountBasicResponse
     parent: Optional[dict] = None
     atttachments: Optional[List[AttachmentResponse]] = None
     is_pinned: bool
     reaction: Optional[MessageReactionResponse] = None
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+
+class MessageBasicResponse(BaseModel):
+    id: int
+    conversation_id: int
+    account_id: int
+    type: MessageType
+    content: str
+    parent_id: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    user: AccountBasicResponse
+    parent: Optional[dict] = None
+    atttachments: Optional[List[AttachmentResponse]] = None
+    is_pinned: bool
 
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 

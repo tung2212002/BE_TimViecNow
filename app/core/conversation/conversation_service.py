@@ -31,7 +31,27 @@ from app.storage.cache.file_url_cache_service import file_url_cache_service
 class ConversationService:
     async def get(self, db: Session, redis: Redis, data: dict, current_user: Account):
         page: Pagination = Pagination(**data)
-        conversations: List[Conversation] = conversationCRUD.get_by_account_id(
+        # conversations: List[Conversation] = conversationCRUD.get_by_account_id(
+        #     db, account_id=current_user.id, **page.model_dump()
+        # )
+
+        # response = []
+        # for conversation in conversations:
+        #     if conversation.type == ConversationType.PRIVATE:
+        #         response.append(
+        #             conversation_helper.get_private_conversation_response(
+        #                 db, conversation, current_user
+        #             )
+        #         )
+        #     else:
+        #         response.append(
+        #             conversation_helper.get_group_conversation_response(
+        #                 db, conversation
+        #             )
+        #         )
+
+        # return CustomResponse(data=response)
+        conversations: List[Conversation] = conversationCRUD.get_by_lastest_message(
             db, account_id=current_user.id, **page.model_dump()
         )
 
