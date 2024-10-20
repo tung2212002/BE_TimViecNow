@@ -4,3 +4,5 @@ __pycache__
 alembic/versions/*.pyc
 alembic/versions/*.pyo
 alembic/versions/*.py
+
+/data

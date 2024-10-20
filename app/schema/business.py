@@ -111,7 +111,6 @@ class BusinessCreate(BaseModel):
     id: int
     province_id: int
     district_id: Optional[int] = None
-    phone_number: str
     gender: Optional[Gender] = None
     company_name: str
     work_position: str

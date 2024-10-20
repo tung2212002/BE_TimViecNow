@@ -26,9 +26,9 @@ class CRUDBusiness(
         )
 
     def create(
-        self, db: Session, *, obj_in: schema_business.BusinessCreateRequest
+        self, db: Session, *, obj_in: schema_business.BusinessCreate
     ) -> Business:
-        db_obj = Business(**obj_in)
+        db_obj = Business(**obj_in.model_dump())
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
