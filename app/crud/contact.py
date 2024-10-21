@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Tuple
 from sqlalchemy.sql import exists, select
 
 from app.model import Account, CVApplication, Campaign, Conversation, ConversationMember
@@ -9,9 +9,9 @@ from app.hepler.enum import Role
 class CRUDContact:
     def get_list_contactables_for_business(
         self, db: Session, account: Account, limit: int = 10, skip: int = 0, **kwargs
-    ) -> List[Account]:
+    ) -> List[Tuple[Account, CVApplication]]:
         query = (
-            db.query(Account, CVApplication.created_at)
+            db.query(Account, CVApplication)
             .join(CVApplication, CVApplication.user_id == Account.id)
             .join(Campaign, Campaign.id == CVApplication.campaign_id)
             .filter(Campaign.business_id == account.id)
@@ -21,13 +21,13 @@ class CRUDContact:
         )
 
         result = query.all()
-        return [item[0] for item in result]
+        return result
 
     def get_list_contactables_for_user(
         self, db: Session, account: Account, limit: int = 10, skip: int = 0, **kwargs
-    ) -> List[Account]:
+    ) -> List[Tuple[Account, CVApplication]]:
         query = (
-            db.query(Account, CVApplication.created_at)
+            db.query(Account, CVApplication)
             .join(CVApplication, CVApplication.user_id == account.id)
             .join(Campaign, Campaign.id == CVApplication.campaign_id)
             .filter(Campaign.business_id == Account.id)
@@ -37,7 +37,7 @@ class CRUDContact:
         )
 
         result = query.all()
-        return [item[0] for item in result]
+        return result
 
     def check_business_can_contact(
         self, db: Session, account_ids: List[int], account: Account

@@ -1,16 +1,18 @@
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Tuple
 from redis.asyncio import Redis
 
-from app.model import Account, Conversation
+from app.model import Account, Conversation, CVApplication, Job
 from app.crud import conversation as conversationCRUD, contact as contactCRUD
 from app.hepler.enum import TypeAccount
 from app.schema.business import BusinessBasicInfoResponse
 from app.schema.user import UserBasicResponse
 from app.schema.conversation import ConversationResponse
+from app.schema.cv_application import CVApplicationGeneralResponse
 from app.schema.page import Pagination
 from app.core.business.business_helper import business_helper
+from app.core.job.job_helper import job_helper
 from app.core.user.user_helper import user_helper
 from app.core.conversation.conversation_helper import conversation_helper
 from app.common.exception import CustomException
@@ -47,19 +49,38 @@ class ChatService:
 
         response = []
         if current_user.type_account == TypeAccount.BUSINESS:
-            members: List[Account] = contactCRUD.get_list_contactables_for_business(
-                db, account=current_user, **page.model_dump()
+            contactables: List[Tuple[Account, CVApplication]] = (
+                contactCRUD.get_list_contactables_for_business(
+                    db, account=current_user, **page.model_dump()
+                )
             )
-            response = [
-                user_helper.get_basic_info_by_account(db, user) for user in members
-            ]
+            for contactable in contactables:
+                account, cv_application = contactable
+                response.append(
+                    {
+                        **user_helper.get_basic_info_by_account(
+                            db, account
+                        ).model_dump(),
+                        "job": job_helper.get_info_general(cv_application.campaign.job),
+                    }
+                )
+
         else:
-            members: List[Account] = contactCRUD.get_list_contactables_for_user(
-                db, account=current_user, **page.model_dump()
+            contactables: List[Tuple[Account, CVApplication]] = (
+                contactCRUD.get_list_contactables_for_user(
+                    db, account=current_user, **page.model_dump()
+                )
             )
-            response = [
-                business_helper.get_basic_info_by_account(db, user) for user in members
-            ]
+            for contactable in contactables:
+                account, cv_application = contactable
+                response.append(
+                    {
+                        **business_helper.get_basic_info_by_account(
+                            db, account
+                        ).model_dump(),
+                        "job": job_helper.get_info_general(cv_application.campaign.job),
+                    }
+                )
 
         return CustomResponse(data=response)
 
