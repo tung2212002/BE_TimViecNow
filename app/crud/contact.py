@@ -11,43 +11,33 @@ class CRUDContact:
         self, db: Session, account: Account, limit: int = 10, skip: int = 0, **kwargs
     ) -> List[Account]:
         query = (
-            db.query(Account)
-            .filter(
-                Account.role == Role.USER,
-                db.query(CVApplication)
-                .join(Campaign, Campaign.id == CVApplication.campaign_id)
-                .filter(
-                    Campaign.business_id == account.id,
-                    CVApplication.user_id == Account.id,
-                )
-                .exists(),
-            )
+            db.query(Account, CVApplication.created_at)
+            .join(CVApplication, CVApplication.user_id == Account.id)
+            .join(Campaign, Campaign.id == CVApplication.campaign_id)
+            .filter(Campaign.business_id == account.id)
+            .order_by(CVApplication.created_at.desc())
             .limit(limit)
             .offset(skip)
         )
 
-        return query.all()
+        result = query.all()
+        return [item[0] for item in result]
 
     def get_list_contactables_for_user(
         self, db: Session, account: Account, limit: int = 10, skip: int = 0, **kwargs
     ) -> List[Account]:
         query = (
-            db.query(Account)
-            .filter(
-                Account.role == Role.BUSINESS,
-                db.query(CVApplication)
-                .join(Campaign, Campaign.id == CVApplication.campaign_id)
-                .filter(
-                    Campaign.business_id == Account.id,
-                    CVApplication.user_id == account.id,
-                )
-                .exists(),
-            )
+            db.query(Account, CVApplication.created_at)
+            .join(CVApplication, CVApplication.user_id == account.id)
+            .join(Campaign, Campaign.id == CVApplication.campaign_id)
+            .filter(Campaign.business_id == Account.id)
+            .order_by(CVApplication.created_at.desc())
             .limit(limit)
             .offset(skip)
         )
 
-        return query.all()
+        result = query.all()
+        return [item[0] for item in result]
 
     def check_business_can_contact(
         self, db: Session, account_ids: List[int], account: Account

@@ -47,14 +47,14 @@ class ChatService:
 
         response = []
         if current_user.type_account == TypeAccount.BUSINESS:
-            members = contactCRUD.get_list_contactables_for_business(
+            members: List[Account] = contactCRUD.get_list_contactables_for_business(
                 db, account=current_user, **page.model_dump()
             )
             response = [
                 user_helper.get_basic_info_by_account(db, user) for user in members
             ]
         else:
-            members = contactCRUD.get_list_contactables_for_user(
+            members: List[Account] = contactCRUD.get_list_contactables_for_user(
                 db, account=current_user, **page.model_dump()
             )
             response = [
