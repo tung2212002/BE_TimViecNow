@@ -1,7 +1,7 @@
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 from typing import List
-from redis.asyncio import Redis
+from fastapi import status
 
 from app.model import (
     Account,
@@ -38,6 +38,13 @@ from app.hepler.enum import ConversationType, MessageType
 class MessageService:
     async def get(self, db: Session, redis: Redis, data: dict, current_user: Account):
         page = GetMessagesRequest(**data)
+
+        if not conversationCRUD.get_by_account_id_and_conversation_id(
+            db, account_id=current_user.id, conversation_id=page.conversation_id
+        ):
+            raise CustomException(
+                status_code=status.HTTP_403_FORBIDDEN, msg="Not allowed to access"
+            )
 
         messages: List[Message] = messageCRUD.get_by_conversation_id(
             db, **page.model_dump()

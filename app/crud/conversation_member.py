@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
 from sqlalchemy import case
 from typing import List
@@ -17,25 +17,38 @@ class CRUDConversationMember(
 ):
     def get_by_account_ids(self, db: Session, account_ids: list[int]) -> int:
         num_users = len(account_ids)
-        return (
+        # SELECT cm.conversation_id
+        # FROM ConversationMember cm
+        # WHERE cm.account_id IN (:account_ids)
+        # GROUP BY cm.conversation_id
+        # HAVING COUNT(DISTINCT cm.account_id) = :num_users
+        #    AND (SELECT COUNT(*)
+        #         FROM ConversationMember sub_cm
+        #         WHERE sub_cm.conversation_id = cm.conversation_id) = :num_users
+        # LIMIT 1;
+        cm_subquery = aliased(ConversationMember)
+
+        subquery = (
+            db.query(func.count(cm_subquery.account_id))
+            .filter(cm_subquery.conversation_id == ConversationMember.conversation_id)
+            .scalar_subquery()
+        )
+
+        query = (
             db.query(ConversationMember.conversation_id)
             .filter(ConversationMember.account_id.in_(account_ids))
             .group_by(ConversationMember.conversation_id)
-            .having(func.count(ConversationMember.account_id) == num_users)
             .having(
                 func.count(func.distinct(ConversationMember.account_id)) == num_users
             )
+            .having(subquery == num_users)
             .limit(1)
-            .scalar()
         )
+        print(query)
+        print(num_users)
+        print(account_ids)
 
-    # SELECT group_id
-    # FROM group_users
-    # WHERE user_id IN (user_id1, user_id2, user_id3, ...)
-    # GROUP BY group_id
-    # HAVING COUNT(user_id) = X -- X là số lượng người dùng trong nhóm
-    # AND COUNT(DISTINCT user_id) = X; -- Đảm bảo rằng không có user nào bị trùng
-    # LIMIT 1;
+        return query.scalar()
 
     def get_member_by_conversation_id(
         self,

@@ -28,6 +28,16 @@ class ConversationUpdateRequest(BaseModel):
     model_config = ConfigDict(from_attribute=True, extra="ignore")
 
 
+class ConversationGetExistWithListMemberRequest(BaseModel):
+    members: List[int]
+
+    @validator("members")
+    def validate_member(cls, v):
+        return SchemaValidator.validate_list_member(v)
+
+    model_config = ConfigDict(from_attribute=True, extra="ignore")
+
+
 class ConversationUpdateAvatarRequest(BaseModel):
     id: int
     avatar: Optional[UploadFile]

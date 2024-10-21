@@ -48,6 +48,38 @@ async def get_conversation(
     return await conversation_service.get(db, redis, args, current_user)
 
 
+@router.get("/existing")
+async def get_existing_conversation(
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    current_user=Depends(user_manager_service.get_current_user_or_business_verify),
+    members: List[int] = Query(
+        ...,
+        description="The list of user ids.",
+        example=[1, 2],
+    ),
+):
+    """
+    Get existing conversation.
+
+    This endpoint allows getting an existing conversation.
+
+    Parameters:
+    - members (list): The list of user ids.
+
+    Returns:
+    - status_code (200): The conversation has been found successfully.
+    - status_code (400): Request is invalid.
+    - status_code (404): The conversation is not found.
+
+    """
+    args = locals()
+
+    return await conversation_service.get_existing_conversation(
+        db, redis, args, current_user
+    )
+
+
 @router.get("/{conversation_id}")
 async def get_by_id(
     conversation_id: int,
