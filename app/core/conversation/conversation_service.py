@@ -4,7 +4,11 @@ from typing import List
 from fastapi import status
 from datetime import datetime
 
-from app.crud import conversation as conversationCRUD, account as accountCRUD
+from app.crud import (
+    conversation as conversationCRUD,
+    account as accountCRUD,
+    conversation_member as conversation_memberCRUD,
+)
 from app.schema.page import Pagination
 from app.schema.conversation import (
     ConversationCreateRequest,
@@ -12,6 +16,7 @@ from app.schema.conversation import (
     ConversationUpdate,
     ConversationUpdateRequest,
     ConversationUpdateAvatarRequest,
+    ConversationGetExistWithListMemberRequest,
 )
 from app.schema.websocket import (
     NewConversationSchema,
@@ -20,7 +25,7 @@ from app.schema.websocket import (
 from app.schema.message_image import AttachmentCreateRequest, AttachmentResponse
 from app.common.exception import CustomException
 from app.common.response import CustomResponse
-from app.model import Account, Conversation
+from app.model import Account, Conversation, ConversationMember
 from app.core.conversation.conversation_helper import conversation_helper
 from app.hepler.enum import ConversationType, TypeAccount
 from app.storage.s3 import s3_service
@@ -69,6 +74,37 @@ class ConversationService:
                         db, conversation
                     )
                 )
+
+        return CustomResponse(data=response)
+
+    async def get_existing_conversation(
+        self, db: Session, redis: Redis, data: dict, current_user: Account
+    ):
+        conversation_data = ConversationGetExistWithListMemberRequest(**data)
+
+        member_ids: List[int] = conversation_helper.filter_member(
+            conversation_data.members, current_user
+        )
+
+        conversation_id: int = conversation_memberCRUD.get_by_account_ids(
+            db, [current_user.id] + member_ids
+        )
+
+        if not conversation_id:
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Conversation not found"
+            )
+
+        conversation: Conversation = conversationCRUD.get(db, conversation_id)
+
+        if conversation.type == ConversationType.PRIVATE:
+            response = conversation_helper.get_private_conversation_response(
+                db, conversation, current_user
+            )
+        else:
+            response = conversation_helper.get_group_conversation_response(
+                db, conversation
+            )
 
         return CustomResponse(data=response)
 
@@ -171,7 +207,9 @@ class ConversationService:
             )
         )
         if not conversation:
-            raise CustomException(msg="Conversation not found")
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Conversation not found"
+            )
 
         avatar = conversation_data.avatar
         key = avatar.filename
@@ -208,7 +246,9 @@ class ConversationService:
         )
 
         if not conversation:
-            raise CustomException(msg="Conversation not found")
+            raise CustomException(
+                status_code=status.HTTP_404_NOT_FOUND, msg="Conversation not found"
+            )
 
         files = attach_file_data.files
         file = files[0]
