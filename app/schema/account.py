@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.hepler.enum import Role, TypeAccount
 from app.hepler.schema_validator import SchemaValidator
+from app.schema.company import CompanyItemGeneralResponse
 
 
 class AccountCreate(BaseModel):
@@ -38,6 +39,7 @@ class AccountBasicResponse(BaseModel):
     role: Role
     type_account: TypeAccount
     last_login: Optional[datetime] = None
+    company: Optional[CompanyItemGeneralResponse] = None
 
     @validator("avatar")
     def validate_avatar(cls, v):
