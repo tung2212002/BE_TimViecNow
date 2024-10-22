@@ -153,7 +153,7 @@ class WebsocketHelper:
                 pass
 
             message = messageCRUD.create(db, obj_in=message)
-            user: AccountBasicResponse = conversation_helper.get_user_response(
+            user: AccountBasicResponse = conversation_helper.get_user_basic_response(
                 db, current_user
             )
             outcoming_message = ResponseMessageSchema(

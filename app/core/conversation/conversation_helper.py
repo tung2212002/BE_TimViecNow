@@ -3,7 +3,15 @@ from typing import List, Union
 from fastapi import status
 from redis.asyncio import Redis
 
-from app.model import Account, Conversation, ConversationMember, Message
+from app.model import (
+    Account,
+    Conversation,
+    ConversationMember,
+    Message,
+    Manager,
+    Business,
+    Company,
+)
 from app.crud import (
     conversation as conversationCRUD,
     conversation_member as conversation_memberCRUD,
@@ -15,13 +23,15 @@ from app.schema.conversation import (
     ConversationCreate,
     ConversationResponse,
 )
+from app.schema.company import CompanyItemGeneralResponse
 from app.schema.account import AccountBasicResponse
 from app.schema.conversation_member import ConversationMemberCreate
 from app.schema.message import MessageBasicResponse
 from app.common.exception import CustomException
 from app.core.user.user_helper import user_helper
 from app.core.business.business_helper import business_helper
-from app.hepler.enum import ConversationType, TypeAccount
+from app.core.company.company_helper import company_helper
+from app.hepler.enum import ConversationType, TypeAccount, Role
 from app.storage.cache.message_cache_service import message_cache_service
 
 
@@ -33,6 +43,18 @@ class ConversationHelper:
         current_user: Account = None,
     ) -> AccountBasicResponse:
         account: Account = conversation_member.account
+        if account.role == Role.BUSINESS:
+            manager: Manager = account.manager
+            business: Business = manager.business
+            company: Company = business.company
+            company_response: CompanyItemGeneralResponse = (
+                company_helper.get_info_general(company)
+            )
+            return AccountBasicResponse(
+                **account.__dict__,
+                nickname=conversation_member.nickname,
+                company=company_response,
+            )
         return AccountBasicResponse(
             **account.__dict__,
             nickname=conversation_member.nickname,
@@ -176,6 +198,26 @@ class ConversationHelper:
             **account.__dict__,
         )
 
+    def get_user_basic_response(
+        self,
+        db: Session,
+        account: Account,
+    ) -> AccountBasicResponse:
+        if account.role == Role.BUSINESS:
+            manager: Manager = account.manager
+            business: Business = manager.business
+            company: Company = business.company
+            company_response: CompanyItemGeneralResponse = (
+                company_helper.get_info_general(company)
+            )
+            return AccountBasicResponse(
+                **account.__dict__,
+                company=company_response,
+            )
+        return AccountBasicResponse(
+            **account.__dict__,
+        )
+
     def check_business_valid_contact(
         self, db: Session, members: List[Account], current_user: Account
     ) -> None:
@@ -246,16 +288,18 @@ class ConversationHelper:
         return is_exist
 
     def get_last_message(self, db: Session, conversation_id: int) -> Message:
-        # return messageCRUD.get_last_message(db, conversation_id=conversation_id)
         message: Message = messageCRUD.get_last_message(
             db, conversation_id=conversation_id
         )
-        user = accountCRUD.get(db, message.account_id)
+        user: Account = accountCRUD.get(db, message.account_id)
+        conversation_member: ConversationMember = (
+            conversation_memberCRUD.get_by_account_id_and_conversation_id(
+                db, account_id=user.id, conversation_id=conversation_id
+            )
+        )
         return MessageBasicResponse(
             **message.__dict__,
-            user=AccountBasicResponse(
-                **user.__dict__,
-            ),
+            user=self.get_member_response(db, conversation_member, user),
         )
 
 

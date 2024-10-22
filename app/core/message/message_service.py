@@ -59,7 +59,7 @@ class MessageService:
                     db, account_id=current_user.id, message_id=message.id
                 )
             )
-            user: AccountBasicResponse = conversation_helper.get_user_response(
+            user: AccountBasicResponse = conversation_helper.get_user_basic_response(
                 db, message.account
             )
 
